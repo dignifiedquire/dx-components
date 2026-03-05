@@ -1,43 +1,58 @@
 import { test, expect } from '@playwright/test';
 
 test('hover navigation', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/?name=navbar&', { timeout: 20 * 60 * 1000 }); // Increase timeout to 20 minutes
-  // wait for the styles to load
-  await expect(page.getByRole('menuitem', { name: 'Inputs' })).toHaveCSS('border-width', '0px');
+  await page.goto('http://127.0.0.1:8080/component/?name=navbar&', { timeout: 20 * 60 * 1000 });
+
+  // data-slot assertions
+  const navbar = page.locator('[data-slot="navbar"]');
+  await expect(navbar).toBeVisible();
+
+  const triggers = page.locator('[data-slot="navbar-trigger"]');
+  await expect(triggers).toHaveCount(2);
+
+  const triggerClass = await triggers.first().getAttribute('class');
+  expect(triggerClass).toContain('flex');
+  expect(triggerClass).toContain('rounded-sm');
+  expect(triggerClass).toContain('text-sm');
+  expect(triggerClass).toContain('font-medium');
+
+  // Hover Inputs trigger
   await page.getByRole('menuitem', { name: 'Inputs' }).hover();
+  const content = page.locator('[data-slot="navbar-content"]').first();
+  await expect(content).toBeVisible();
+
+  const contentClass = await content.getAttribute('class');
+  expect(contentClass).toContain('z-50');
+  expect(contentClass).toContain('rounded-md');
+  expect(contentClass).toContain('border');
+  expect(contentClass).toContain('bg-popover');
+
+  // Click Calendar
   const calendar = page.getByRole('menuitem', { name: 'Calendar' });
-  // Move the mouse onto the calendar menu item
   await calendar.hover();
-  // Then click the calendar menu item
   await calendar.click();
-  // Assert the url changed to the calendar component
   await expect(page).toHaveURL(/.*name=calendar/);
 });
 
 test('mobile navigation', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/?name=navbar&', { timeout: 20 * 60 * 1000 }); // Increase timeout to 20 minutes
+  await page.goto('http://127.0.0.1:8080/component/?name=navbar&', { timeout: 20 * 60 * 1000 });
   await page.getByRole('menuitem', { name: 'Inputs' }).tap();
   await page.getByRole('menuitem', { name: 'Calendar' }).tap();
-  // Assert the url changed to the calendar component
   await expect(page).toHaveURL(/.*name=calendar/);
 });
 
 test('keyboard navigation', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/?name=navbar&', { timeout: 20 * 60 * 1000 }); // Increase timeout to 20 minutes
-  await page.locator('.navbar').focus();
-  // Go right with the keyboard
+  await page.goto('http://127.0.0.1:8080/component/?name=navbar&', { timeout: 20 * 60 * 1000 });
+
+  // Focus via menubar role
+  await page.locator('[role="menubar"]').focus();
+
   await page.keyboard.press('ArrowRight');
-  // Assert the focus is on the information menu item
   await expect(page.getByRole('menuitem', { name: 'Information' })).toBeFocused();
-  // Go left with the keyboard
   await page.keyboard.press('ArrowLeft');
-  // Assert the focus is on the inputs menu item
   await expect(page.getByRole('menuitem', { name: 'Inputs' })).toBeFocused();
   await page.keyboard.press('ArrowDown');
-  // Assert the focus is on the calendar menu item
   await expect(page.getByRole('menuitem', { name: 'Calendar' })).toBeFocused();
-  // Click the focused menu item
   await page.keyboard.press('Enter');
-  // Assert the url changed to the calendar component
   await expect(page).toHaveURL(/.*name=calendar/);
 });

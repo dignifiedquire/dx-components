@@ -1,15 +1,15 @@
-use super::super::component::*;
 use crate::Route;
 use dioxus::prelude::*;
+use dioxus_primitives::navbar::*;
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        div { class: "navbar-example",
+        div {
             Navbar { aria_label: "Components",
                 NavbarNav { index: 0usize,
                     NavbarTrigger { "Inputs" }
-                    NavbarContent { class: "navbar-content",
+                    NavbarContent {
                         NavbarItem {
                             index: 0usize,
                             value: "calendar".to_string(),

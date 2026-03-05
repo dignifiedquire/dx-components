@@ -8,6 +8,7 @@ use crate::{
     use_animated_open, use_id_or, use_unique_id,
 };
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 #[derive(Clone, Copy)]
 struct NavbarContext {
@@ -30,6 +31,10 @@ pub struct NavbarProps {
     /// Whether focus should loop around when reaching the end.
     #[props(default = ReadSignal::new(Signal::new(true)))]
     pub roving_loop: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the navbar element.
     #[props(extends = GlobalAttributes)]
@@ -130,12 +135,19 @@ pub fn Navbar(props: NavbarProps) -> Element {
         .iter()
         .find_map(|attr| (attr.name == "aria-label").then(|| attr.value.clone()));
 
+    let class = tw_merge!(
+        "flex items-center gap-1",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "navbar",
             role: "navigation",
             display: "content",
             aria_label,
             div {
+                class: class,
                 role: "menubar",
                 "data-disabled": (props.disabled)(),
                 tabindex: (!ctx.focus.any_focused()).then_some("0"),
@@ -190,6 +202,10 @@ pub struct NavbarNavProps {
     /// Whether this nav item is disabled.
     #[props(default)]
     pub disabled: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the nav element.
     #[props(extends = GlobalAttributes)]
@@ -291,8 +307,12 @@ pub fn NavbarNav(props: NavbarNavProps) -> Element {
 
     let disabled = move || (ctx.disabled)() || (props.disabled)();
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
+            "data-slot": "navbar-nav",
+            class: class,
             role: "menu",
             "data-state": if is_open() { "open" } else { "closed" },
             "data-disabled": (ctx.disabled)() || (props.disabled)(),
@@ -342,6 +362,10 @@ pub fn NavbarNav(props: NavbarNavProps) -> Element {
 /// The props for the [`NavbarTrigger`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct NavbarTriggerProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the trigger element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -425,8 +449,16 @@ pub fn NavbarTrigger(props: NavbarTriggerProps) -> Element {
     let disabled = move || (ctx.disabled)() || (nav_ctx.disabled)();
     let is_open = nav_ctx.is_open;
 
+    let class = tw_merge!(
+        "flex items-center rounded-sm px-2 py-1 text-sm font-medium outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
+        props.class,
+    );
+
     rsx! {
         button {
+            "data-slot": "navbar-trigger",
+            class: class,
+            "data-state": if is_open() { "open" } else { "closed" },
             onmounted,
             onpointerdown: move |_| {
                 if !disabled() {
@@ -454,6 +486,11 @@ pub fn NavbarTrigger(props: NavbarTriggerProps) -> Element {
 pub struct NavbarContentProps {
     /// The id of the content element.
     pub id: ReadSignal<Option<String>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the content element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -550,10 +587,17 @@ pub fn NavbarContent(props: NavbarContentProps) -> Element {
 
     let render = use_animated_open(id, nav_ctx.is_open);
 
+    let class = tw_merge!(
+        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+        props.class,
+    );
+
     rsx! {
         if render() {
             div {
                 id,
+                "data-slot": "navbar-content",
+                class: class,
                 role: "menu",
                 "data-state": if (nav_ctx.is_open)() { "open" } else { "closed" },
                 "data-open-menu-direction": "{open_direction}",
@@ -753,9 +797,15 @@ pub fn NavbarItem(mut props: NavbarItemProps) -> Element {
         "-1"
     };
 
+    let class = tw_merge!(
+        "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
+        props.class,
+    );
+
     rsx! {
         Link {
-            class: props.class,
+            "data-slot": "navbar-item",
+            class: class,
             active_class: props.active_class,
             new_tab: props.new_tab,
             onclick_only: props.onclick_only,
