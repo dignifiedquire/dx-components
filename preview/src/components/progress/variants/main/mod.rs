@@ -1,5 +1,5 @@
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::progress::{Progress, ProgressIndicator};
 
 #[component]
 pub fn Demo() -> Element {

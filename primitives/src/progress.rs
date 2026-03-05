@@ -1,6 +1,7 @@
 //! Defines the [`Progress`] component and its sub-components.
 
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 /// The props for the [`Progress`] component.
 #[derive(Props, Clone, PartialEq)]
@@ -11,6 +12,10 @@ pub struct ProgressProps {
     /// The maximum value. Defaults to 100.
     #[props(default = ReadSignal::new(Signal::new(100.0)))]
     pub max: ReadSignal<f64>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the progress element.
     #[props(extends = GlobalAttributes)]
@@ -65,8 +70,14 @@ pub fn Progress(props: ProgressProps) -> Element {
         None => "indeterminate",
     });
 
+    let class = tw_merge!(
+        "relative h-2 w-full overflow-hidden rounded-full bg-primary/20",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "progress",
             role: "progressbar",
             "aria-valuemin": 0,
             "aria-valuemax": props.max,
@@ -74,6 +85,7 @@ pub fn Progress(props: ProgressProps) -> Element {
             "data-state": state,
             "data-value": props.value.cloned().map(|v| v.to_string()),
             "data-max": props.max,
+            class: class,
             style: percentage().map(|p| format!("--progress-value: {p}%")),
             ..props.attributes,
 
@@ -85,6 +97,10 @@ pub fn Progress(props: ProgressProps) -> Element {
 /// The props for the [`ProgressIndicator`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct ProgressIndicatorProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the indicator element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -116,7 +132,17 @@ pub struct ProgressIndicatorProps {
 /// ```
 #[component]
 pub fn ProgressIndicator(props: ProgressIndicatorProps) -> Element {
+    let class = tw_merge!(
+        "h-full w-full flex-1 bg-primary transition-all",
+        props.class,
+    );
+
     rsx! {
-        div { ..props.attributes, {props.children} }
+        div {
+            "data-slot": "progress-indicator",
+            class: class,
+            ..props.attributes,
+            {props.children}
+        }
     }
 }
