@@ -5,6 +5,7 @@ use crate::{
     use_animated_open, use_controlled, use_effect_cleanup, use_id_or, use_unique_id,
 };
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 #[derive(Clone, Copy)]
 struct ContextMenuCtx {
@@ -41,6 +42,10 @@ pub struct ContextMenuProps {
     /// Whether focus should loop around when reaching the end.
     #[props(default = ReadSignal::new(Signal::new(true)))]
     pub roving_loop: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the context menu element.
     #[props(extends = GlobalAttributes)]
@@ -150,9 +155,13 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
         }
     };
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
-            tabindex: 0, // Make the menu container focusable
+            "data-slot": "context-menu",
+            class: class,
+            tabindex: 0,
             onkeydown: handle_keydown,
             "data-state": if open() { "open" } else { "closed" },
             "data-disabled": (props.disabled)(),
@@ -165,6 +174,10 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
 /// The props for the [`ContextMenuTrigger`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct ContextMenuTriggerProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes for the context menu trigger element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -231,8 +244,12 @@ pub fn ContextMenuTrigger(props: ContextMenuTriggerProps) -> Element {
         }
     };
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
+            "data-slot": "context-menu-trigger",
+            class: class,
             oncontextmenu: handle_context_menu,
             role: "button",
             aria_haspopup: "menu",
@@ -248,6 +265,10 @@ pub fn ContextMenuTrigger(props: ContextMenuTriggerProps) -> Element {
 pub struct ContextMenuContentProps {
     /// The ID of the context menu content element.
     pub id: ReadSignal<Option<String>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the context menu content element.
     #[props(extends = GlobalAttributes)]
@@ -352,10 +373,17 @@ pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
 
     let render = use_animated_open(id, open);
 
+    let class = tw_merge!(
+        "z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+        props.class,
+    );
+
     rsx! {
         if render() {
             div {
                 id,
+                "data-slot": "context-menu-content",
+                class: class,
                 role: "menu",
                 aria_orientation: "vertical",
                 position: "fixed",
@@ -395,6 +423,10 @@ pub struct ContextMenuItemProps {
     /// Callback when the item is selected
     #[props(default)]
     pub on_select: Callback<String>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the context menu item element
     #[props(extends = GlobalAttributes)]
@@ -495,8 +527,15 @@ pub fn ContextMenuItem(props: ContextMenuItemProps) -> Element {
         }
     };
 
+    let class = tw_merge!(
+        "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "context-menu-item",
+            class: class,
             role: "menuitem",
             tabindex: tab_index,
             onpointerdown: handle_click,

@@ -1,5 +1,5 @@
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::context_menu::*;
 #[component]
 pub fn Demo() -> Element {
     let mut selected_item = use_signal(|| None);
