@@ -6,6 +6,7 @@ use crate::{
 };
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
+use tailwind_fuse::*;
 
 #[derive(Clone, Copy)]
 struct TooltipCtx {
@@ -35,6 +36,10 @@ pub struct TooltipProps {
     /// Whether the tooltip is disabled
     #[props(default)]
     pub disabled: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the tooltip
     #[props(extends = GlobalAttributes)]
@@ -91,10 +96,14 @@ pub fn Tooltip(props: TooltipProps) -> Element {
         tooltip_id,
     });
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
+            "data-slot": "tooltip",
             "data-state": if open() { "open" } else { "closed" },
             "data-disabled": (props.disabled)(),
+            class: class,
             ..props.attributes,
             {props.children}
         }
@@ -111,6 +120,10 @@ pub struct TooltipTriggerProps {
     /// Render the trigger element as a custom component/element.
     #[props(default)]
     pub r#as: Option<Callback<Vec<Attribute>, Element>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the trigger element
     #[props(extends = GlobalAttributes)]
@@ -187,9 +200,13 @@ pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
         }
     };
 
+    let class = tw_merge!(props.class);
+
     let base = attributes!(div {
         id: props.id.clone(),
         tabindex: "0",
+        "data-slot": "tooltip-trigger",
+        class: class,
         "aria-describedby": ctx.tooltip_id.cloned(),
         onmouseenter: handle_mouse_enter,
         onmouseleave: handle_mouse_leave,
@@ -225,6 +242,10 @@ pub struct TooltipContentProps {
     /// Alignment of the tooltip relative to the trigger
     #[props(default = ContentAlign::Center)]
     pub align: ContentAlign,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the tooltip content element
     #[props(extends = GlobalAttributes)]
@@ -285,15 +306,22 @@ pub fn TooltipContent(props: TooltipContentProps) -> Element {
     // Only render if the tooltip is open
     let render = use_animated_open(id, ctx.open);
 
+    let class = tw_merge!(
+        "z-50 w-fit rounded-md bg-foreground px-3 py-1.5 text-xs text-balance text-background animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        props.class,
+    );
+
     // Create the tooltip content
     rsx! {
         if render() {
             div {
                 id,
                 role: "tooltip",
+                "data-slot": "tooltip-content",
                 "data-state": if ctx.open.cloned() { "open" } else { "closed" },
                 "data-side": props.side.as_str(),
                 "data-align": props.align.as_str(),
+                class: class,
                 ..props.attributes,
                 {props.children}
             }
