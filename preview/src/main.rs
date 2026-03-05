@@ -197,6 +197,7 @@ fn NavigationLayout() -> Element {
             rel: "stylesheet",
             href: asset!("/assets/dx-components-theme.css"),
         }
+        document::Link { rel: "stylesheet", href: asset!("/assets/tailwind.css") }
         document::Link { rel: "stylesheet", href: asset!("/assets/hero.css") }
         Navbar {}
         Outlet::<Route> {}
