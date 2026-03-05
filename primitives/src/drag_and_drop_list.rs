@@ -2,6 +2,7 @@
 use crate::icon::Icon;
 use dioxus::prelude::*;
 use std::rc::Rc;
+use tailwind_fuse::*;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum DropPosition {
@@ -182,6 +183,10 @@ pub struct DragAndDropListProps {
     #[props(default)]
     pub aria_label: Option<String>,
 
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the list element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -254,17 +259,21 @@ pub fn DragAndDropList(props: DragAndDropListProps) -> Element {
             .collect::<Vec<Element>>()
     };
 
+    let class = tw_merge!("w-full", props.class);
+
     rsx! {
         div {
-            class: "dnd-list",
+            "data-slot": "drag-and-drop-list",
+            class: class,
             ..props.attributes,
             div {
                 id: "dnd-instructions",
-                style: "position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);",
+                class: "absolute h-px w-px overflow-hidden [clip:rect(0,0,0,0)]",
                 "Press Enter to start reordering. Use Arrow keys to change position. Press Enter to confirm or Escape to cancel."
             }
             ul {
-                class: "dnd-list-ul",
+                "data-slot": "drag-and-drop-list-items",
+                class: "pl-0",
                 aria_label: "{label}",
                 aria_roledescription: "sortable list",
                 aria_describedby: "dnd-instructions",
@@ -274,7 +283,7 @@ pub fn DragAndDropList(props: DragAndDropListProps) -> Element {
                 role: "status",
                 aria_live: "assertive",
                 aria_atomic: "true",
-                style: "position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);",
+                class: "absolute h-px w-px overflow-hidden [clip:rect(0,0,0,0)]",
                 "{announcement}"
             }
             {props.children}
@@ -290,6 +299,10 @@ pub struct DragAndDropListItemProps {
 
     /// Set if the list item should be removable
     pub is_removable: bool,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the list item element.
     #[props(extends = GlobalAttributes)]
@@ -407,12 +420,18 @@ pub fn DragAndDropListItem(props: DragAndDropListItemProps) -> Element {
 
     let is_tab_reachable = ctx.is_focused(index) || ((ctx.focused_index)().is_none() && index == 0);
 
+    let class = tw_merge!(
+        "flex items-center justify-between p-4 cursor-grab list-none outline-none select-none data-[focus-visible=true]:ring-2 data-[focus-visible=true]:ring-ring focus-visible:ring-2 focus-visible:ring-ring data-[is-grabbing=true]:cursor-grabbing data-[is-grabbing=true]:opacity-60 data-[is-grabbing=true]:outline-dashed data-[is-grabbing=true]:outline-2 data-[is-grabbing=true]:outline-ring",
+        props.class,
+    );
+
     rsx! {
         if (ctx.drop_position)() == DropPosition::Before && render_drop_indicator((ctx.drop_to)()) {
             DropIndicator {  }
         }
         li {
-            class: "dnd-list-item",
+            "data-slot": "drag-and-drop-list-item",
+            class: class,
             aria_roledescription: "sortable item",
             draggable: "true",
             tabindex: if is_tab_reachable { "0" } else { "-1" },
@@ -449,11 +468,10 @@ pub fn DragAndDropListItem(props: DragAndDropListItemProps) -> Element {
                 }
             },
             ondrop: move |_| ctx.drop(),
-            //ondragleave: move |_| ctx.drop_to.set(None),
             onkeydown,
             ..props.attributes,
-            div { class: "item-icon-div", aria_hidden: "true", DragIcon {} }
-            div { class: "item-body-div", {props.children} }
+            div { class: "flex w-6 items-center mr-4", aria_hidden: "true", DragIcon {} }
+            div { class: "grow text-base font-normal leading-6", {props.children} }
             if props.is_removable {
                  RemoveButton { index, on_click: move || ctx.remove(index) }
             }
@@ -468,7 +486,8 @@ pub fn DragAndDropListItem(props: DragAndDropListItemProps) -> Element {
 fn DropIndicator() -> Element {
     rsx! {
         div {
-            class: "drop-indicator",
+            "data-slot": "drag-and-drop-list-indicator",
+            class: "relative z-[1] h-0.5 -my-px bg-ring before:absolute before:-top-1 before:-left-1.5 before:size-0 before:border-y-[5px] before:border-y-transparent before:border-l-[6px] before:border-l-ring before:content-['']",
         }
     }
 }
@@ -478,7 +497,8 @@ fn RemoveButton(index: usize, on_click: Callback<()>) -> Element {
     let label = format!("Remove item {}", index + 1);
     rsx! {
         button {
-            class: "remove-button",
+            "data-slot": "drag-and-drop-list-remove",
+            class: "flex w-6 items-center overflow-visible p-0 border-none ml-4 bg-transparent cursor-pointer focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
             aria_label: "{label}",
             onclick: move |_| on_click.call(()),
             Icon {
