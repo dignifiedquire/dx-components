@@ -13,6 +13,7 @@ use crate::{
 use dioxus::prelude::*;
 use num_integer::Integer;
 use std::{fmt::Display, str::FromStr};
+use tailwind_fuse::*;
 use time::{macros::date, Date, Month, OffsetDateTime, Weekday};
 
 /// The context provided by the [`DatePicker`] component to its children.
@@ -84,6 +85,10 @@ pub struct DatePickerProps {
     /// Whether focus should loop around when reaching the end.
     #[props(default = ReadSignal::new(Signal::new(false)))]
     pub roving_loop: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to extend the date picker element
     #[props(extends = GlobalAttributes)]
@@ -158,8 +163,12 @@ pub fn DatePicker(props: DatePickerProps) -> Element {
         selected_date: props.selected_date,
     });
 
+    let class = tw_merge!("relative inline-flex items-center data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50", props.class);
+
     rsx! {
         div {
+            "data-slot": "date-picker",
+            class: class,
             role: "group",
             aria_label: "Date",
             "data-disabled": (props.disabled)(),
@@ -224,6 +233,10 @@ pub struct DateRangePickerProps {
     /// Whether focus should loop around when reaching the end.
     #[props(default = ReadSignal::new(Signal::new(false)))]
     pub roving_loop: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to extend the date picker element
     #[props(extends = GlobalAttributes)]
@@ -298,8 +311,12 @@ pub fn DateRangePicker(props: DateRangePickerProps) -> Element {
         set_selected_range: props.on_range_change,
     });
 
+    let class = tw_merge!("relative inline-flex items-center data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50", props.class);
+
     rsx! {
         div {
+            "data-slot": "date-range-picker",
+            class: class,
             role: "group",
             aria_label: "Date Range",
             "data-disabled": (props.disabled)(),
@@ -804,7 +821,8 @@ fn DateSegment<T: Clone + Copy + Integer + FromStr + Display + 'static>(
 
     rsx! {
         span {
-            class: "date-segment",
+            "data-slot": "date-picker-segment",
+            class: "[caret-color:transparent] data-[no-date=true]:text-muted-foreground focus-visible:rounded-sm focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none",
             id,
             role: "spinbutton",
             aria_valuemin: props.min.to_string(),
@@ -825,7 +843,7 @@ fn DateSegment<T: Clone + Copy + Integer + FromStr + Display + 'static>(
                     ctx.open.set(false);
                 }
             },
-            "no-date": (props.value)().is_none(),
+            "data-no-date": (props.value)().is_none(),
             "data-disabled": (ctx.disabled)(),
             ..props.attributes,
             {display_value}
@@ -837,11 +855,10 @@ fn DateSegment<T: Clone + Copy + Integer + FromStr + Display + 'static>(
 fn DateSeparator(#[props(default = '-')] symbol: char) -> Element {
     rsx! {
         span {
-            class: "date-segment",
+            "data-slot": "date-picker-separator",
+            class: "[caret-color:transparent] text-muted-foreground p-0",
             aria_hidden: "true",
             tabindex: "-1",
-            "is-separator": true,
-            "no-date": true,
             {format!("{symbol}")}
         }
     }
@@ -992,6 +1009,10 @@ pub struct DatePickerInputProps {
     #[props(default = Callback::new(|_| "Y".to_string()))]
     pub on_format_year_placeholder: Callback<(), String>,
 
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes for the value element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -1043,8 +1064,13 @@ pub fn DatePickerInput(props: DatePickerInputProps) -> Element {
     let mut base_ctx = use_context::<BaseDatePickerContext>();
     let mut ctx = use_context::<DatePickerContext>();
 
+    let class = tw_merge!("flex w-fit min-w-[150px] flex-row items-center justify-between gap-1 rounded-lg border bg-background p-2 shadow-xs", props.class);
+
     rsx! {
-        div { class: "date-picker-group", ..props.attributes,
+        div {
+            "data-slot": "date-picker-input",
+            class: class,
+            ..props.attributes,
             DateElement {
                 selected_date: ctx.selected_date,
                 on_date_change: move |date| {
@@ -1131,8 +1157,13 @@ pub fn DateRangePickerInput(props: DatePickerInputProps) -> Element {
         };
     });
 
+    let class = tw_merge!("flex w-fit min-w-[150px] flex-row items-center justify-between gap-1 rounded-lg border bg-background p-2 shadow-xs", props.class);
+
     rsx! {
-        div { class: "date-picker-group", ..props.attributes,
+        div {
+            "data-slot": "date-picker-input",
+            class: class,
+            ..props.attributes,
             DateElement {
                 selected_date: start_date(),
                 on_date_change: move |date| start_date.set(date),

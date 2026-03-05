@@ -1,8 +1,10 @@
+pub use dioxus_primitives::date_picker::*;
+
 use dioxus::prelude::*;
 
 use dioxus_primitives::{
     date_picker::{self, DatePickerInputProps, DatePickerProps, DateRangePickerProps},
-    popover::{PopoverContentProps, PopoverTriggerProps},
+    popover::PopoverTriggerProps,
     ContentAlign,
 };
 
@@ -12,24 +14,20 @@ use super::super::popover::*;
 #[component]
 pub fn DatePicker(props: DatePickerProps) -> Element {
     rsx! {
-        document::Link { rel: "stylesheet", href: asset!("./style.css") }
-        div {
-            date_picker::DatePicker {
-                class: "date-picker",
-                on_value_change: props.on_value_change,
-                selected_date: props.selected_date,
-                disabled: props.disabled,
-                read_only: props.read_only,
-                min_date: props.min_date,
-                max_date: props.max_date,
-                month_count: props.month_count,
-                disabled_ranges: props.disabled_ranges,
-                roving_loop: props.roving_loop,
-                attributes: props.attributes,
-                date_picker::DatePickerPopover {
-                    popover_root: PopoverRoot,
-                    {props.children}
-                }
+        date_picker::DatePicker {
+            on_value_change: props.on_value_change,
+            selected_date: props.selected_date,
+            disabled: props.disabled,
+            read_only: props.read_only,
+            min_date: props.min_date,
+            max_date: props.max_date,
+            month_count: props.month_count,
+            disabled_ranges: props.disabled_ranges,
+            roving_loop: props.roving_loop,
+            attributes: props.attributes,
+            date_picker::DatePickerPopover {
+                popover_root: PopoverRoot,
+                {props.children}
             }
         }
     }
@@ -38,22 +36,18 @@ pub fn DatePicker(props: DatePickerProps) -> Element {
 #[component]
 pub fn DateRangePicker(props: DateRangePickerProps) -> Element {
     rsx! {
-        document::Link { rel: "stylesheet", href: asset!("./style.css") }
-        div {
-            date_picker::DateRangePicker {
-                class: "date-picker",
-                on_range_change: props.on_range_change,
-                selected_range: props.selected_range,
-                disabled: props.disabled,
-                read_only: props.read_only,
-                min_date: props.min_date,
-                max_date: props.max_date,
-                month_count: props.month_count,
-                disabled_ranges: props.disabled_ranges,
-                roving_loop: props.roving_loop,
-                attributes: props.attributes,
-                date_picker::DatePickerPopover { popover_root: PopoverRoot, {props.children} }
-            }
+        date_picker::DateRangePicker {
+            on_range_change: props.on_range_change,
+            selected_range: props.selected_range,
+            disabled: props.disabled,
+            read_only: props.read_only,
+            min_date: props.min_date,
+            max_date: props.max_date,
+            month_count: props.month_count,
+            disabled_ranges: props.disabled_ranges,
+            roving_loop: props.roving_loop,
+            attributes: props.attributes,
+            date_picker::DatePickerPopover { popover_root: PopoverRoot, {props.children} }
         }
     }
 }
@@ -123,7 +117,7 @@ pub fn DatePickerPopoverTrigger(props: PopoverTriggerProps) -> Element {
     rsx! {
         PopoverTrigger { aria_label: "Show Calendar", attributes: props.attributes,
             svg {
-                class: "date-picker-expand-icon",
+                class: "size-5 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:2]",
                 view_box: "0 0 24 24",
                 xmlns: "http://www.w3.org/2000/svg",
                 polyline { points: "6 9 12 15 18 9" }
@@ -133,10 +127,11 @@ pub fn DatePickerPopoverTrigger(props: PopoverTriggerProps) -> Element {
 }
 
 #[component]
-pub fn DatePickerPopoverContent(props: PopoverContentProps) -> Element {
+pub fn DatePickerPopoverContent(
+    props: dioxus_primitives::popover::PopoverContentProps,
+) -> Element {
     rsx! {
         PopoverContent {
-            class: "popover-content",
             id: props.id,
             side: props.side,
             align: props.align,
