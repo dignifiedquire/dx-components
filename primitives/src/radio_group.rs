@@ -7,6 +7,7 @@ use crate::{
     use_controlled,
 };
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 #[derive(Clone, Copy)]
 struct RadioGroupCtx {
@@ -103,6 +104,10 @@ pub struct RadioGroupProps {
     #[props(default = ReadSignal::new(Signal::new(true)))]
     pub roving_loop: ReadSignal<bool>,
 
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the radio group element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -156,6 +161,8 @@ pub fn RadioGroup(props: RadioGroupProps) -> Element {
     let (value, set_value) =
         use_controlled(props.value, props.default_value, props.on_value_change);
 
+    let class = tw_merge!("grid gap-3", props.class);
+
     let focus = use_focus_provider(props.roving_loop);
     let mut ctx = use_context_provider(|| RadioGroupCtx {
         value,
@@ -171,9 +178,11 @@ pub fn RadioGroup(props: RadioGroupProps) -> Element {
     rsx! {
         div {
             role: "radiogroup",
+            "data-slot": "radio-group",
             "data-orientation": if (props.horizontal)() { "horizontal" } else { "vertical" },
             "data-disabled": (props.disabled)(),
             aria_required: props.required,
+            class: class,
 
             onfocusout: move |_| ctx.set_focus(None),
             ..props.attributes,
@@ -288,15 +297,21 @@ pub fn RadioItem(props: RadioItemProps) -> Element {
 
     let onmounted = use_focus_controlled_item_disabled(props.index, props.disabled);
 
+    let class = tw_merge!(
+        "aspect-square size-4 shrink-0 rounded-full border border-input text-primary shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30",
+        props.class,
+    );
+
     rsx! {
         button {
             role: "radio",
             id: props.id,
-            class: props.class,
+            class: class,
             tabindex: tab_index,
             type: "button",
 
             aria_checked: checked,
+            "data-slot": "radio-group-item",
             "data-state": if checked() { "checked" } else { "unchecked" },
             "data-disabled": (ctx.disabled)() || (props.disabled)(),
             disabled: (ctx.disabled)() || (props.disabled)(),
