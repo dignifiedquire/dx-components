@@ -2,6 +2,7 @@
 
 use crate::use_controlled;
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 /// The props for the [`Switch`] component.
 #[derive(Props, Clone, PartialEq)]
@@ -32,6 +33,10 @@ pub struct SwitchProps {
     /// Callback fired when the checked state changes.
     #[props(default)]
     pub on_checked_change: Callback<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the switch element.
     #[props(extends = GlobalAttributes)]
@@ -76,6 +81,11 @@ pub fn Switch(props: SwitchProps) -> Element {
         props.on_checked_change,
     );
 
+    let class = tw_merge!(
+        "peer inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent shadow-xs transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input dark:data-[state=unchecked]:bg-input/80",
+        props.class,
+    );
+
     rsx! {
         button {
             type: "button",
@@ -84,9 +94,10 @@ pub fn Switch(props: SwitchProps) -> Element {
             aria_checked: checked,
             aria_required: props.required,
             disabled: props.disabled,
+            "data-slot": "switch",
             "data-state": if checked() { "checked" } else { "unchecked" },
-            // Only add data-disabled when actually disabled
             "data-disabled": if (props.disabled)() { "true" } else { "false" },
+            class: class,
 
             onclick: move |_| {
                 let new_checked = !checked();
@@ -121,6 +132,10 @@ pub fn Switch(props: SwitchProps) -> Element {
 /// The props for the [`SwitchThumb`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct SwitchThumbProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the thumb element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -154,7 +169,17 @@ pub struct SwitchThumbProps {
 /// ```
 #[component]
 pub fn SwitchThumb(props: SwitchThumbProps) -> Element {
+    let class = tw_merge!(
+        "pointer-events-none block size-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0",
+        props.class,
+    );
+
     rsx! {
-        span { ..props.attributes, {props.children} }
+        span {
+            "data-slot": "switch-thumb",
+            class: class,
+            ..props.attributes,
+            {props.children}
+        }
     }
 }
