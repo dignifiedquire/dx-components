@@ -42,6 +42,7 @@ pub fn AspectRatio(props: AspectRatioProps) -> Element {
 
     rsx! {
         div {
+            "data-slot": "aspect-ratio",
             style: "position: relative; width: 100%; padding-bottom: {ratio}%;",
             div {
                 style: "position: absolute; inset: 0;",
