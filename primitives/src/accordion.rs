@@ -4,6 +4,7 @@ use crate::dioxus_elements::Key;
 use crate::{use_animated_open, use_effect_cleanup, use_id_or, use_unique_id};
 use dioxus::prelude::*;
 use std::rc::Rc;
+use tailwind_fuse::*;
 
 // TODO: controlled version
 // TODO: rewrite this to use collapsible
@@ -188,6 +189,10 @@ pub struct AccordionProps {
     #[props(default)]
     pub horizontal: ReadSignal<bool>,
 
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Attributes to extend the root element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -256,9 +261,13 @@ pub fn Accordion(props: AccordionProps) -> Element {
         )
     });
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
             id: props.id,
+            "data-slot": "accordion",
+            class: class,
             "data-disabled": (props.disabled)(),
 
             onfocusout: move |_| {
@@ -297,6 +306,10 @@ pub struct AccordionItemProps {
     ///
     /// This is required to implement keyboard navigation and focus management.
     pub index: usize,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to extend the item element.
     #[props(extends = GlobalAttributes)]
@@ -371,8 +384,12 @@ pub fn AccordionItem(props: AccordionItemProps) -> Element {
         props.on_change.call(open)
     });
 
+    let class = tw_merge!("border-b last:border-b-0", props.class);
+
     rsx! {
         div {
+            "data-slot": "accordion-item",
+            class: class,
             "data-open": ctx.is_open(item.id),
             "data-disabled": ctx.is_disabled() || item.is_disabled(),
             ..props.attributes,
@@ -387,6 +404,9 @@ pub fn AccordionItem(props: AccordionItemProps) -> Element {
 pub struct AccordionContentProps {
     /// The id of the accordion content element.
     pub id: ReadSignal<Option<String>>,
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes to extend the content element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -440,10 +460,17 @@ pub fn AccordionContent(props: AccordionContentProps) -> Element {
 
     let render_element = use_animated_open(id, open);
 
+    let class = tw_merge!(
+        "overflow-hidden text-sm data-[open=false]:animate-accordion-up data-[open=true]:animate-accordion-down",
+        props.class,
+    );
+
     rsx! {
         if render_element() {
             div {
                 id: id,
+                "data-slot": "accordion-content",
+                class: class,
                 "data-open": open,
                 ..props.attributes,
 
@@ -458,6 +485,9 @@ pub fn AccordionContent(props: AccordionContentProps) -> Element {
 pub struct AccordionTriggerProps {
     /// THe id of the accordion trigger element.
     pub id: Option<String>,
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes to extend the trigger element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -514,9 +544,16 @@ pub fn AccordionTrigger(props: AccordionTriggerProps) -> Element {
         }
     });
 
+    let class = tw_merge!(
+        "flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&[aria-expanded=true]>svg]:rotate-180",
+        props.class,
+    );
+
     rsx! {
         button {
             id: props.id,
+            "data-slot": "accordion-trigger",
+            class: class,
             disabled: is_disabled,
             tabindex: "0",
             type: "button",

@@ -1,20 +1,33 @@
 import { test, expect } from "@playwright/test";
 
 test("test", async ({ page }) => {
-  await page.goto("http://127.0.0.1:8080/component/?name=accordion&", { timeout: 20 * 60 * 1000 }); // Increase timeout to 20 minutes
-  // Get the first .accordion-item
-  const accordionItem = page.locator(".accordion-item");
-  // Click on the first .accordion-item
-  const firstAccordionItem = accordionItem.first();
-  await firstAccordionItem.locator("button").click();
-  // Verify that the first .accordion-item is expanded (data-open="true")
-  await expect(firstAccordionItem).toHaveAttribute("data-open", "true");
+  await page.goto("http://127.0.0.1:8080/component/block?name=accordion&variant=main&", { timeout: 20 * 60 * 1000 });
 
-  // Click on the second .accordion-item
-  const secondAccordionItem = accordionItem.nth(1);
-  await secondAccordionItem.locator("button").click();
-  // Verify that the second .accordion-item is expanded (data-open="true")
-  await expect(secondAccordionItem).toHaveAttribute("data-open", "true");
-  // Verify the first .accordion-item is collapsed (data-open="false")
-  await expect(firstAccordionItem).toHaveAttribute("data-open", "false");
+  // data-slot assertions
+  const accordion = page.locator('[data-slot="accordion"]');
+  await expect(accordion).toBeVisible();
+
+  const items = accordion.locator('[data-slot="accordion-item"]');
+  await expect(items).toHaveCount(4);
+
+  const firstItem = items.first();
+  const firstItemClass = await firstItem.getAttribute("class");
+  expect(firstItemClass).toContain("border-b");
+
+  // Click first item trigger
+  const firstTrigger = firstItem.locator('[data-slot="accordion-trigger"]');
+  await firstTrigger.click();
+  await expect(firstItem).toHaveAttribute("data-open", "true");
+
+  const triggerClass = await firstTrigger.getAttribute("class");
+  expect(triggerClass).toContain("flex");
+  expect(triggerClass).toContain("text-sm");
+  expect(triggerClass).toContain("font-medium");
+
+  // Click second item - first should close (single mode)
+  const secondItem = items.nth(1);
+  const secondTrigger = secondItem.locator('[data-slot="accordion-trigger"]');
+  await secondTrigger.click();
+  await expect(secondItem).toHaveAttribute("data-open", "true");
+  await expect(firstItem).toHaveAttribute("data-open", "false");
 });

@@ -1,5 +1,8 @@
-use super::super::component::{Accordion, AccordionContent, AccordionItem, AccordionTrigger};
 use dioxus::prelude::*;
+use dioxus_primitives::accordion::{
+    Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+};
+
 #[component]
 pub fn Demo() -> Element {
     rsx! {
@@ -8,8 +11,8 @@ pub fn Demo() -> Element {
                 AccordionItem { index: i,
                     AccordionTrigger { "the quick brown fox" }
                     AccordionContent {
-                        div { padding_bottom: "1rem",
-                            p { padding: "0",
+                        div { class: "pb-4",
+                            p { class: "p-0",
                                 "lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum"
                             }
                         }
