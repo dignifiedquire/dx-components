@@ -3,6 +3,7 @@
 use crate::{use_controlled, use_unique_id};
 use dioxus::{document::eval, prelude::*};
 use std::ops::Not;
+use tailwind_fuse::*;
 
 /// The state of a [`Checkbox`] component.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -86,6 +87,10 @@ pub struct CheckboxProps {
     #[props(default)]
     pub on_checked_change: Callback<CheckboxState>,
 
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the checkbox element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -130,6 +135,11 @@ pub fn Checkbox(props: CheckboxProps) -> Element {
         props.on_checked_change,
     );
 
+    let class = tw_merge!(
+        "peer size-4 shrink-0 rounded-[4px] border border-input shadow-xs transition-shadow outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:bg-input/30",
+        props.class,
+    );
+
     use_context_provider(|| CheckboxCtx {
         checked,
         disabled: props.disabled,
@@ -143,8 +153,10 @@ pub fn Checkbox(props: CheckboxProps) -> Element {
             aria_checked: checked().to_aria_checked(),
             aria_required: props.required,
             disabled: props.disabled,
+            "data-slot": "checkbox",
             "data-state": checked().to_data_state(),
             "data-disabled": props.disabled,
+            class: class,
 
             onclick: move |_| {
                 let new_checked = !checked();
@@ -206,16 +218,24 @@ pub fn Checkbox(props: CheckboxProps) -> Element {
 /// - `data-disabled`: Indicates if the checkbox is disabled. values are `true` or `false`.
 #[component]
 pub fn CheckboxIndicator(
+    #[props(default)] class: Option<String>,
     #[props(extends = GlobalAttributes)] attributes: Vec<Attribute>,
     children: Element,
 ) -> Element {
     let ctx: CheckboxCtx = use_context();
     let checked = (ctx.checked)();
 
+    let class = tw_merge!(
+        "grid place-content-center text-current transition-none",
+        class,
+    );
+
     rsx! {
         span {
+            "data-slot": "checkbox-indicator",
             "data-state": checked.to_data_state(),
             "data-disabled": ctx.disabled,
+            class: class,
             ..attributes,
 
             if checked.into() {
