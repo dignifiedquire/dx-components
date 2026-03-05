@@ -3,6 +3,7 @@
 use crate::{merge_attributes, use_controlled, use_id_or, use_unique_id};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
+use tailwind_fuse::*;
 
 // TODO: more docs
 
@@ -48,6 +49,10 @@ pub struct CollapsibleProps {
     /// Render the root element as a custom component/element.
     #[props(default)]
     pub r#as: Option<Callback<Vec<Attribute>, Element>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the collapsible element.
     #[props(extends = GlobalAttributes)]
@@ -102,9 +107,12 @@ pub fn Collapsible(props: CollapsibleProps) -> Element {
         aria_controls_id,
     });
 
+    let class = tw_merge!(props.class);
     let base = attributes!(div {
+        "data-slot": "collapsible",
         "data-open": open,
         "data-disabled": props.disabled,
+        class: class,
     });
     let merged = merge_attributes(vec![base, props.attributes]);
 
@@ -125,6 +133,10 @@ pub fn Collapsible(props: CollapsibleProps) -> Element {
 pub struct CollapsibleContentProps {
     /// The ID of the collapsible content element.
     pub id: ReadSignal<Option<String>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the collapsible content element.
     #[props(extends = GlobalAttributes)]
@@ -175,9 +187,13 @@ pub fn CollapsibleContent(props: CollapsibleContentProps) -> Element {
 
     let open = ctx.open;
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
             id: id,
+            "data-slot": "collapsible-content",
+            class: class,
             "data-open": open,
             "data-disabled": ctx.disabled,
             ..props.attributes,
@@ -195,6 +211,10 @@ pub struct CollapsibleTriggerProps {
     /// Render the trigger element as a custom component/element.
     #[props(default)]
     pub r#as: Option<Callback<Vec<Attribute>, Element>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the collapsible trigger element.
     #[props(extends = GlobalAttributes)]
@@ -244,8 +264,11 @@ pub fn CollapsibleTrigger(props: CollapsibleTriggerProps) -> Element {
 
     let open = ctx.open;
 
+    let class = tw_merge!(props.class);
     let base = attributes!(button {
         r#type: "button",
+        "data-slot": "collapsible-trigger",
+        class: class,
         "data-open": open,
         "data-disabled": ctx.disabled,
         disabled: ctx.disabled,

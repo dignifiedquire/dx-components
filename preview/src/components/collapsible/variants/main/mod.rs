@@ -1,5 +1,5 @@
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::collapsible::{Collapsible, CollapsibleContent, CollapsibleTrigger};
 
 #[component]
 pub fn Demo() -> Element {
@@ -8,11 +8,19 @@ pub fn Demo() -> Element {
             CollapsibleTrigger {
                 b { "Recent Activity" }
             }
-            CollapsibleList {
-                CollapsibleItem { "Added a new feature to the collapsible component" }
+            div { class: "flex flex-col gap-2 max-w-80 text-muted-foreground",
+                div { class: "rounded-lg border p-4",
+                    "Added a new feature to the collapsible component"
+                }
                 CollapsibleContent {
-                    CollapsibleItem { "Fixed a bug in the collapsible component" }
-                    CollapsibleItem { "Updated the documentation for the collapsible component" }
+                    div { class: "flex flex-col gap-2",
+                        div { class: "rounded-lg border p-4",
+                            "Fixed a bug in the collapsible component"
+                        }
+                        div { class: "rounded-lg border p-4",
+                            "Updated the documentation for the collapsible component"
+                        }
+                    }
                 }
             }
         }
