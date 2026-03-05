@@ -854,7 +854,7 @@ fn ComponentHighlight(demo: ComponentDemoData) -> Element {
                             border_bottom_right_radius: "0.5rem",
                             horizontal: true,
                             width: "100%",
-                            variant: TabsVariant::Ghost,
+                
                             TabList {
                                 TabTrigger { value: "Automatic", index: 0usize, "Automatic" }
                                 TabTrigger { value: "Manual", index: 1usize, "Manual" }
@@ -980,7 +980,7 @@ fn ComponentVariantHighlight(variant: ComponentVariantDemoData, main_variant: bo
             border_bottom_right_radius: "0.5rem",
             horizontal: true,
             width: "100%",
-            variant: TabsVariant::Ghost,
+
             TabList {
                 TabTrigger { value: "Demo", index: 0usize, "DEMO" }
                 TabTrigger { value: "Code", index: 1usize, "CODE" }
@@ -1049,7 +1049,7 @@ fn BlockComponentVariantHighlight(
             border_bottom_right_radius: "0.5rem",
             horizontal: true,
             width: "100%",
-            variant: TabsVariant::Ghost,
+
             TabList {
                 TabTrigger { value: "Preview", index: 0usize, "PREVIEW" }
                 TabTrigger { value: "Code", index: 1usize, "CODE" }

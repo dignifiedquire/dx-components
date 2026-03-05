@@ -1,5 +1,5 @@
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::tabs::{TabContent, TabList, TabTrigger, Tabs};
 
 #[component]
 pub fn Demo() -> Element {
@@ -14,35 +14,17 @@ pub fn Demo() -> Element {
                 TabTrigger { value: "tab3".to_string(), index: 2usize, "Tab 3" }
             }
             TabContent { index: 0usize, value: "tab1".to_string(),
-                div {
-                    width: "100%",
-                    height: "5rem",
-                    display: "flex",
-                    align_items: "center",
-                    justify_content: "center",
+                div { class: "flex h-20 w-full items-center justify-center",
                     "Tab 1 Content"
                 }
             }
-            TabContent {
-                index: 1usize,
-                class: "tabs-content",
-                value: "tab2".to_string(),
-                div {
-                    width: "100%",
-                    height: "5rem",
-                    display: "flex",
-                    align_items: "center",
-                    justify_content: "center",
+            TabContent { index: 1usize, value: "tab2".to_string(),
+                div { class: "flex h-20 w-full items-center justify-center",
                     "Tab 2 Content"
                 }
             }
             TabContent { index: 2usize, value: "tab3".to_string(),
-                div {
-                    width: "100%",
-                    height: "5rem",
-                    display: "flex",
-                    align_items: "center",
-                    justify_content: "center",
+                div { class: "flex h-20 w-full items-center justify-center",
                     "Tab 3 Content"
                 }
             }

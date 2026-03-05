@@ -297,6 +297,9 @@
   .h-10 {
     height: calc(var(--spacing) * 10);
   }
+  .h-20 {
+    height: calc(var(--spacing) * 20);
+  }
   .h-full {
     height: 100%;
   }
@@ -422,6 +425,9 @@
   .bg-transparent {
     background-color: transparent;
   }
+  .p-\[3px\] {
+    padding: 3px;
+  }
   .px-1\.5 {
     padding-inline: calc(var(--spacing) * 1.5);
   }
@@ -439,6 +445,9 @@
   }
   .px-6 {
     padding-inline: calc(var(--spacing) * 6);
+  }
+  .py-1 {
+    padding-block: calc(var(--spacing) * 1);
   }
   .py-2 {
     padding-block: calc(var(--spacing) * 2);
@@ -787,6 +796,11 @@
       width: 100%;
     }
   }
+  .data-\[orientation\=horizontal\]\:flex-col {
+    &[data-orientation="horizontal"] {
+      flex-direction: column;
+    }
+  }
   .data-\[orientation\=horizontal\]\:flex-row {
     &[data-orientation="horizontal"] {
       flex-direction: row;
@@ -815,6 +829,22 @@
   .data-\[orientation\=vertical\]\:flex-col {
     &[data-orientation="vertical"] {
       flex-direction: column;
+    }
+  }
+  .data-\[state\=active\]\:bg-background {
+    &[data-state="active"] {
+      background-color: var(--background);
+    }
+  }
+  .data-\[state\=active\]\:text-foreground {
+    &[data-state="active"] {
+      color: var(--foreground);
+    }
+  }
+  .data-\[state\=active\]\:shadow-xs {
+    &[data-state="active"] {
+      --tw-shadow: 0 1px 2px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05));
+      box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
     }
   }
   .data-\[state\=checked\]\:translate-x-4 {
@@ -941,6 +971,21 @@
         @supports (color: color-mix(in lab, red, red)) {
           --tw-ring-color: color-mix(in oklab, var(--destructive) 40%, transparent);
         }
+      }
+    }
+  }
+  .dark\:data-\[state\=active\]\:border {
+    &:where(.dark, .dark *) {
+      &[data-state="active"] {
+        border-style: var(--tw-border-style);
+        border-width: 1px;
+      }
+    }
+  }
+  .dark\:data-\[state\=active\]\:border-input {
+    &:where(.dark, .dark *) {
+      &[data-state="active"] {
+        border-color: var(--input);
       }
     }
   }

@@ -5,6 +5,7 @@ use crate::{
     use_controlled, use_id_or, use_unique_id,
 };
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 #[derive(Clone, Copy)]
 struct TabsContext {
@@ -49,6 +50,10 @@ pub struct TabsProps {
     /// Whether focus should loop around when reaching the end.
     #[props(default = ReadSignal::new(Signal::new(true)))]
     pub roving_loop: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the tabs element.
     #[props(extends = GlobalAttributes)]
@@ -111,6 +116,11 @@ pub fn Tabs(props: TabsProps) -> Element {
     let (value, set_value) =
         use_controlled(props.value, props.default_value, props.on_value_change);
 
+    let class = tw_merge!(
+        "flex gap-2 data-[orientation=horizontal]:flex-col",
+        props.class,
+    );
+
     let focus = use_focus_provider(props.roving_loop);
     let mut ctx = use_context_provider(|| TabsContext {
         value: value.into(),
@@ -126,8 +136,10 @@ pub fn Tabs(props: TabsProps) -> Element {
 
     rsx! {
         div {
+            "data-slot": "tabs",
             "data-orientation": if (props.horizontal)() { "horizontal" } else { "vertical" },
             "data-disabled": (props.disabled)(),
+            class: class,
 
             onfocusout: move |_| ctx.focus.blur(),
             ..props.attributes,
@@ -140,6 +152,10 @@ pub fn Tabs(props: TabsProps) -> Element {
 /// The props for the [`TabList`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct TabListProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the tab list element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -193,9 +209,16 @@ pub struct TabListProps {
 /// ```
 #[component]
 pub fn TabList(props: TabListProps) -> Element {
+    let class = tw_merge!(
+        "inline-flex w-fit items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground",
+        props.class,
+    );
+
     rsx! {
         div {
             role: "tablist",
+            "data-slot": "tabs-list",
+            class: class,
             ..props.attributes,
 
             {props.children}
@@ -301,16 +324,22 @@ pub fn TabTrigger(props: TabTriggerProps) -> Element {
 
     let onmounted = use_focus_controlled_item(props.index);
 
+    let class = tw_merge!(
+        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-sm font-medium outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs dark:data-[state=active]:border-input dark:data-[state=active]:border [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        props.class,
+    );
+
     rsx! {
         button {
             role: "tab",
             id: props.id,
-            class: props.class,
+            class: class,
             tabindex: tab_index,
             type: "button",
 
             aria_selected: selected,
             aria_controls: (ctx.tab_content_ids)().get((props.index)()).cloned(),
+            "data-slot": "tabs-trigger",
             "data-state": if selected() { "active" } else { "inactive" },
             "data-disabled": (ctx.disabled)() || (props.disabled)(),
             disabled: (ctx.disabled)() || (props.disabled)(),
@@ -427,6 +456,11 @@ pub fn TabContent(props: TabContentProps) -> Element {
     let uuid = use_unique_id();
     let id = use_id_or(uuid, props.id);
 
+    let class = tw_merge!(
+        "flex-1 outline-none",
+        props.class,
+    );
+
     use_effect(move || {
         let mut tab_ids = ctx.tab_content_ids.write();
         let index = (props.index)();
@@ -440,9 +474,10 @@ pub fn TabContent(props: TabContentProps) -> Element {
         div {
             role: "tabpanel",
             id,
-            class: props.class,
+            class: class,
 
             tabindex: "0",
+            "data-slot": "tabs-content",
             "data-state": if selected() { "active" } else { "inactive" },
             hidden: !selected(),
             ..props.attributes,
