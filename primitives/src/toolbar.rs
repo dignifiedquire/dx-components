@@ -2,6 +2,7 @@
 
 use dioxus::prelude::*;
 use std::rc::Rc;
+use tailwind_fuse::*;
 
 #[derive(Clone, Copy)]
 struct ToolbarCtx {
@@ -47,6 +48,10 @@ pub struct ToolbarProps {
     /// ARIA label for the toolbar
     #[props(default)]
     pub aria_label: Option<String>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the toolbar
     #[props(extends = GlobalAttributes)]
@@ -98,8 +103,15 @@ pub fn Toolbar(props: ToolbarProps) -> Element {
         horizontal: props.horizontal,
     });
 
+    let class = tw_merge!(
+        "flex items-center gap-1 rounded-md border bg-background p-1",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "toolbar",
+            class: class,
             role: "toolbar",
             "data-orientation": ctx.orientation(),
             "data-disabled": (props.disabled)(),
@@ -126,6 +138,10 @@ pub struct ToolbarButtonProps {
     /// Callback when the button is clicked
     #[props(default)]
     pub on_click: Callback<()>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the button
     #[props(extends = GlobalAttributes)]
@@ -191,8 +207,15 @@ pub fn ToolbarButton(props: ToolbarButtonProps) -> Element {
         }
     });
 
+    let class = tw_merge!(
+        "inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] outline-none hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        props.class,
+    );
+
     rsx! {
         button {
+            "data-slot": "toolbar-button",
+            class: class,
             type: "button",
             tabindex: "0",
             disabled: (ctx.disabled)() || (props.disabled)(),
@@ -263,6 +286,10 @@ pub struct ToolbarSeparatorProps {
     #[props(default = false)]
     pub decorative: bool,
 
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes for the separator
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -315,8 +342,15 @@ pub fn ToolbarSeparator(props: ToolbarSeparatorProps) -> Element {
         false => "vertical",
     };
 
+    let class = tw_merge!(
+        "shrink-0 bg-border data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "toolbar-separator",
+            class: class,
             role: if !props.decorative { "separator" } else { "none" },
             aria_orientation: if !props.decorative { orientation },
             "data-orientation": orientation,

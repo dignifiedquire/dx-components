@@ -1,5 +1,5 @@
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::toolbar::*;
 
 #[component]
 fn ToggleToolbarButton(
@@ -12,9 +12,8 @@ fn ToggleToolbarButton(
         ToolbarButton {
             index,
             on_click,
+            class: if is_on { "bg-accent text-accent-foreground" },
             "data-state": if is_on { "on" } else { "off" },
-            background: if is_on { "var(--light, var(--primary-color-5)) var(--dark, var(--primary-color-6))" } else { "" },
-            color: if is_on { "var(--secondary-color-1)" } else { "" },
             {children}
         }
     }
@@ -29,7 +28,7 @@ pub fn Demo() -> Element {
 
     rsx! {
         Toolbar { aria_label: "Text formatting",
-            ToolbarGroup {
+            div { class: "flex items-center gap-1",
                 ToggleToolbarButton {
                     index: 0usize,
                     is_on: is_bold(),
@@ -50,7 +49,7 @@ pub fn Demo() -> Element {
                 }
             }
             ToolbarSeparator {}
-            ToolbarGroup {
+            div { class: "flex items-center gap-1",
                 ToggleToolbarButton {
                     index: 3usize,
                     is_on: text_align() == "left",
