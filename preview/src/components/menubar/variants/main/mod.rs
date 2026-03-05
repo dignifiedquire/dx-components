@@ -1,10 +1,10 @@
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::menubar::*;
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        div { class: "menubar-example",
+        div {
             Menubar {
                 MenubarMenu { index: 0usize,
                     MenubarTrigger { "File" }

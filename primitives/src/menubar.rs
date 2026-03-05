@@ -1,6 +1,7 @@
 //! Defines the [`Menubar`] component and its sub-components.
 
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 use crate::{
     focus::{
@@ -31,6 +32,10 @@ pub struct MenubarProps {
     /// Whether focus should loop around when reaching the end.
     #[props(default = ReadSignal::new(Signal::new(true)))]
     pub roving_loop: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the menubar element.
     #[props(extends = GlobalAttributes)]
@@ -125,8 +130,15 @@ pub fn Menubar(props: MenubarProps) -> Element {
         }
     });
 
+    let class = tw_merge!(
+        "flex h-9 items-center gap-1 rounded-md border bg-background p-1 shadow-xs",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "menubar",
+            class: class,
             role: "menubar",
             "data-disabled": (props.disabled)(),
             tabindex: (!ctx.focus.any_focused()).then_some("0"),
@@ -169,6 +181,10 @@ pub struct MenubarMenuProps {
     /// Whether this menu is disabled.
     #[props(default)]
     pub disabled: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the menu element.
     #[props(extends = GlobalAttributes)]
@@ -270,8 +286,12 @@ pub fn MenubarMenu(props: MenubarMenuProps) -> Element {
 
     let disabled = move || (ctx.disabled)() || (props.disabled)();
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
+            "data-slot": "menubar-menu",
+            class: class,
             role: "menu",
             "data-state": if is_open() { "open" } else { "closed" },
             "data-disabled": (ctx.disabled)() || (props.disabled)(),
@@ -311,6 +331,10 @@ pub fn MenubarMenu(props: MenubarMenuProps) -> Element {
 /// The props for the [`MenubarTrigger`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct MenubarTriggerProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the trigger element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -393,8 +417,16 @@ pub fn MenubarTrigger(props: MenubarTriggerProps) -> Element {
         ctx.focus.current_focus() == Some(menu_ctx.index.cloned()) && !menu_ctx.focus.any_focused()
     };
 
+    let class = tw_merge!(
+        "flex items-center rounded-sm px-2 py-1 text-sm font-medium outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
+        props.class,
+    );
+
     rsx! {
         button {
+            "data-slot": "menubar-trigger",
+            class: class,
+            "data-state": if is_open() { "open" } else { "closed" },
             onmounted,
             onpointerup: move |_| {
                 if !disabled() {
@@ -428,6 +460,11 @@ pub fn MenubarTrigger(props: MenubarTriggerProps) -> Element {
 pub struct MenubarContentProps {
     /// The id of the content element.
     pub id: ReadSignal<Option<String>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the content element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -512,10 +549,17 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
 
     let render = use_animated_open(id, menu_ctx.is_open);
 
+    let class = tw_merge!(
+        "z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+        props.class,
+    );
+
     rsx! {
         if render() {
             div {
                 id,
+                "data-slot": "menubar-content",
+                class: class,
                 role: "menu",
                 "data-state": if (menu_ctx.is_open)() { "open" } else { "closed" },
                 ..props.attributes,
@@ -541,6 +585,10 @@ pub struct MenubarItemProps {
     /// Callback fired when the item is selected. The [`Self::value`] will be passed as an argument.
     #[props(default)]
     pub on_select: Callback<String>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the item element.
     #[props(extends = GlobalAttributes)]
@@ -629,8 +677,15 @@ pub fn MenubarItem(props: MenubarItemProps) -> Element {
 
     let onmounted = use_focus_controlled_item(props.index);
 
+    let class = tw_merge!(
+        "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "menubar-item",
+            class: class,
             role: "menuitem",
             "data-disabled": disabled(),
             tabindex: if focused() { "0" } else { "-1" },
