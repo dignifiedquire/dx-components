@@ -1,5 +1,5 @@
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::hover_card::{HoverCard, HoverCardContent, HoverCardTrigger};
 use dioxus_primitives::ContentSide;
 
 #[component]

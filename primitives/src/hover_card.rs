@@ -4,6 +4,7 @@ use crate::{
     use_animated_open, use_controlled, use_id_or, use_unique_id, ContentAlign, ContentSide,
 };
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 #[derive(Clone)]
 struct HoverCardCtx {
@@ -33,6 +34,10 @@ pub struct HoverCardProps {
     /// Whether the hover card is disabled
     #[props(default)]
     pub disabled: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the hover card
     #[props(extends = GlobalAttributes)]
@@ -96,9 +101,12 @@ pub fn HoverCard(props: HoverCardProps) -> Element {
         content_id,
     });
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
-            class: "hover-card",
+            "data-slot": "hover-card",
+            class: class,
             "data-state": if open() { "open" } else { "closed" },
             "data-disabled": (props.disabled)(),
             ..props.attributes,
@@ -114,6 +122,10 @@ pub struct HoverCardTriggerProps {
     /// Optional ID for the trigger element
     #[props(default)]
     pub id: ReadSignal<Option<String>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the hover card trigger
     #[props(extends = GlobalAttributes)]
@@ -182,10 +194,13 @@ pub fn HoverCardTrigger(props: HoverCardTriggerProps) -> Element {
         }
     };
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
             id,
-            class: "hover-card-trigger",
+            "data-slot": "hover-card-trigger",
+            class: class,
             tabindex: "0", // Make the trigger focusable
 
             // Mouse events
@@ -212,6 +227,10 @@ pub struct HoverCardContentProps {
     /// Optional ID for the hover card content
     #[props(default)]
     pub id: ReadSignal<Option<String>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Side of the trigger to place the hover card
     #[props(default = ContentSide::Top)]
@@ -305,11 +324,17 @@ pub fn HoverCardContent(props: HoverCardContentProps) -> Element {
 
     let render = use_animated_open(id, ctx.open);
 
+    let class = tw_merge!(
+        "z-50 w-64 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        props.class,
+    );
+
     rsx! {
         if render() {
             div {
                 id,
-                class: "hover-card-content",
+                "data-slot": "hover-card-content",
+                class: class,
                 role: "tooltip",
                 "data-state": if is_open { "open" } else { "closed" },
                 "data-side": props.side.as_str(),
