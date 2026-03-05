@@ -1,8 +1,7 @@
-use super::super::component::*;
-use crate::components::label::Label;
-use crate::components::switch::{Switch, SwitchThumb};
 use dioxus::prelude::*;
-use dioxus_primitives::slider::SliderValue;
+use dioxus_primitives::label::Label;
+use dioxus_primitives::slider::*;
+use dioxus_primitives::switch::{Switch, SwitchThumb};
 
 #[component]
 pub fn Demo() -> Element {

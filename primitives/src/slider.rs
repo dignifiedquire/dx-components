@@ -9,6 +9,7 @@ use dioxus::html::geometry::Pixels;
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use std::rc::Rc;
+use tailwind_fuse::*;
 
 /// The value of the slider. Currently this can only be a single value, but support for ranges is planned.
 #[derive(Debug, Clone, PartialEq)]
@@ -122,6 +123,10 @@ pub struct SliderProps {
     /// The label for the slider (for accessibility)
     pub label: ReadSignal<Option<String>>,
 
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes for the slider
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -190,6 +195,11 @@ pub fn Slider(props: SliderProps) -> Element {
         label: props.label,
     });
 
+    let class = tw_merge!(
+        "relative flex w-full touch-none items-center select-none data-[disabled=true]:opacity-50 data-[orientation=horizontal]:flex-row data-[orientation=vertical]:flex-col",
+        props.class,
+    );
+
     let mut rect = use_signal(|| None);
     let mut div_element: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
     let mut granular_value = use_hook(|| CopyValue::new(props.default_value.clone()));
@@ -246,8 +256,10 @@ pub fn Slider(props: SliderProps) -> Element {
     rsx! {
         div {
             role: "group",
+            "data-slot": "slider",
             "data-disabled": props.disabled,
             "data-orientation": orientation,
+            class: class,
 
             onmounted: move |evt| async move {
                 // Get the bounding rect of the slider
@@ -328,6 +340,10 @@ pub fn Slider(props: SliderProps) -> Element {
 /// The props for the [`SliderTrack`] component
 #[derive(Props, Clone, PartialEq)]
 pub struct SliderTrackProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the track element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -378,10 +394,17 @@ pub fn SliderTrack(props: SliderTrackProps) -> Element {
         "vertical"
     };
 
+    let class = tw_merge!(
+        "relative grow overflow-hidden rounded-full bg-muted data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-1.5 data-[orientation=vertical]:h-full",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "slider-track",
             "data-disabled": ctx.disabled,
             "data-orientation": orientation,
+            class: class,
             ..props.attributes,
             {props.children}
         }
@@ -391,6 +414,10 @@ pub fn SliderTrack(props: SliderTrackProps) -> Element {
 /// The props for the [`SliderRange`] component
 #[derive(Props, Clone, PartialEq)]
 pub struct SliderRangeProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the range element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -441,6 +468,11 @@ pub fn SliderRange(props: SliderRangeProps) -> Element {
         "vertical"
     };
 
+    let class = tw_merge!(
+        "absolute bg-primary data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full",
+        props.class,
+    );
+
     let style = use_memo(move || {
         let (start, end) = match (ctx.value)() {
             SliderValue::Single(v) => ((ctx.min)(), v),
@@ -458,8 +490,10 @@ pub fn SliderRange(props: SliderRangeProps) -> Element {
 
     rsx! {
         div {
+            "data-slot": "slider-range",
             "data-disabled": ctx.disabled,
             "data-orientation": orientation,
+            class: class,
             style,
             ..props.attributes,
             {props.children}
@@ -473,6 +507,10 @@ pub struct SliderThumbProps {
     /// Which thumb this is in a range slider
     #[props(default)]
     pub index: Option<usize>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the thumb element
     #[props(extends = GlobalAttributes)]
@@ -538,6 +576,11 @@ pub fn SliderThumb(props: SliderThumbProps) -> Element {
         format!("bottom: {percent}%")
     };
 
+    let class = tw_merge!(
+        "block size-4 shrink-0 rounded-full border border-primary bg-background shadow-sm ring-ring/50 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50",
+        props.class,
+    );
+
     let mut button_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
 
     use_effect(move || {
@@ -565,9 +608,11 @@ pub fn SliderThumb(props: SliderThumbProps) -> Element {
             aria_valuenow: value,
             aria_orientation: orientation,
             aria_label,
+            "data-slot": "slider-thumb",
             "data-disabled": ctx.disabled,
             "data-orientation": orientation,
             "data-dragging": ctx.dragging,
+            class: class,
             style,
             tabindex: 0,
             onmounted: move |evt| {
