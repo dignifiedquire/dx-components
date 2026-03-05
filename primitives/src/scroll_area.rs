@@ -1,6 +1,7 @@
 //! Defines the [`ScrollArea`] component for creating scrollable areas with customizable scrollbars.
 
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 /// The props for the [`ScrollArea`] component.
 #[derive(Props, Clone, PartialEq)]
@@ -16,6 +17,10 @@ pub struct ScrollAreaProps {
     /// The scroll type.
     #[props(default)]
     pub scroll_type: ReadSignal<ScrollType>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the scroll area element.
     #[props(extends = GlobalAttributes)]
@@ -87,7 +92,6 @@ pub enum ScrollType {
 pub fn ScrollArea(props: ScrollAreaProps) -> Element {
     let direction = props.direction;
     let scroll_type = props.scroll_type;
-    let always_show = props.always_show_scrollbars;
 
     let (overflow_x, overflow_y, scrollbar_width) = match scroll_type() {
         ScrollType::Auto => match direction() {
@@ -107,17 +111,12 @@ pub fn ScrollArea(props: ScrollAreaProps) -> Element {
         },
     };
 
-    let visibility_class = use_memo(move || {
-        if always_show() {
-            "scroll-area-always-show"
-        } else {
-            "scroll-area-auto-hide"
-        }
-    });
+    let class = tw_merge!("relative", props.class);
 
     rsx! {
         div {
-            class: "{visibility_class}",
+            "data-slot": "scroll-area",
+            class: class,
             overflow_x,
             overflow_y,
             "scrollbar-width": scrollbar_width,
