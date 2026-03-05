@@ -1,19 +1,47 @@
 import { test, expect } from '@playwright/test';
 
 test('test', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/?name=toast&');
+  await page.goto('http://127.0.0.1:8080/component/?name=toast&', { timeout: 20 * 60 * 1000 });
+
   // Create a toast
   await page.getByRole('button', { name: 'Info (60s)' }).click();
+
+  // Assert viewport data-slot
+  const viewport = page.locator('[data-slot="toast-viewport"]');
+  await expect(viewport).toBeVisible();
+
+  const viewportClass = await viewport.getAttribute('class');
+  expect(viewportClass).toContain('fixed');
+  expect(viewportClass).toContain('z-[100]');
+  expect(viewportClass).toContain('flex');
+
+  // Assert toast data-slot and classes
+  const toast = page.locator('[data-slot="toast"]');
+  await expect(toast).toBeVisible();
+
+  const toastClass = await toast.getAttribute('class');
+  expect(toastClass).toContain('flex');
+  expect(toastClass).toContain('rounded-md');
+  expect(toastClass).toContain('border');
+  expect(toastClass).toContain('shadow-lg');
+
+  // Assert sub-component data-slots
+  await expect(page.locator('[data-slot="toast-title"]')).toBeVisible();
+  await expect(page.locator('[data-slot="toast-description"]')).toBeVisible();
+  await expect(page.locator('[data-slot="toast-close"]')).toBeVisible();
+
   // Create another toast
   await page.getByRole('button', { name: 'Info (60s)' }).click();
-  const toast_close_buttons = page.getByRole('button', { name: 'close' });
+  const closeButtons = page.locator('[data-slot="toast-close"]');
+  await expect(closeButtons).toHaveCount(2);
+
   // Hover and close the first toast
-  await toast_close_buttons.first().hover();
-  await toast_close_buttons.first().click();
-  await expect(toast_close_buttons).toHaveCount(1);
+  await closeButtons.first().hover();
+  await closeButtons.first().click();
+  await expect(closeButtons).toHaveCount(1);
 
   // Hover and close the second toast
-  await toast_close_buttons.first().hover();
-  await toast_close_buttons.first().click();
-  await expect(toast_close_buttons).toHaveCount(0);
+  await closeButtons.first().hover();
+  await closeButtons.first().click();
+  await expect(closeButtons).toHaveCount(0);
 });

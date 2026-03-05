@@ -1,8 +1,6 @@
 use crate::components::button::component::Button;
-
-use super::super::component::*;
 use dioxus::prelude::*;
-use dioxus_primitives::toast::{use_toast, ToastOptions};
+use dioxus_primitives::toast::{use_toast, ToastOptions, ToastProvider};
 use std::time::Duration;
 
 #[component]

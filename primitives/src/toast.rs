@@ -6,6 +6,7 @@ use crate::{
 };
 use dioxus::dioxus_core::DynamicNode;
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 use dioxus_sdk_time::use_timeout;
 use std::collections::VecDeque;
 use std::time::Duration;
@@ -73,6 +74,10 @@ pub struct ToastProviderProps {
     /// The callback to render a toast. Defaults to rendering the [`Toast`] component.
     #[props(default = Callback::new(|props: ToastPropsWithOwner| rsx! { {DynamicNode::Component(props.into_vcomponent(Toast))} }))]
     pub render_toast: Callback<ToastPropsWithOwner, Element>,
+
+    /// Additional Tailwind classes to apply to the toast viewport.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// The children of the toast provider component.
     pub children: Element,
@@ -220,6 +225,11 @@ pub fn ToastProvider(props: ToastProviderProps) -> Element {
         focus_region,
     });
 
+    let viewport_class = tw_merge!(
+        "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+        props.class,
+    );
+
     rsx! {
         // Render children
         {props.children}
@@ -227,22 +237,22 @@ pub fn ToastProvider(props: ToastProviderProps) -> Element {
         // Render toast container using portal
         PortalIn { portal,
             div {
+                "data-slot": "toast-viewport",
+                class: viewport_class,
                 role: "region",
                 aria_label: "{length} notifications",
                 tabindex: "-1",
-                class: "toast-container",
                 style: "--toast-count: {length}",
                 onmounted: move |e| {
                     region_ref.set(Some(e.data()));
                 },
 
                 ol {
-                    class: "toast-list",
+                    class: "flex flex-col gap-2",
                     // Render all toasts
                     for (index, toast) in toast_list.read().iter().rev().enumerate() {
                         li {
                             key: "{toast.id}",
-                            class: "toast-item",
                             {
                                 props.render_toast.call(ToastProps::builder().id(toast.id)
                                     .index(index)
@@ -295,6 +305,10 @@ pub struct ToastProps {
 
     /// The duration for which the toast is displayed.
     pub duration: Option<Duration>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the toast element.
     #[props(extends = GlobalAttributes)]
@@ -386,16 +400,21 @@ pub fn Toast(props: ToastProps) -> Element {
         });
     }
 
+    let class = tw_merge!(
+        "group pointer-events-auto relative flex w-full items-center justify-between gap-4 overflow-hidden rounded-md border p-4 shadow-lg transition-all",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "toast",
             id,
+            class: class,
             role: "alertdialog",
             aria_labelledby: "{label_id}",
             aria_describedby: description_id,
             aria_modal: "false",
             tabindex: "0",
-
-            class: "toast",
             "data-type": props.toast_type.as_str(),
             "data-permanent": props.permanent,
             "data-toast-even": (props.index % 2 == 0).then_some("true"),
@@ -404,27 +423,32 @@ pub fn Toast(props: ToastProps) -> Element {
             style: "--toast-index: {props.index}",
             ..props.attributes,
 
-            div { class: "toast-content",
+            div {
+                "data-slot": "toast-content",
+                class: "flex flex-1 flex-col gap-1",
                 role: "alert",
                 aria_atomic: "true",
 
                 div {
+                    "data-slot": "toast-title",
                     id: label_id,
-                    class: "toast-title",
+                    class: "text-sm font-semibold",
                     {props.title.clone()}
                 }
 
                 if let Some(description) = &props.description {
                     div {
+                        "data-slot": "toast-description",
                         id: description_id.clone(),
-                        class: "toast-description",
+                        class: "text-sm opacity-90",
                         {description.clone()}
                     }
                 }
             }
 
             button {
-                class: "toast-close",
+                "data-slot": "toast-close",
+                class: "absolute top-2 right-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none group-hover:opacity-100",
                 aria_label: "close",
                 type: "button",
                 onclick: move |e| {
