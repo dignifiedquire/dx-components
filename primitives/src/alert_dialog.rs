@@ -4,6 +4,7 @@ use crate::use_global_escape_listener;
 use crate::{use_animated_open, use_id_or, use_unique_id, FOCUS_TRAP_JS};
 use dioxus::document;
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 #[derive(Clone)]
 struct AlertDialogCtx {
@@ -27,6 +28,9 @@ pub struct AlertDialogRootProps {
     /// Callback to handle changes in the open state of the dialog.
     #[props(default)]
     pub on_open_change: Callback<bool>,
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes to extend the root element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -98,6 +102,11 @@ pub fn AlertDialogRoot(props: AlertDialogRootProps) -> Element {
     let id = use_id_or(id, props.id);
     let render_element = use_animated_open(id, open);
 
+    let class = tw_merge!(
+        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        props.class,
+    );
+
     rsx! {
         document::Script {
             src: FOCUS_TRAP_JS,
@@ -106,7 +115,8 @@ pub fn AlertDialogRoot(props: AlertDialogRootProps) -> Element {
         if render_element() {
             div {
                 id,
-                class: "alert-dialog-overlay",
+                "data-slot": "alert-dialog-overlay",
+                class: class,
                 "data-state": if open() { "open" } else { "closed" },
                 ..props.attributes,
                 {props.children}
@@ -204,14 +214,20 @@ pub fn AlertDialogContent(props: AlertDialogContentProps) -> Element {
         let _ = eval.send(open.cloned());
     });
 
+    let class = tw_merge!(
+        "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg sm:max-w-lg",
+        props.class,
+    );
+
     rsx! {
         div {
             id,
+            "data-slot": "alert-dialog-content",
             role: "alertdialog",
             aria_modal: "true",
             aria_labelledby: ctx.labelledby.clone(),
             aria_describedby: ctx.describedby.clone(),
-            class: props.class.clone().unwrap_or_else(|| "alert-dialog".to_string()),
+            class: class,
             ..props.attributes,
             {props.children}
         }
@@ -221,6 +237,9 @@ pub fn AlertDialogContent(props: AlertDialogContentProps) -> Element {
 /// The props for the [`AlertDialogTitle`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct AlertDialogTitleProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes to extend the title element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -270,14 +289,18 @@ pub struct AlertDialogTitleProps {
 #[component]
 pub fn AlertDialogTitle(props: AlertDialogTitleProps) -> Element {
     let ctx: AlertDialogCtx = use_context();
+    let class = tw_merge!("text-lg font-semibold leading-none", props.class);
     rsx! {
-        h2 { id: ctx.labelledby.clone(), class: "alert-dialog-title", ..props.attributes, {props.children} }
+        h2 { id: ctx.labelledby.clone(), "data-slot": "alert-dialog-title", class: class, ..props.attributes, {props.children} }
     }
 }
 
 /// The props for the [`AlertDialogDescription`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct AlertDialogDescriptionProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes to extend the description element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -327,14 +350,18 @@ pub struct AlertDialogDescriptionProps {
 #[component]
 pub fn AlertDialogDescription(props: AlertDialogDescriptionProps) -> Element {
     let ctx: AlertDialogCtx = use_context();
+    let class = tw_merge!("text-sm text-muted-foreground", props.class);
     rsx! {
-        p { id: ctx.describedby.clone(), class: "alert-dialog-description", ..props.attributes, {props.children} }
+        p { id: ctx.describedby.clone(), "data-slot": "alert-dialog-description", class: class, ..props.attributes, {props.children} }
     }
 }
 
 /// The props for the [`AlertDialogActions`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct AlertDialogActionsProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes to extend the actions element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -383,8 +410,9 @@ pub struct AlertDialogActionsProps {
 /// ```
 #[component]
 pub fn AlertDialogActions(props: AlertDialogActionsProps) -> Element {
+    let class = tw_merge!("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", props.class);
     rsx! {
-        div { ..props.attributes, {props.children} }
+        div { "data-slot": "alert-dialog-actions", class: class, ..props.attributes, {props.children} }
     }
 }
 
@@ -394,6 +422,9 @@ pub struct AlertDialogActionProps {
     /// The click event handler for the action button.
     #[props(default)]
     pub on_click: Option<EventHandler<MouseEvent>>,
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes to extend the action button element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -452,8 +483,11 @@ pub fn AlertDialogAction(props: AlertDialogActionProps) -> Element {
             cb.call(evt.clone());
         }
     });
+    let class = tw_merge!(props.class);
     rsx! {
         button {
+            "data-slot": "alert-dialog-action",
+            class: class,
             tabindex: if open() { "0" } else { "-1" },
             type: "button",
             onclick: on_click,
@@ -469,6 +503,9 @@ pub struct AlertDialogCancelProps {
     /// The click event handler for the cancel button.
     #[props(default)]
     pub on_click: Option<EventHandler<MouseEvent>>,
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes to extend the cancel button element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -528,8 +565,11 @@ pub fn AlertDialogCancel(props: AlertDialogCancelProps) -> Element {
         }
     });
 
+    let class = tw_merge!(props.class);
     rsx! {
         button {
+            "data-slot": "alert-dialog-cancel",
+            class: class,
             tabindex: if open() { "0" } else { "-1" },
             type: "button",
             onclick: on_click,

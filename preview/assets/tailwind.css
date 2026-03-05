@@ -387,6 +387,9 @@
   .resize {
     resize: both;
   }
+  .flex-col-reverse {
+    flex-direction: column-reverse;
+  }
   .flex-wrap {
     flex-wrap: wrap;
   }
@@ -1091,6 +1094,16 @@
   .sm\:max-w-lg {
     @media (width >= 40rem) {
       max-width: var(--container-lg);
+    }
+  }
+  .sm\:flex-row {
+    @media (width >= 40rem) {
+      flex-direction: row;
+    }
+  }
+  .sm\:justify-end {
+    @media (width >= 40rem) {
+      justify-content: flex-end;
     }
   }
   .dark\:border-input {

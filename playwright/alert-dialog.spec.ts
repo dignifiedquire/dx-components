@@ -1,31 +1,53 @@
 import { test, expect } from '@playwright/test';
 
 test('test', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/?name=alert_dialog&', { timeout: 20 * 60 * 1000 }); // Increase timeout to 20 minutes
+  await page.goto('http://127.0.0.1:8080/component/block?name=alert_dialog&variant=main&', { timeout: 20 * 60 * 1000 });
   await page.getByRole('button', { name: 'Show Alert Dialog' }).click();
-  // Assert the dialog is open
-  const dialog = page.locator('.alert-dialog-backdrop');
-  await expect(dialog).toHaveAttribute('data-state', 'open');
-  // Assert the cancel button is focused
+
+  // data-slot assertions
+  const overlay = page.locator('[data-slot="alert-dialog-overlay"]');
+  await expect(overlay).toHaveAttribute('data-state', 'open');
+
+  const overlayClass = await overlay.getAttribute('class');
+  expect(overlayClass).toContain('fixed');
+  expect(overlayClass).toContain('inset-0');
+  expect(overlayClass).toContain('z-50');
+
+  const content = overlay.locator('[data-slot="alert-dialog-content"]');
+  await expect(content).toBeVisible();
+
+  const contentClass = await content.getAttribute('class');
+  expect(contentClass).toContain('fixed');
+  expect(contentClass).toContain('rounded-lg');
+  expect(contentClass).toContain('border');
+  expect(contentClass).toContain('bg-background');
+
+  const title = content.locator('[data-slot="alert-dialog-title"]');
+  await expect(title).toHaveText('Delete item');
+
+  const description = content.locator('[data-slot="alert-dialog-description"]');
+  await expect(description).toContainText('Are you sure');
+
+  const actions = content.locator('[data-slot="alert-dialog-actions"]');
+  await expect(actions).toBeVisible();
+
+  // Cancel button should be focused
   const cancelButton = page.getByRole('button', { name: 'Cancel' });
   await expect(cancelButton).toBeFocused();
-  // Hitting tab should move to the confirm button
+
+  // Tab cycles within dialog
   await page.keyboard.press('Tab');
-  // Hitting tab again should move focus back to the cancel button
   await page.keyboard.press('Tab');
   await expect(cancelButton).toBeFocused();
-  // Hitting escape should close the dialog
-  await page.keyboard.press('Escape');
-  // Assert the dialog is closed
-  await expect(dialog).toHaveCount(0);
 
-  // Reopen the dialog
+  // Escape should close
+  await page.keyboard.press('Escape');
+  await expect(overlay).toHaveCount(0);
+
+  // Reopen and test confirm action
   await page.getByRole('button', { name: 'Show Alert Dialog' }).click();
-  // Assert the dialog is open again
-  await expect(dialog).toHaveAttribute('data-state', 'open');
-  // Click the confirm button
+  await expect(overlay).toHaveAttribute('data-state', 'open');
   const confirmButton = page.getByRole('button', { name: 'Delete' });
   await confirmButton.click();
-  // Assert the dialog is closed after confirming
-  await expect(dialog).toHaveCount(0);
+  await expect(overlay).toHaveCount(0);
 });

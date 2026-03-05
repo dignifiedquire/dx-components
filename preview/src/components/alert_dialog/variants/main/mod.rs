@@ -1,7 +1,9 @@
-use crate::components::button::component::Button;
-
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::alert_dialog::{
+    AlertDialogAction, AlertDialogActions, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogRoot, AlertDialogTitle,
+};
+use dioxus_primitives::button::Button;
 
 #[component]
 pub fn Demo() -> Element {
