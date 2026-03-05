@@ -1,7 +1,6 @@
 use crate::components::input::component::Input;
-
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::label::Label;
 
 #[component]
 pub fn Demo() -> Element {
