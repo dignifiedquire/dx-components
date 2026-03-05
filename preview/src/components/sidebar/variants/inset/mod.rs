@@ -1,4 +1,4 @@
-use crate::components::avatar::{Avatar, AvatarFallback, AvatarImage, AvatarImageSize};
+use crate::components::avatar::{Avatar, AvatarFallback, AvatarImage};
 use crate::components::button::{Button, ButtonVariant};
 use crate::components::collapsible::{Collapsible, CollapsibleContent, CollapsibleTrigger};
 use crate::components::dropdown_menu::{
@@ -372,7 +372,7 @@ fn NavUser() -> Element {
                     DropdownMenuTrigger {
                         as: move |attributes: Vec<Attribute>| rsx! {
                             SidebarMenuButton { size: SidebarMenuButtonSize::Lg, attributes,
-                                Avatar { size: AvatarImageSize::Small, style: "border-radius:0.5rem;",
+                                Avatar { class: "rounded-lg",
                                     AvatarImage {
                                         src: asset!("/assets/dioxus-logo.png", ImageAssetOptions::new().with_avif()),
                                         alt: "dioxus avatar",
@@ -390,8 +390,7 @@ fn NavUser() -> Element {
                     DropdownMenuContent {
                         div { style: "display:flex; align-items:center; gap:0.5rem; padding:0.375rem 0.25rem; text-align:left; font-size:0.875rem;",
                             Avatar {
-                                size: AvatarImageSize::Small,
-                                style: "border-radius:0.5rem;",
+                                class: "rounded-lg",
                                 AvatarImage {
                                     src: asset!("/assets/dioxus-logo.png", ImageAssetOptions::new().with_avif()),
                                     alt: "dioxus avatar",

@@ -1,6 +1,7 @@
 //! Defines the [`Avatar`] component and its subcomponents, which manage user profile images with fallback options.
 
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 /// Represents the different states an Avatar can be in
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,6 +43,10 @@ pub struct AvatarProps {
     /// Callback when the avatar state changes
     #[props(default)]
     pub on_state_change: Option<EventHandler<AvatarState>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the avatar element
     #[props(extends = GlobalAttributes)]
@@ -108,8 +113,14 @@ pub fn Avatar(props: AvatarProps) -> Element {
     let show_fallback =
         use_memo(move || matches!(state(), AvatarState::Error | AvatarState::Empty));
 
+    let class = tw_merge!(
+        "relative flex size-8 shrink-0 overflow-hidden rounded-full select-none",
+        props.class,
+    );
+
     rsx! {
         span {
+            "data-slot": "avatar",
             role: "img",
             "data-state": match state() {
                 AvatarState::Loading => "loading",
@@ -117,6 +128,7 @@ pub fn Avatar(props: AvatarProps) -> Element {
                 AvatarState::Error => "error",
                 AvatarState::Empty => "empty",
             },
+            class: class,
             ..props.attributes,
 
             // Children (which may include AvatarImage and AvatarFallback)
@@ -125,7 +137,7 @@ pub fn Avatar(props: AvatarProps) -> Element {
             // Default fallback if no AvatarFallback is provided and fallback should be shown
             if show_fallback() && !has_fallback_child() && has_image_child() {
                 span {
-                    style: "display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;",
+                    class: "flex size-full items-center justify-center rounded-full bg-muted",
                     "??"
                 }
             }
@@ -136,6 +148,10 @@ pub fn Avatar(props: AvatarProps) -> Element {
 /// The props for the [`AvatarFallback`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct AvatarFallbackProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes for the fallback element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -186,8 +202,18 @@ pub fn AvatarFallback(props: AvatarFallbackProps) -> Element {
         return rsx!({});
     }
 
+    let class = tw_merge!(
+        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground",
+        props.class,
+    );
+
     rsx! {
-        span { ..props.attributes, {props.children} }
+        span {
+            "data-slot": "avatar-fallback",
+            class: class,
+            ..props.attributes,
+            {props.children}
+        }
     }
 }
 
@@ -200,6 +226,10 @@ pub struct AvatarImageProps {
     /// Alt text for the image
     #[props(default)]
     pub alt: Option<String>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the image element
     #[props(extends = GlobalAttributes)]
@@ -266,13 +296,19 @@ pub fn AvatarImage(props: AvatarImageProps) -> Element {
         return rsx!({});
     }
 
+    let class = tw_merge!(
+        "aspect-square size-full",
+        props.class,
+    );
+
     rsx! {
         img {
+            "data-slot": "avatar-image",
             src: props.src.clone(),
             alt: props.alt.clone().unwrap_or_default(),
             onload: handle_load,
             onerror: handle_error,
-            style: "width: 100%; height: 100%; object-fit: cover;",
+            class: class,
             ..props.attributes,
         }
     }
