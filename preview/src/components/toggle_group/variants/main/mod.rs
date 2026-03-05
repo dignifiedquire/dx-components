@@ -1,10 +1,9 @@
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::toggle_group::{ToggleGroup, ToggleItem};
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-
         ToggleGroup { horizontal: true, allow_multiple_pressed: true,
             ToggleItem { index: 0usize,
                 b { "B" }

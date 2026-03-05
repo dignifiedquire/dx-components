@@ -2,11 +2,12 @@
 
 use crate::{
     focus::{use_focus_controlled_item, use_focus_provider, FocusState},
-    toggle::Toggle,
+    toggle::{Toggle, ToggleSize, ToggleVariant},
     use_controlled,
 };
 use dioxus::prelude::*;
 use std::collections::HashSet;
+use tailwind_fuse::*;
 
 // Todo: docs, test controlled version
 
@@ -24,6 +25,10 @@ struct ToggleGroupCtx {
 
     horizontal: ReadSignal<bool>,
     roving_loop: ReadSignal<bool>,
+
+    // Styling
+    variant: ToggleVariant,
+    size: ToggleSize,
 }
 
 impl ToggleGroupCtx {
@@ -81,6 +86,14 @@ impl ToggleGroupCtx {
 /// The props for the [`ToggleGroup`] component
 #[derive(Props, Clone, PartialEq)]
 pub struct ToggleGroupProps {
+    /// Visual variant applied to all toggle items in the group.
+    #[props(default = ToggleVariant::Default)]
+    pub variant: ToggleVariant,
+
+    /// Size applied to all toggle items in the group.
+    #[props(default = ToggleSize::Default)]
+    pub size: ToggleSize,
+
     /// The default pressed items if the component is not controlled.
     #[props(default)]
     pub default_pressed: HashSet<usize>,
@@ -107,6 +120,10 @@ pub struct ToggleGroupProps {
     /// Whether focus should loop around when reaching the end.
     #[props(default = ReadSignal::new(Signal::new(true)))]
     pub roving_loop: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the toggle group element
     #[props(extends = GlobalAttributes)]
@@ -150,6 +167,14 @@ pub fn ToggleGroup(props: ToggleGroupProps) -> Element {
         props.on_pressed_change,
     );
 
+    let variant_attr = props.variant.as_data_attr();
+    let size_attr = props.size.as_data_attr();
+
+    let class = tw_merge!(
+        "group/toggle-group flex w-fit items-center rounded-md data-[variant=outline]:shadow-xs",
+        props.class,
+    );
+
     let focus = use_focus_provider(props.roving_loop);
     let mut ctx = use_context_provider(|| ToggleGroupCtx {
         pressed,
@@ -160,14 +185,20 @@ pub fn ToggleGroup(props: ToggleGroupProps) -> Element {
         focus,
         horizontal: props.horizontal,
         roving_loop: props.roving_loop,
+        variant: props.variant,
+        size: props.size,
     });
 
     rsx! {
         div {
             onfocusout: move |_| ctx.focus.set_focus(None),
 
+            "data-slot": "toggle-group",
+            "data-variant": variant_attr,
+            "data-size": size_attr,
             "data-orientation": ctx.orientation(),
             "data-allow-multiple-pressed": ctx.allow_multiple_pressed,
+            class: class,
             ..props.attributes,
 
             {props.children}
@@ -184,6 +215,10 @@ pub struct ToggleItemProps {
     /// Whether the toggle item is disabled.
     #[props(default)]
     pub disabled: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the toggle item element
     #[props(extends = GlobalAttributes)]
@@ -248,8 +283,17 @@ pub fn ToggleItem(props: ToggleItemProps) -> Element {
     // Handle settings focus
     let onmounted = use_focus_controlled_item(props.index);
 
+    let item_class = tw_merge!(
+        "shrink-0 rounded-none first:rounded-l-md last:rounded-r-md focus-within:relative focus-within:z-10 data-[variant=outline]:border-l-0 data-[variant=outline]:first:border-l",
+        props.class,
+    );
+
     rsx! {
         Toggle {
+            variant: ctx.variant,
+            size: ctx.size,
+            class: item_class,
+
             onmounted,
             onfocus: move |_| ctx.focus.set_focus(Some(props.index.cloned())),
             onkeydown: move |event: Event<KeyboardData>| {
