@@ -2,6 +2,7 @@
 
 use dioxus::document;
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 use crate::use_global_escape_listener;
 use crate::{
@@ -39,6 +40,10 @@ pub struct PopoverRootProps {
     /// Callback fired when the open state changes.
     #[props(default)]
     pub on_open_change: Callback<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the popover root element.
     #[props(extends = GlobalAttributes)]
@@ -110,9 +115,13 @@ pub fn PopoverRoot(props: PopoverRootProps) -> Element {
         labelledby,
     });
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
+            "data-slot": "popover",
             "data-state": if open() { "open" } else { "closed" },
+            class: class,
             ..props.attributes,
             {props.children}
         }
@@ -274,14 +283,20 @@ pub fn PopoverContentRendered(
     // is highlighting text or interacting with another element.
     use_global_escape_listener(move || set_open.call(false));
 
+    let class = tw_merge!(
+        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        class,
+    );
+
     rsx! {
         div {
             id,
             role: "dialog",
+            "data-slot": "popover-content",
             aria_modal: "true",
             aria_labelledby: ctx.labelledby,
             aria_hidden: (!is_open).then_some("true"),
-            class: class.unwrap_or_else(|| "popover-content".to_string()),
+            class: class,
             "data-state": if is_open { "open" } else { "closed" },
             "data-side": side.as_str(),
             "data-align": align.as_str(),
@@ -294,6 +309,10 @@ pub fn PopoverContentRendered(
 /// The props for the [`PopoverTrigger`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct PopoverTriggerProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the trigger element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -367,10 +386,14 @@ pub fn PopoverTrigger(props: PopoverTriggerProps) -> Element {
         }
     }));
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         button {
             id,
+            "data-slot": "popover-trigger",
             type: "button",
+            class: class,
             onclick: move |e| {
                 // Prevent the click event from propagating to the overlay.
                 e.stop_propagation();

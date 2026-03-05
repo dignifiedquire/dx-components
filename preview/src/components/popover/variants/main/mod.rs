@@ -1,7 +1,6 @@
-use crate::components::button::component::Button;
-
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::button::Button;
+use dioxus_primitives::popover::{PopoverContent, PopoverRoot, PopoverTrigger};
 
 #[component]
 pub fn Demo() -> Element {
