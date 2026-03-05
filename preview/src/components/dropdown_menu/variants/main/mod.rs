@@ -1,7 +1,7 @@
-use super::super::component::{
+use dioxus::prelude::*;
+use dioxus_primitives::dropdown_menu::{
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 };
-use dioxus::prelude::*;
 use strum::IntoEnumIterator;
 
 #[derive(Clone, Copy, strum::Display, strum::EnumIter, PartialEq)]
@@ -19,7 +19,6 @@ pub fn Demo() -> Element {
     let operations = Operation::iter().enumerate().map(|(i, o)| {
         rsx! {
             DropdownMenuItem::<Operation> {
-                class: "dropdown-menu-item",
                 value: o,
                 index: i,
                 disabled: matches!(o, Operation::Undo),
@@ -32,9 +31,9 @@ pub fn Demo() -> Element {
     });
 
     rsx! {
-        DropdownMenu { class: "dropdown-menu", default_open: false,
-            DropdownMenuTrigger { class: "dropdown-menu-trigger", "Open Menu" }
-            DropdownMenuContent { class: "dropdown-menu-content", {operations} }
+        DropdownMenu { default_open: false,
+            DropdownMenuTrigger { "Open Menu" }
+            DropdownMenuContent { {operations} }
         }
         if let Some(op) = selected_operation() {
             "Selected: {op}"

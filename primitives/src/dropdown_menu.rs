@@ -8,6 +8,7 @@ use crate::{
 };
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
+use tailwind_fuse::*;
 
 #[derive(Clone, Copy)]
 struct DropdownMenuContext {
@@ -44,6 +45,10 @@ pub struct DropdownMenuProps {
     /// Whether focus should loop around when reaching the end.
     #[props(default = ReadSignal::new(Signal::new(true)))]
     pub roving_loop: ReadSignal<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the dropdown menu element.
     #[props(extends = GlobalAttributes)]
@@ -145,8 +150,12 @@ pub fn DropdownMenu(props: DropdownMenuProps) -> Element {
         event.prevent_default();
     };
 
+    let class = tw_merge!(props.class);
+
     rsx! {
         div {
+            "data-slot": "dropdown-menu",
+            class: class,
             "data-state": if open() { "open" } else { "closed" },
             "data-disabled": (props.disabled)(),
             onkeydown: handle_keydown,
@@ -162,6 +171,10 @@ pub struct DropdownMenuTriggerProps {
     /// Render the trigger element as a custom component/element.
     #[props(default)]
     pub r#as: Option<Callback<Vec<Attribute>, Element>>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the trigger element.
     #[props(extends = GlobalAttributes)]
@@ -225,9 +238,12 @@ pub fn DropdownMenuTrigger(props: DropdownMenuTriggerProps) -> Element {
     let disabled = ctx.disabled;
     let data_state = if open() { "open" } else { "closed" };
 
+    let class = tw_merge!(props.class);
     let base = attributes!(button {
         id: ctx.trigger_id,
         r#type: "button",
+        "data-slot": "dropdown-menu-trigger",
+        class: class,
         "data-state": data_state,
         "data-disabled": disabled,
         disabled: disabled,
@@ -277,6 +293,9 @@ pub fn DropdownMenuTrigger(props: DropdownMenuTriggerProps) -> Element {
 pub struct DropdownMenuContentProps {
     /// The ID of the dropdown menu content element. If not provided, a unique ID will be generated.
     pub id: ReadSignal<Option<String>>,
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes to apply to the dropdown menu content element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -337,10 +356,17 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
     let id = use_id_or(unique_id, props.id);
     let render = use_animated_open(id, ctx.open);
 
+    let class = tw_merge!(
+        "z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+        props.class,
+    );
+
     rsx! {
         if render() {
             div {
                 id,
+                "data-slot": "dropdown-menu-content",
+                class: class,
                 role: "listbox",
                 aria_labelledby: "{ctx.trigger_id}",
                 "data-state": if (ctx.open)() { "open" } else { "closed" },
@@ -375,6 +401,10 @@ pub struct DropdownMenuItemProps<T: Clone + PartialEq + 'static> {
     /// The callback function that will be called when the item is selected. The value of the item will be passed as an argument.
     #[props(default)]
     pub on_select: Callback<T>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the item element.
     #[props(extends = GlobalAttributes)]
@@ -439,8 +469,15 @@ pub fn DropdownMenuItem<T: Clone + PartialEq + 'static>(
 
     let onmounted = use_focus_controlled_item(props.index);
 
+    let class = tw_merge!(
+        "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "dropdown-menu-item",
+            class: class,
             role: "option",
             "data-disabled": disabled(),
             tabindex: if focused() { "0" } else { "-1" },
