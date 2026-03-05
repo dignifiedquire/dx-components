@@ -2,6 +2,7 @@
 
 use dioxus::document;
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 use crate::use_global_escape_listener;
 use crate::{use_animated_open, use_controlled, use_id_or, use_unique_id, FOCUS_TRAP_JS};
@@ -54,6 +55,10 @@ pub struct DialogRootProps {
     /// A callback that is called when the open state changes.
     #[props(default)]
     pub on_open_change: Callback<bool>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the dialog root element.
     #[props(extends = GlobalAttributes)]
@@ -129,6 +134,11 @@ pub fn DialogRoot(props: DialogRootProps) -> Element {
 
     let render = use_animated_open(id, open);
 
+    let class = tw_merge!(
+        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        props.class,
+    );
+
     rsx! {
         document::Script {
             src: FOCUS_TRAP_JS,
@@ -137,7 +147,8 @@ pub fn DialogRoot(props: DialogRootProps) -> Element {
         if render() {
             div {
                 id,
-                class: "dialog-overlay",
+                "data-slot": "dialog-overlay",
+                class: class,
                 aria_hidden: (!open()).then_some("true"),
                 onclick: move |_| {
                     set_open.call(false);
@@ -253,14 +264,20 @@ pub fn DialogContent(props: DialogContentProps) -> Element {
         let _ = eval.send(open.cloned());
     });
 
+    let class = tw_merge!(
+        "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg sm:max-w-lg",
+        props.class,
+    );
+
     rsx! {
         div {
             id,
+            "data-slot": "dialog-content",
             role: "dialog",
             aria_modal: "true",
             aria_labelledby: ctx.dialog_labelledby,
             aria_describedby: ctx.dialog_describedby,
-            class: props.class.clone().unwrap_or_else(|| "dialog".to_string()),
+            class: class,
             onclick: move |e| {
                 // Prevent the click event from propagating to the overlay.
                 e.stop_propagation();
@@ -276,6 +293,9 @@ pub fn DialogContent(props: DialogContentProps) -> Element {
 pub struct DialogTitleProps {
     /// The ID of the dialog title element.
     pub id: ReadSignal<Option<String>>,
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes for the dialog title element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -330,9 +350,16 @@ pub fn DialogTitle(props: DialogTitleProps) -> Element {
     let ctx: DialogCtx = use_context();
     let id = use_id_or(ctx.dialog_labelledby, props.id);
 
+    let class = tw_merge!(
+        "text-lg font-semibold leading-none",
+        props.class,
+    );
+
     rsx! {
         h2 {
             id: id,
+            "data-slot": "dialog-title",
+            class: class,
             ..props.attributes,
             {props.children}
         }
@@ -344,6 +371,9 @@ pub fn DialogTitle(props: DialogTitleProps) -> Element {
 pub struct DialogDescriptionProps {
     /// The ID of the dialog description element.
     pub id: ReadSignal<Option<String>>,
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
     /// Additional attributes for the dialog description element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -398,9 +428,16 @@ pub fn DialogDescription(props: DialogDescriptionProps) -> Element {
     let ctx: DialogCtx = use_context();
     let id = use_id_or(ctx.dialog_describedby, props.id);
 
+    let class = tw_merge!(
+        "text-sm text-muted-foreground",
+        props.class,
+    );
+
     rsx! {
         p {
             id: id,
+            "data-slot": "dialog-description",
+            class: class,
             ..props.attributes,
             {props.children}
         }

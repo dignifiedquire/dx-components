@@ -1,7 +1,6 @@
-use crate::components::button::component::Button;
-
-use super::super::component::{DialogContent, DialogDescription, DialogRoot, DialogTitle};
 use dioxus::prelude::*;
+use dioxus_primitives::button::Button;
+use dioxus_primitives::dialog::{DialogContent, DialogDescription, DialogRoot, DialogTitle};
 
 #[component]
 pub fn Demo() -> Element {
