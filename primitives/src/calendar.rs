@@ -9,6 +9,8 @@ use std::{
 
 use time::{ext::NumericalDuration, macros::date, Date, Month, OffsetDateTime, Weekday};
 
+use tailwind_fuse::*;
+
 use crate::{date_picker::DefaultCalendarProps, LocalDateExt as _};
 
 // A collection of [`Weekday`]s stored as a single byte
@@ -457,6 +459,10 @@ pub struct CalendarProps {
     #[props(default)]
     pub disabled_ranges: ReadSignal<Vec<DateRange>>,
 
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to extend the calendar element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -543,9 +549,12 @@ pub fn Calendar(props: CalendarProps) -> Element {
         set_selected_date: props.on_date_change,
     });
 
+    let class = tw_merge!("flex flex-row rounded-lg border bg-background shadow-md data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-60", props.class);
+
     rsx! {
         div {
-            class: "calendar",
+            "data-slot": "calendar",
+            class: class,
             role: "application",
             aria_label: "Calendar",
             "data-disabled": (props.disabled)(),
@@ -719,6 +728,10 @@ pub struct RangeCalendarProps {
     #[props(default)]
     pub disabled_ranges: ReadSignal<Vec<DateRange>>,
 
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to extend the calendar element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -811,9 +824,12 @@ pub fn RangeCalendar(props: RangeCalendarProps) -> Element {
         set_selected_range: props.on_range_change,
     });
 
+    let class = tw_merge!("flex flex-row rounded-lg border bg-background shadow-md data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-60", props.class);
+
     rsx! {
         div {
-            class: "calendar",
+            "data-slot": "calendar",
+            class: class,
             role: "application",
             aria_label: "Calendar",
             "data-disabled": (props.disabled)(),
@@ -953,6 +969,10 @@ pub struct CalendarHeaderProps {
     #[props(default)]
     pub id: Option<String>,
 
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to extend the header element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -1006,8 +1026,12 @@ pub struct CalendarHeaderProps {
 /// ```
 #[component]
 pub fn CalendarHeader(props: CalendarHeaderProps) -> Element {
+    let class = tw_merge!("", props.class);
+
     rsx! {
         div {
+            "data-slot": "calendar-header",
+            class: class,
             role: "heading",
             "aria-level": "2",
             id: props.id,
@@ -1021,6 +1045,10 @@ pub fn CalendarHeader(props: CalendarHeaderProps) -> Element {
 /// The props for the [`CalendarNavigation`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct CalendarNavigationProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Optional ID for the navigation
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -1076,8 +1104,13 @@ pub struct CalendarNavigationProps {
 /// ```
 #[component]
 pub fn CalendarNavigation(props: CalendarNavigationProps) -> Element {
+    let class = tw_merge!("relative flex items-center justify-center gap-2 px-12 pt-3 pb-1", props.class);
+
     rsx! {
-        div { class: "calendar-navigation", ..props.attributes,
+        div {
+            "data-slot": "calendar-navigation",
+            class: class,
+            ..props.attributes,
             {props.children}
         }
     }
@@ -1086,6 +1119,10 @@ pub fn CalendarNavigation(props: CalendarNavigationProps) -> Element {
 /// The props for the [`CalendarPreviousMonthButton`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct CalendarPreviousMonthButtonProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the button
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -1174,9 +1211,12 @@ pub fn CalendarPreviousMonthButton(props: CalendarPreviousMonthButtonProps) -> E
         }
     };
 
+    let class = tw_merge!("absolute left-3 flex size-7 items-center justify-center rounded-lg border bg-transparent cursor-pointer hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50", props.class);
+
     rsx! {
         button {
-            class: "calendar-nav-prev",
+            "data-slot": "calendar-nav-prev",
+            class: class,
             aria_label: "Previous month",
             type: "button",
             onclick: handle_prev_month,
@@ -1191,6 +1231,10 @@ pub fn CalendarPreviousMonthButton(props: CalendarPreviousMonthButtonProps) -> E
 /// The props for the [`CalendarNextMonthButton`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct CalendarNextMonthButtonProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the button
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -1283,9 +1327,12 @@ pub fn CalendarNextMonthButton(props: CalendarNextMonthButtonProps) -> Element {
         }
     };
 
+    let class = tw_merge!("absolute right-3 flex size-7 items-center justify-center rounded-lg border bg-transparent cursor-pointer hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50", props.class);
+
     rsx! {
         button {
-            class: "calendar-nav-next",
+            "data-slot": "calendar-nav-next",
+            class: class,
             aria_label: "Next month",
             type: "button",
             onclick: handle_next_month,
@@ -1300,6 +1347,10 @@ pub fn CalendarNextMonthButton(props: CalendarNextMonthButtonProps) -> Element {
 /// The props for the [`CalendarMonthTitle`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct CalendarMonthTitleProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to apply to the title element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -1360,9 +1411,12 @@ pub fn CalendarMonthTitle(props: CalendarMonthTitleProps) -> Element {
         format!("{} {}", view_date.month(), view_date.year())
     });
 
+    let class = tw_merge!("flex w-full h-7 items-center justify-center text-sm font-semibold", props.class);
+
     rsx! {
         div {
-            class: "calendar-month-title",
+            "data-slot": "calendar-month-title",
+            class: class,
             ..props.attributes,
 
             {month_year}
@@ -1386,6 +1440,10 @@ pub struct CalendarGridProps {
         rsx! { CalendarDay { date } }
     }))]
     pub render_day: Callback<Date, Element>,
+
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the grid element
     #[props(extends = GlobalAttributes)]
@@ -1502,22 +1560,25 @@ pub fn CalendarGrid(props: CalendarGridProps) -> Element {
             .collect::<Vec<_>>()
     });
 
+    let class = tw_merge!("w-full p-2", props.class);
+
     rsx! {
         table {
+            "data-slot": "calendar-grid",
             role: "grid",
             id: props.id,
-            class: "calendar-grid",
+            class: class,
             ..props.attributes,
 
             // Day headers
             thead { aria_hidden: "true",
                 tr {
-                    class: "calendar-grid-header",
+                    class: "flex flex-row mb-2",
                     // Day name headers
                     for (weekday, label) in weekday_headers() {
                         th {
-                            key: "{weekday:?}", // Add key for efficient diffing
-                            class: "calendar-grid-day-header",
+                            key: "{weekday:?}",
+                            class: "flex-1 text-center text-xs font-light text-muted-foreground",
                             {label}
                         }
                     }
@@ -1525,14 +1586,14 @@ pub fn CalendarGrid(props: CalendarGridProps) -> Element {
             }
 
             // Calendar days grid
-            tbody { class: "calendar-grid-body",
+            tbody { class: "flex w-full flex-col gap-1",
                 // Display all days in a grid
                 for row in &*days_grid.read() {
                     tr {
                         role: "row",
-                        class: "calendar-grid-week",
+                        class: "flex w-full flex-row justify-between",
                         for date in row.iter().copied() {
-                            td {
+                            td { class: "px-0",
                                 {props.render_day.call(date)}
                             }
                         }
@@ -1546,6 +1607,10 @@ pub fn CalendarGrid(props: CalendarGridProps) -> Element {
 /// The props for the [`CalendarSelectMonth`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct CalendarSelectMonthProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to extend the select month element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -1630,9 +1695,14 @@ pub fn CalendarSelectMonth(props: CalendarSelectMonthProps) -> Element {
         }
     });
 
+    let class = tw_merge!("relative has-[:focus-visible]:rounded-lg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring", props.class);
+
     rsx! {
-        span { class: "calendar-month-select-container",
+        span {
+            "data-slot": "calendar-select-month",
+            class: class,
             select {
+                class: "absolute inset-0 w-full h-full p-1 m-0 opacity-0",
                 aria_label: "Month",
                 onchange: move |e| {
                     let mut view_date = view_ctx.offset_view_date();
@@ -1650,10 +1720,10 @@ pub fn CalendarSelectMonth(props: CalendarSelectMonthProps) -> Element {
                     }
                 }
             }
-            span { class: "calendar-month-select-value",
+            span { class: "inline-flex items-center justify-center p-1 bg-transparent cursor-pointer text-base",
                 {base_ctx.format_month.call(month)}
                 svg {
-                    class: "select-expand-icon",
+                    class: "size-5 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:2]",
                     view_box: "0 0 24 24",
                     xmlns: "http://www.w3.org/2000/svg",
                     polyline { points: "6 9 12 15 18 9" }
@@ -1666,6 +1736,10 @@ pub fn CalendarSelectMonth(props: CalendarSelectMonthProps) -> Element {
 /// The props for the [`CalendarSelectYear`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct CalendarSelectYearProps {
+    /// Additional Tailwind classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes to extend the select year element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -1742,9 +1816,14 @@ pub fn CalendarSelectYear(props: CalendarSelectYearProps) -> Element {
         min_year..=max_year
     });
 
+    let class = tw_merge!("relative has-[:focus-visible]:rounded-lg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring", props.class);
+
     rsx! {
-        span { class: "calendar-year-select-container",
+        span {
+            "data-slot": "calendar-select-year",
+            class: class,
             select {
+                class: "absolute inset-0 w-full h-full p-1 m-0 opacity-0",
                 aria_label: "Year",
                 onchange: move |e| {
                     let mut view_date = view_ctx.offset_view_date();
@@ -1761,10 +1840,10 @@ pub fn CalendarSelectYear(props: CalendarSelectYearProps) -> Element {
                     }
                 }
             }
-            span { class: "calendar-year-select-value",
+            span { class: "inline-flex items-center justify-center p-1 bg-transparent cursor-pointer text-base",
                 "{year}"
                 svg {
-                    class: "select-expand-icon",
+                    class: "size-5 fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:2]",
                     view_box: "0 0 24 24",
                     xmlns: "http://www.w3.org/2000/svg",
                     polyline { points: "6 9 12 15 18 9" }
@@ -1984,7 +2063,8 @@ fn SingleCalendarDay(props: CalendarDayProps) -> Element {
 
     rsx! {
         button {
-            class: "calendar-grid-cell",
+            "data-slot": "calendar-day",
+            class: "w-8 border-none rounded-lg aspect-square bg-transparent cursor-pointer text-sm outline-none data-[month=current]:not-disabled:hover:bg-accent data-[month=current]:focus-visible:ring-2 data-[month=current]:focus-visible:ring-ring data-[month=current]:focus-visible:ring-offset-2 data-[month=last]:text-muted-foreground data-[month=last]:cursor-default data-[month=next]:text-muted-foreground data-[month=next]:cursor-default data-[disabled=true]:text-muted-foreground data-[disabled=true]:cursor-not-allowed data-[selected=true]:data-[month=current]:bg-primary data-[selected=true]:data-[month=current]:text-primary-foreground data-[today=true]:not-data-[selected=true]:bg-accent data-[unavailable=true]:text-muted-foreground data-[unavailable=true]:cursor-not-allowed data-[unavailable=true]:line-through",
             type: "button",
             tabindex: if date == focusable_date {
                 "0"
@@ -2078,7 +2158,8 @@ fn RangeCalendarDay(props: CalendarDayProps) -> Element {
 
     rsx! {
         button {
-            class: "calendar-grid-cell",
+            "data-slot": "calendar-day",
+            class: "w-8 border-none rounded-lg aspect-square bg-transparent cursor-pointer text-sm outline-none data-[month=current]:not-disabled:hover:bg-accent data-[month=current]:focus-visible:ring-2 data-[month=current]:focus-visible:ring-ring data-[month=current]:focus-visible:ring-offset-2 data-[month=last]:text-muted-foreground data-[month=last]:cursor-default data-[month=next]:text-muted-foreground data-[month=next]:cursor-default data-[disabled=true]:text-muted-foreground data-[disabled=true]:cursor-not-allowed data-[selected=true]:data-[month=current]:bg-primary data-[selected=true]:data-[month=current]:text-primary-foreground data-[today=true]:not-data-[selected=true]:bg-accent data-[unavailable=true]:text-muted-foreground data-[unavailable=true]:cursor-not-allowed data-[unavailable=true]:line-through data-[selection-between=true]:rounded-none data-[selection-between=true]:bg-accent",
             type: "button",
             tabindex: if date == focusable_date {
                 "0"
