@@ -1,6 +1,7 @@
 //! Defines the [`Separator`] component for creating visual or semantic separators.
 
 use dioxus::prelude::*;
+use tailwind_fuse::*;
 
 /// The props for the [`Separator`] component.
 #[derive(Props, Clone, PartialEq)]
@@ -11,8 +12,13 @@ pub struct SeparatorProps {
 
     /// If the separator is decorative and should not be classified
     /// as a separator to the ARIA standard.
-    #[props(default = false)]
+    #[props(default = true)]
     pub decorative: bool,
+
+    /// Additional Tailwind classes to apply. Conflicts with base classes
+    /// are resolved in favor of this override.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes to apply to the separator element.
     #[props(extends = GlobalAttributes)]
@@ -36,11 +42,7 @@ pub struct SeparatorProps {
 /// fn Demo() -> Element {
 ///     rsx! {
 ///         "One thing"
-///         Separator {
-///             style: "margin: 15px 0; width: 50%;",
-///             horizontal: true,
-///             decorative: true,
-///         }
+///         Separator { horizontal: true, decorative: true }
 ///         "Another thing"
 ///     }
 /// }
@@ -48,8 +50,9 @@ pub struct SeparatorProps {
 ///
 /// ## Styling
 ///
-/// The [`Separator`] component defines the following data attributes you can use to control styling:
-/// - `data-orientation`: Indicates the orientation of the separator. Values are `horizontal` or `vertical`.
+/// The [`Separator`] component defines the following data attributes for external styling:
+/// - `data-slot`: Always `"separator"`.
+/// - `data-orientation`: Indicates the orientation. Values are `horizontal` or `vertical`.
 #[component]
 pub fn Separator(props: SeparatorProps) -> Element {
     let orientation = match props.horizontal {
@@ -57,11 +60,18 @@ pub fn Separator(props: SeparatorProps) -> Element {
         false => "vertical",
     };
 
+    let class = tw_merge!(
+        "shrink-0 bg-border data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px",
+        props.class,
+    );
+
     rsx! {
         div {
+            "data-slot": "separator",
             role: if !props.decorative { "separator" } else { "none" },
             aria_orientation: if !props.decorative { orientation },
             "data-orientation": orientation,
+            class: class,
             ..props.attributes,
             {props.children}
         }

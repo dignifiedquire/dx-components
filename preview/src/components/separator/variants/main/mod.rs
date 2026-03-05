@@ -1,5 +1,5 @@
-use super::super::component::*;
 use dioxus::prelude::*;
+use dioxus_primitives::separator::Separator;
 
 #[component]
 pub fn Demo() -> Element {
