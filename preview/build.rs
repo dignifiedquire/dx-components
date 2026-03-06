@@ -11,6 +11,17 @@ fn main() {
         }
         let folder_path = folder.path();
         walk_highlight_dir(&folder_path, &out_dir).unwrap();
+
+        // Extract description from component.json if it exists
+        let folder_name = folder_path.file_name().unwrap().to_string_lossy();
+        let json_path = folder_path.join("component.json");
+        let description = if json_path.exists() {
+            extract_json_description(&json_path)
+        } else {
+            String::new()
+        };
+        let desc_out = out_dir.join(&*folder_name).join("description.txt");
+        std::fs::write(desc_out, description).unwrap();
     }
 
     // Process the main dx-components-theme.css file
@@ -74,22 +85,122 @@ fn highlight_file_to(file_path: &std::path::Path, theme: &str) -> String {
                 .unwrap();
             let html =
                 styled_line_to_highlighted_html(&regions[..], IncludeBackground::No).unwrap();
+            all_html += "<span class=\"line\">";
             all_html += &html;
+            all_html += "</span>";
         }
         line.clear();
     }
     all_html
 }
 
+/// Extract the "description" value from a component.json file without a JSON parser.
+fn extract_json_description(path: &std::path::Path) -> String {
+    let content = std::fs::read_to_string(path).unwrap_or_default();
+    // Find "description": "..." pattern
+    if let Some(start) = content.find("\"description\"") {
+        let rest = &content[start + "\"description\"".len()..];
+        // Skip whitespace and colon
+        let rest = rest.trim_start().strip_prefix(':').unwrap_or(rest);
+        let rest = rest.trim_start();
+        // Extract quoted string
+        if let Some(rest) = rest.strip_prefix('"') {
+            if let Some(end) = rest.find('"') {
+                return rest[..end].to_string();
+            }
+        }
+    }
+    String::new()
+}
+
+/// Highlight a code string using syntect, returning HTML for both dark and light themes
+/// wrapped in theme-toggling divs.
+fn highlight_code_string(code: &str, lang: &str) -> String {
+    use syntect::highlighting::{Style, ThemeSet};
+    use syntect::html::{styled_line_to_highlighted_html, IncludeBackground};
+    use syntect::parsing::SyntaxSet;
+    static SYNTAX_SET: OnceLock<SyntaxSet> = OnceLock::new();
+    static THEME_SET: OnceLock<ThemeSet> = OnceLock::new();
+    let ss = SYNTAX_SET.get_or_init(SyntaxSet::load_defaults_newlines);
+    let ts = THEME_SET.get_or_init(ThemeSet::load_defaults);
+
+    let syntax = ss
+        .find_syntax_by_token(lang)
+        .unwrap_or_else(|| ss.find_syntax_plain_text());
+
+    let mut result = String::new();
+    for (theme_name, css_class) in [
+        ("base16-ocean.dark", "dark-code-block"),
+        ("base16-ocean.light", "light-code-block"),
+    ] {
+        let theme = &ts.themes[theme_name];
+        let mut h = syntect::easy::HighlightLines::new(syntax, theme);
+        let mut highlighted = String::new();
+        for line in code.lines() {
+            let line_with_nl = format!("{line}\n");
+            let regions: Vec<(Style, &str)> = h.highlight_line(&line_with_nl, ss).unwrap();
+            let html =
+                styled_line_to_highlighted_html(&regions[..], IncludeBackground::No).unwrap();
+            highlighted += "<span class=\"line\">";
+            highlighted += &html;
+            highlighted += "</span>";
+        }
+        result += &format!(
+            "<pre class=\"code-block {css_class}\" tabindex=\"0\"><code>{highlighted}</code></pre>"
+        );
+    }
+    result
+}
+
 fn process_markdown_to_html(markdown_path: &std::path::Path) -> String {
     println!("cargo:rerun-if-changed={}", markdown_path.display());
-    use pulldown_cmark::{Options, Parser};
+    use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag, TagEnd};
     let markdown_input =
         std::fs::read_to_string(markdown_path).expect("Failed to read markdown file");
     let mut options = Options::empty();
     options.insert(Options::ENABLE_GFM);
     let parser = Parser::new_ext(&markdown_input, options);
+
     let mut html_output = String::new();
-    pulldown_cmark::html::push_html(&mut html_output, parser);
+    let mut in_code_block = false;
+    let mut code_lang = String::new();
+    let mut code_buf = String::new();
+
+    // Process events, intercepting code blocks for syntect highlighting
+    let events: Vec<Event> = parser.collect();
+    let mut i = 0;
+    while i < events.len() {
+        match &events[i] {
+            Event::Start(Tag::CodeBlock(kind)) => {
+                in_code_block = true;
+                code_buf.clear();
+                code_lang = match kind {
+                    CodeBlockKind::Fenced(lang) => lang.to_string(),
+                    CodeBlockKind::Indented => String::new(),
+                };
+                i += 1;
+            }
+            Event::End(TagEnd::CodeBlock) => {
+                in_code_block = false;
+                let lang = if code_lang.is_empty() {
+                    "txt"
+                } else {
+                    &code_lang
+                };
+                html_output += &highlight_code_string(&code_buf, lang);
+                i += 1;
+            }
+            Event::Text(text) if in_code_block => {
+                code_buf += text;
+                i += 1;
+            }
+            _ => {
+                // Process non-code events normally using pulldown_cmark's HTML renderer
+                let single = std::iter::once(events[i].clone());
+                pulldown_cmark::html::push_html(&mut html_output, single);
+                i += 1;
+            }
+        }
+    }
     html_output
 }

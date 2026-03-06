@@ -32,6 +32,7 @@ macro_rules! examples {
     (@demo $name:ident $([$($variant:ident),*])?) => {
         ComponentDemoData {
             name: stringify!($name),
+            description: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/description.txt")),
             r#type: ComponentType::Normal,
             docs: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/docs.html")),
             component: HighlightedCode {
@@ -73,6 +74,7 @@ macro_rules! examples {
     (@demo $name:ident block $([$($variant:ident),*])?) => {
         ComponentDemoData {
             name: stringify!($name),
+            description: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/description.txt")),
             r#type: ComponentType::Block,
             docs: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/docs.html")),
             component: HighlightedCode {
