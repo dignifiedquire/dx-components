@@ -1,6 +1,6 @@
 {
   "name": "pagination",
-  "description": "Navigation controls for paged content.",
+  "description": "Pagination with page navigation, next and previous links.",
   "authors": [
     "zhiyanzhaijie"
   ],

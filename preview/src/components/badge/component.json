@@ -1,6 +1,6 @@
 {
   "name": "badge",
-  "description": "A small label to display status or categorization",
+  "description": "Displays a badge or a component that looks like a badge.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

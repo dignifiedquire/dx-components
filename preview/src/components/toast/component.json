@@ -1,6 +1,6 @@
 {
   "name": "toast",
-  "description": "A toast notification component.",
+  "description": "A succinct message that is displayed temporarily.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

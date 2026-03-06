@@ -1,6 +1,6 @@
 {
   "name": "radio_group",
-  "description": "A group of radio buttons for selecting one option from a set.",
+  "description": "A set of checkable buttons where only one can be checked at a time.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

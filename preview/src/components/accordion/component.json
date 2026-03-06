@@ -1,6 +1,6 @@
 {
   "name": "accordion",
-  "description": "An accordion component for displaying collapsible content sections.",
+  "description": "A vertically stacked set of interactive headings that each reveal a section of content.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

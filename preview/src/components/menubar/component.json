@@ -1,6 +1,6 @@
 {
   "name": "menubar",
-  "description": "A menubar component for a collection of menu items.",
+  "description": "A visually persistent menu common in desktop applications.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

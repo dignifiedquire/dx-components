@@ -1,6 +1,6 @@
 {
   "name": "sheet",
-  "description": "A sheet component as an edge panel that complements the main content",
+  "description": "A panel that slides out from the edge of the screen.",
   "authors": [
     "zhiyanzhaijie"
   ],

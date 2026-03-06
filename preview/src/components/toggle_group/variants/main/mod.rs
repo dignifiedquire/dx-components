@@ -1,18 +1,19 @@
 use dioxus::prelude::*;
 use dioxus_primitives::toggle_group::{ToggleGroup, ToggleItem};
+use dx_icons_tabler::{IconBold, IconItalic, IconUnderline};
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
         ToggleGroup { horizontal: true, allow_multiple_pressed: true,
             ToggleItem { index: 0usize,
-                b { "B" }
+                IconBold { size: 16 }
             }
             ToggleItem { index: 1usize,
-                i { "I" }
+                IconItalic { size: 16 }
             }
             ToggleItem { index: 2usize,
-                u { "U" }
+                IconUnderline { size: 16 }
             }
         }
     }

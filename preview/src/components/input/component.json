@@ -1,6 +1,6 @@
 {
   "name": "input",
-  "description": "An input field component for user text entry.",
+  "description": "A text input component for forms and user data entry.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

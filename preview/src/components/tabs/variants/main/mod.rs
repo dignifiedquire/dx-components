@@ -1,31 +1,56 @@
 use dioxus::prelude::*;
+use dioxus_primitives::button::Button;
+use dioxus_primitives::label::Label;
 use dioxus_primitives::tabs::{TabContent, TabList, TabTrigger, Tabs};
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        Tabs {
-            default_value: "tab1".to_string(),
-            horizontal: true,
-            max_width: "16rem",
+        Tabs { default_value: "account".to_string(), horizontal: true, max_width: "24rem",
             TabList {
-                TabTrigger { value: "tab1".to_string(), index: 0usize, "Tab 1" }
-                TabTrigger { value: "tab2".to_string(), index: 1usize, "Tab 2" }
-                TabTrigger { value: "tab3".to_string(), index: 2usize, "Tab 3" }
+                TabTrigger { value: "account".to_string(), index: 0usize, "Account" }
+                TabTrigger { value: "password".to_string(), index: 1usize, "Password" }
             }
-            TabContent { index: 0usize, value: "tab1".to_string(),
-                div { class: "flex h-20 w-full items-center justify-center",
-                    "Tab 1 Content"
+            TabContent { index: 0usize, value: "account".to_string(),
+                div { class: "rounded-lg border bg-card p-6 text-card-foreground shadow-sm",
+                    div { class: "flex flex-col gap-1.5",
+                        h3 { class: "text-lg font-semibold leading-none tracking-tight", "Account" }
+                        p { class: "text-sm text-muted-foreground", "Make changes to your account here. Click save when you're done." }
+                    }
+                    div { class: "grid gap-4 py-4",
+                        div { class: "grid gap-2",
+                            Label { html_for: "tab-name", "Name" }
+                            input { id: "tab-name", class: "input", value: "Pedro Duarte" }
+                        }
+                        div { class: "grid gap-2",
+                            Label { html_for: "tab-username", "Username" }
+                            input { id: "tab-username", class: "input", value: "@peduarte" }
+                        }
+                    }
+                    div { class: "flex pt-2",
+                        Button { "Save changes" }
+                    }
                 }
             }
-            TabContent { index: 1usize, value: "tab2".to_string(),
-                div { class: "flex h-20 w-full items-center justify-center",
-                    "Tab 2 Content"
-                }
-            }
-            TabContent { index: 2usize, value: "tab3".to_string(),
-                div { class: "flex h-20 w-full items-center justify-center",
-                    "Tab 3 Content"
+            TabContent { index: 1usize, value: "password".to_string(),
+                div { class: "rounded-lg border bg-card p-6 text-card-foreground shadow-sm",
+                    div { class: "flex flex-col gap-1.5",
+                        h3 { class: "text-lg font-semibold leading-none tracking-tight", "Password" }
+                        p { class: "text-sm text-muted-foreground", "Change your password here. After saving, you'll be logged out." }
+                    }
+                    div { class: "grid gap-4 py-4",
+                        div { class: "grid gap-2",
+                            Label { html_for: "tab-current", "Current password" }
+                            input { id: "tab-current", class: "input", r#type: "password" }
+                        }
+                        div { class: "grid gap-2",
+                            Label { html_for: "tab-new", "New password" }
+                            input { id: "tab-new", class: "input", r#type: "password" }
+                        }
+                    }
+                    div { class: "flex pt-2",
+                        Button { "Save password" }
+                    }
                 }
             }
         }

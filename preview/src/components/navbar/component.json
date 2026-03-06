@@ -1,6 +1,6 @@
 {
   "name": "navbar",
-  "description": "A navbar component for navigation between pages.",
+  "description": "A responsive navigation bar for page-level navigation.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

@@ -120,14 +120,14 @@ macro_rules! examples {
 }
 
 examples!(
-    accordion,
+    accordion[multiple, disabled],
     alert_dialog,
     aspect_ratio,
     avatar,
     badge,
-    button,
+    button[outline, secondary, destructive, ghost, link, icon, with_icon, loading, disabled, sizes],
     calendar[simple, internationalized, range, multi_month, unavailable_dates],
-    checkbox,
+    checkbox[disabled, with_text],
     collapsible,
     context_menu,
     card,
@@ -136,7 +136,7 @@ examples!(
     drag_and_drop_list[removable],
     dropdown_menu,
     hover_card,
-    input,
+    input[disabled, file, with_label, with_button],
     label,
     menubar,
     navbar,
@@ -155,8 +155,8 @@ examples!(
     tabs,
     textarea[outline, fade, ghost],
     toast,
-    toggle_group,
-    toggle,
+    toggle_group[single],
+    toggle[outline, with_text, disabled],
     toolbar,
     tooltip,
 );

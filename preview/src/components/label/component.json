@@ -1,6 +1,6 @@
 {
   "name": "label",
-  "description": "An accessible label component for form elements.",
+  "description": "Renders an accessible label associated with controls.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

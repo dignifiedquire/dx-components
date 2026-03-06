@@ -1,6 +1,6 @@
 {
   "name": "select",
-  "description": "A select dropdown component with typeahead support.",
+  "description": "Displays a list of options for the user to pick from, triggered by a button.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

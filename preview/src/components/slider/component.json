@@ -1,6 +1,6 @@
 {
   "name": "slider",
-  "description": "An accessable slider component.",
+  "description": "An input where the user selects a value from within a given range.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

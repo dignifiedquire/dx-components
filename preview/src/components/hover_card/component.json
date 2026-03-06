@@ -1,6 +1,6 @@
 {
   "name": "hover_card",
-  "description": "A hover card component for displaying additional information on hover.",
+  "description": "For sighted users to preview content available behind a link.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

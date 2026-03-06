@@ -1,6 +1,6 @@
 {
   "name": "textarea",
-  "description": "a textarea component used to allow users to enter multi-line text input",
+  "description": "Displays a form textarea or a component that looks like a textarea.",
   "authors": [
     "zhiyanzhaijie"
   ],

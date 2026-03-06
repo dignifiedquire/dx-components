@@ -1,6 +1,6 @@
 {
   "name": "toggle",
-  "description": "A simple toggle button component.",
+  "description": "A two-state button that can be either on or off.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

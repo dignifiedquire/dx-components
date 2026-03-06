@@ -1,0 +1,13 @@
+use super::super::component::*;
+use dioxus::prelude::*;
+use dioxus_primitives::label::Label;
+
+#[component]
+pub fn Demo() -> Element {
+    rsx! {
+        div { class: "grid w-full max-w-sm gap-1.5",
+            Label { html_for: "email", "Email" }
+            Input { id: "email", r#type: "email", placeholder: "Email" }
+        }
+    }
+}

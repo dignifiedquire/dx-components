@@ -1,6 +1,6 @@
 {
   "name": "calendar",
-  "description": "A calendar grid component for selecting dates.",
+  "description": "A date field component that allows users to enter and edit date.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

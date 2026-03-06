@@ -1,6 +1,6 @@
 {
   "name": "dropdown_menu",
-  "description": "A dropdown menu component for selecting options from a list.",
+  "description": "Displays a menu to the user, triggered by a button.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

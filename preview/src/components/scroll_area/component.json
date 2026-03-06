@@ -1,6 +1,6 @@
 {
   "name": "scroll_area",
-  "description": "A scrollable area component.",
+  "description": "Augments native scroll functionality for custom, cross-browser styling.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

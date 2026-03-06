@@ -1,6 +1,6 @@
 {
   "name": "separator",
-  "description": "A visual separator between different sections of the page.",
+  "description": "Visually or semantically separates content.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

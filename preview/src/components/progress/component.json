@@ -1,6 +1,6 @@
 {
   "name": "progress",
-  "description": "An accessable progress bar indicator.",
+  "description": "Displays an indicator showing the completion progress of a task.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

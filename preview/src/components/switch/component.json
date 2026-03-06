@@ -1,6 +1,6 @@
 {
   "name": "switch",
-  "description": "A togglable switch component.",
+  "description": "A control that allows the user to toggle between a checked and not checked state.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

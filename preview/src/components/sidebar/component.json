@@ -1,6 +1,6 @@
 {
   "name": "sidebar",
-  "description": "A sidebar component as a vertical interface panel fixed to the screen edge, enable quick access to different sections of an application",
+  "description": "A composable, themeable and customizable sidebar component.",
   "authors": [
     "zhiyanzhaijie"
   ],

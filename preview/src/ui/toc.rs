@@ -24,7 +24,7 @@ pub(crate) fn TableOfContents() -> Element {
 
     rsx! {
         aside {
-            class: "sticky top-14 z-30 ml-auto hidden h-[90svh] w-56 flex-col gap-4 overflow-hidden pb-8 xl:flex",
+            class: "sticky top-14 z-30 ml-auto hidden h-[calc(100svh-3.5rem)] w-56 shrink-0 flex-col gap-4 pb-8 xl:flex",
             div {
                 class: "flex flex-col gap-2 p-4 pt-6 text-sm overflow-y-auto",
                 style: "scrollbar-width: none;",

@@ -1,6 +1,6 @@
 {
   "name": "checkbox",
-  "description": "A togglable checkbox component.",
+  "description": "A control that allows the user to toggle between checked and not checked.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

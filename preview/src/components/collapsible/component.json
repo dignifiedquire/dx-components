@@ -1,6 +1,6 @@
 {
   "name": "collapsible",
-  "description": "A collapsible component for showing and hiding content sections.",
+  "description": "An interactive component which expands and collapses.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

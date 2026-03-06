@@ -1,6 +1,6 @@
 {
   "name": "button",
-  "description": "A button component for triggering actions or events when clicked.",
+  "description": "Displays a button or a component that looks like a button.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

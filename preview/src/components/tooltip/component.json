@@ -1,6 +1,6 @@
 {
   "name": "tooltip",
-  "description": "A tooltip component for additional information on hover or focus.",
+  "description": "A popup that displays information related to an element on hover.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

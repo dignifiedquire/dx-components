@@ -1,6 +1,6 @@
 {
   "name": "form",
-  "description": "A form component for collecting user input.",
+  "description": "Building forms with validation and accessible error messages.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

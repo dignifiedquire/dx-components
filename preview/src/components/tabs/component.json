@@ -1,6 +1,6 @@
 {
   "name": "tabs",
-  "description": "A tabbed interface component.",
+  "description": "A set of layered sections of content displayed one at a time.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

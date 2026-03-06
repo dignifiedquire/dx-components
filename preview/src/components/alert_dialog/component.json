@@ -1,6 +1,6 @@
 {
   "name": "alert_dialog",
-  "description": "An alert dialog component for displaying important messages and requiring user confirmation.",
+  "description": "A modal dialog that interrupts the user and expects a response.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [

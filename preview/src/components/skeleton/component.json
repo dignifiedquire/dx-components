@@ -1,6 +1,6 @@
 {
   "name": "skeleton",
-  "description": "A placeholder component for all loading elements.",
+  "description": "Use to show a placeholder while content is loading.",
   "authors": [
     "zhiyanzhaijie"
   ],

@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
-use dioxus_primitives::button::Button;
+use dioxus_primitives::button::{Button, ButtonVariant};
 use dioxus_primitives::dialog::{DialogContent, DialogDescription, DialogRoot, DialogTitle};
+use dioxus_primitives::label::Label;
 
 #[component]
 pub fn Demo() -> Element {
@@ -8,24 +9,40 @@ pub fn Demo() -> Element {
 
     rsx! {
         Button {
-            r#type: "button",
-            "data-style": "outline",
-            style: "margin-bottom: 1.5rem;",
+            variant: ButtonVariant::Outline,
             onclick: move |_| open.set(true),
-            "Show Dialog"
+            "Edit Profile"
         }
         DialogRoot { open: open(), on_open_change: move |v| open.set(v),
             DialogContent {
-                button {
-                    class: "dialog-close",
-                    r#type: "button",
-                    aria_label: "Close",
-                    tabindex: if open() { "0" } else { "-1" },
-                    onclick: move |_| open.set(false),
-                    "×"
+                div { class: "flex flex-col gap-1.5",
+                    DialogTitle { "Edit profile" }
+                    DialogDescription { "Make changes to your profile here. Click save when you're done." }
                 }
-                DialogTitle { "Item information" }
-                DialogDescription { "Here is some additional information about the item." }
+                div { class: "grid gap-4 py-4",
+                    div { class: "grid grid-cols-4 items-center gap-4",
+                        Label { html_for: "name", class: "text-right", "Name" }
+                        input {
+                            id: "name",
+                            class: "input col-span-3",
+                            value: "Pedro Duarte",
+                        }
+                    }
+                    div { class: "grid grid-cols-4 items-center gap-4",
+                        Label { html_for: "username", class: "text-right", "Username" }
+                        input {
+                            id: "username",
+                            class: "input col-span-3",
+                            value: "@peduarte",
+                        }
+                    }
+                }
+                div { class: "flex justify-end",
+                    Button {
+                        onclick: move |_| open.set(false),
+                        "Save changes"
+                    }
+                }
             }
         }
     }

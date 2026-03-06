@@ -1,6 +1,6 @@
 {
   "name": "toolbar",
-  "description": "A toolbar component for grouping related inputs.",
+  "description": "A container for grouping a set of controls, such as buttons or toggles.",
   "authors": ["Evan Almloff"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [
