@@ -1806,6 +1806,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dioxus-components"
+version = "0.0.1"
+dependencies = [
+ "dioxus",
+ "dioxus-primitives 0.0.1",
+ "dioxus-ssr",
+ "dx_icons_tabler",
+ "regex-lite",
+ "tailwind_fuse",
+]
+
+[[package]]
 name = "dioxus-config-macro"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2264,8 +2276,10 @@ dependencies = [
  "dioxus",
  "dioxus-attributes 0.1.0",
  "dioxus-sdk-time",
+ "dioxus-ssr",
  "lazy-js-bundle 0.6.2",
  "num-integer",
+ "regex-lite",
  "tailwind_fuse",
  "time",
  "tracing",
@@ -5951,6 +5965,7 @@ name = "preview"
 version = "0.1.0"
 dependencies = [
  "dioxus",
+ "dioxus-components",
  "dioxus-i18n",
  "dioxus-primitives 0.0.1",
  "dx_icons_tabler",
@@ -6395,6 +6410,12 @@ dependencies = [
  "memchr",
  "regex-syntax",
 ]
+
+[[package]]
+name = "regex-lite"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cab834c73d247e67f4fae452806d17d3c7501756d98c8808d7c9c7aa7d18f973"
 
 [[package]]
 name = "regex-syntax"

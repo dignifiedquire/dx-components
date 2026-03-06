@@ -1,11 +1,9 @@
 //! Defines the [`Collapsible`] component and its sub-components.
 
-use crate::{merge_attributes, use_controlled, use_id_or, use_unique_id};
+use crate::{merge_attributes, use_controlled, use_id_or, use_presence, use_unique_id};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 use tailwind_fuse::*;
-
-// TODO: more docs
 
 #[derive(Clone, Copy)]
 struct CollapsibleCtx {
@@ -64,36 +62,13 @@ pub struct CollapsibleProps {
 
 /// # Collapsible
 ///
-/// The [`Collapsible`] component is a container that can be expanded or collapsed to show or hide its content.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::collapsible::{Collapsible, CollapsibleContent, CollapsibleTrigger};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Collapsible {
-///             CollapsibleTrigger {
-///                 b { "Recent Activity" }
-///             }
-///             CollapsibleContent {
-///                 div {
-///                     "Fixed a bug in the collapsible component",
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// A container that can be expanded or collapsed to show or hide its content.
+/// Matches the Radix UI Collapsible primitive.
 ///
 /// ## Styling
 ///
-/// The [`Collapsible`] component defines the following data attributes you can use to control styling:
-/// - `data-open`: Indicates if the collapsible is open. Values are `true` or `false`.
-/// - `data-disabled`: Indicates if the collapsible is disabled. values are `true` or `false`.
+/// - `data-state`: `"open"` or `"closed"`
+/// - `data-disabled`: Present when disabled
 #[component]
 pub fn Collapsible(props: CollapsibleProps) -> Element {
     let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
@@ -108,9 +83,10 @@ pub fn Collapsible(props: CollapsibleProps) -> Element {
     });
 
     let class = tw_merge!(props.class);
+    let data_state = if open() { "open" } else { "closed" };
     let base = attributes!(div {
         "data-slot": "collapsible",
-        "data-open": open,
+        "data-state": data_state,
         "data-disabled": props.disabled,
         class: class,
     });
@@ -147,59 +123,79 @@ pub struct CollapsibleContentProps {
 
 /// # CollapsibleContent
 ///
-/// The [`CollapsibleContent`] component defines the content of a collapsible section. The
-/// contents will only be rendered if the collapsible is open, or if the [`CollapsibleProps::keep_mounted`] prop is set to `true`.
+/// The collapsible content that shows/hides. Matches the Radix UI CollapsibleContent primitive.
 ///
-/// This must be used inside a [`Collapsible`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::collapsible::{Collapsible, CollapsibleContent, CollapsibleTrigger};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Collapsible {
-///             CollapsibleTrigger {
-///                 b { "Recent Activity" }
-///             }
-///             CollapsibleContent {
-///                 div {
-///                     "Fixed a bug in the collapsible component",
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// Sets `--radix-collapsible-content-height` and `--radix-collapsible-content-width` CSS variables
+/// on the element for use in animations.
 ///
 /// ## Styling
 ///
-/// The [`CollapsibleContent`] component defines the following data attributes you can use to control styling:
-/// - `data-open`: Indicates if the collapsible is open. Values are `true` or `false`.
-/// - `data-disabled`: Indicates if the collapsible is disabled. values are `true` or `false`.
+/// - `data-state`: `"open"` or `"closed"`
+/// - `data-disabled`: Present when disabled
 #[component]
 pub fn CollapsibleContent(props: CollapsibleContentProps) -> Element {
     let ctx: CollapsibleCtx = use_context();
     let id = use_id_or(ctx.aria_controls_id, props.id);
-
     let open = ctx.open;
+
+    let mut presence = use_presence(open);
+
+    // Measured dimensions (set via inner wrapper measurement).
+    let mut content_height = use_signal(|| None::<f64>);
+    let mut content_width = use_signal(|| None::<f64>);
+
+    // CSS variable inline style (matching Radix's --radix-collapsible-content-height/width).
+    let style = match (content_height(), content_width()) {
+        (Some(h), Some(w)) => {
+            format!(
+                "--radix-collapsible-content-height: {h}px; --radix-collapsible-content-width: {w}px;"
+            )
+        }
+        (Some(h), None) => format!("--radix-collapsible-content-height: {h}px;"),
+        (None, Some(w)) => format!("--radix-collapsible-content-width: {w}px;"),
+        _ => String::new(),
+    };
+
+    // Matches Radix: isOpen = context.open || isPresent
+    let is_open = open() || presence.is_present();
+    let force = (ctx.keep_mounted)();
 
     let class = tw_merge!(props.class);
 
     rsx! {
-        div {
-            id: id,
-            "data-slot": "collapsible-content",
-            class: class,
-            "data-open": open,
-            "data-disabled": ctx.disabled,
-            ..props.attributes,
+        if force || presence.is_present() {
+            div {
+                id: id,
+                "data-slot": "collapsible-content",
+                "data-state": presence.data_state(),
+                "data-disabled": ctx.disabled,
+                class: class,
+                style: "{style}",
+                hidden: !is_open,
 
-            if open() || (ctx.keep_mounted)() {
-                {props.children}
+                onanimationend: move |_| {
+                    presence.on_animation_end();
+                },
+
+                ..props.attributes,
+
+                // Inner wrapper for async height measurement.
+                // We measure this div (which has natural height) while the outer div
+                // may be constrained by animations.
+                if is_open || force {
+                    div {
+                        onmounted: move |evt| {
+                            let data = evt.data();
+                            spawn(async move {
+                                if let Ok(rect) = data.get_client_rect().await {
+                                    content_height.set(Some(rect.size.height));
+                                    content_width.set(Some(rect.size.width));
+                                }
+                            });
+                        },
+                        {props.children}
+                    }
+                }
             }
         }
     }
@@ -208,9 +204,24 @@ pub fn CollapsibleContent(props: CollapsibleContentProps) -> Element {
 /// The props for the [`CollapsibleTrigger`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct CollapsibleTriggerProps {
+    /// The ID of the trigger element.
+    pub id: ReadSignal<Option<String>>,
+
     /// Render the trigger element as a custom component/element.
     #[props(default)]
     pub r#as: Option<Callback<Vec<Attribute>, Element>>,
+
+    // Explicit event props — required because `extends = GlobalAttributes`
+    // does not capture event handlers (https://github.com/DioxusLabs/dioxus/issues/2467).
+    /// Callback fired when the trigger is mounted.
+    #[props(default)]
+    pub onmounted: Callback<Event<MountedData>>,
+    /// Callback fired when the trigger receives focus.
+    #[props(default)]
+    pub onfocus: Callback<Event<FocusData>>,
+    /// Callback fired when a key is pressed on the trigger.
+    #[props(default)]
+    pub onkeydown: Callback<Event<KeyboardData>>,
 
     /// Additional Tailwind classes to apply.
     #[props(default)]
@@ -226,50 +237,28 @@ pub struct CollapsibleTriggerProps {
 
 /// # CollapsibleTrigger
 ///
-/// The [`CollapsibleTrigger`] component is the button or element that toggles the visibility of the collapsible content.
-///
-/// This must be used inside a [`Collapsible`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::collapsible::{Collapsible, CollapsibleContent, CollapsibleTrigger};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Collapsible {
-///             CollapsibleTrigger {
-///                 b { "Recent Activity" }
-///             }
-///             CollapsibleContent {
-///                 div {
-///                     "Fixed a bug in the collapsible component",
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// The button that toggles the collapsible open/closed state.
+/// Matches the Radix UI CollapsibleTrigger primitive.
 ///
 /// ## Styling
 ///
-/// The [`CollapsibleTrigger`] component defines the following data attributes you can use to control styling:
-/// - `data-open`: Indicates if the collapsible is open. Values are `true` or `false`.
-/// - `data-disabled`: Indicates if the collapsible is disabled. values are `true` or `false`.
+/// - `data-state`: `"open"` or `"closed"`
+/// - `data-disabled`: Present when disabled
 #[component]
 pub fn CollapsibleTrigger(props: CollapsibleTriggerProps) -> Element {
     let ctx: CollapsibleCtx = use_context();
 
     let open = ctx.open;
+    let data_state = if open() { "open" } else { "closed" };
 
+    let id = use_id_or(use_unique_id(), props.id);
     let class = tw_merge!(props.class);
     let base = attributes!(button {
         r#type: "button",
+        id: id,
         "data-slot": "collapsible-trigger",
         class: class,
-        "data-open": open,
+        "data-state": data_state,
         "data-disabled": ctx.disabled,
         disabled: ctx.disabled,
         "aria-controls": ctx.aria_controls_id,
@@ -286,6 +275,9 @@ pub fn CollapsibleTrigger(props: CollapsibleTriggerProps) -> Element {
     } else {
         rsx! {
             button {
+                onmounted: props.onmounted,
+                onfocus: props.onfocus,
+                onkeydown: props.onkeydown,
                 ..merged,
                 {props.children}
             }

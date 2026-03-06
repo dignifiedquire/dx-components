@@ -1,1 +1,1 @@
-pub use dioxus_primitives::accordion::*;
+pub use dioxus_components::accordion::*;

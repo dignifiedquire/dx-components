@@ -1,0 +1,15 @@
+[package]
+name = "dioxus-components"
+version = "0.0.1"
+edition = "2024"
+description = "Styled UI components matching shadcn/ui, built on dioxus-primitives."
+
+[dependencies]
+dioxus-primitives = { path = "../primitives" }
+dioxus = { workspace = true }
+tailwind_fuse = { workspace = true }
+dx_icons_tabler = "0.1.0"
+
+[dev-dependencies]
+dioxus-ssr = "0.7.0"
+regex-lite = "0.1"

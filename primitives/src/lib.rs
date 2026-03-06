@@ -228,6 +228,75 @@ fn use_animated_open(
     move || show_in_dom() || animating()
 }
 
+/// Presence state machine matching Radix's Presence component.
+/// Manages mount/unmount lifecycle with animation awareness.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum PresenceState {
+    /// Element is visible in the DOM.
+    Mounted,
+    /// Close animation is in progress, element still in DOM.
+    UnmountSuspended,
+    /// Element removed from DOM.
+    Unmounted,
+}
+
+/// Returned by [`use_presence`]. Provides state and callbacks for animation-aware mount/unmount.
+#[derive(Clone, Copy)]
+pub(crate) struct UsePresence {
+    state: Signal<PresenceState>,
+    open: Memo<bool>,
+}
+
+impl UsePresence {
+    /// Whether the element should be present in the DOM
+    /// (true during open state and during close animation).
+    pub fn is_present(&self) -> bool {
+        !matches!(*self.state.read(), PresenceState::Unmounted)
+    }
+
+    /// Returns `"open"` or `"closed"` matching Radix's `data-state` attribute values.
+    pub fn data_state(&self) -> &'static str {
+        if (self.open)() {
+            "open"
+        } else {
+            "closed"
+        }
+    }
+
+    /// Must be called from the element's `onanimationend` handler.
+    /// Transitions `UnmountSuspended` → `Unmounted` when the close animation finishes.
+    pub fn on_animation_end(&mut self) {
+        if *self.state.peek() == PresenceState::UnmountSuspended {
+            self.state.set(PresenceState::Unmounted);
+        }
+    }
+}
+
+/// Animation-aware presence hook matching Radix's `Presence` component.
+///
+/// Unlike `use_animated_open` (which uses eval), this uses the native `onanimationend`
+/// DOM event for detecting animation completion.
+///
+/// The component using this hook must wire `onanimationend` to [`UsePresence::on_animation_end`].
+pub(crate) fn use_presence(open: Memo<bool>) -> UsePresence {
+    let initial = if open() {
+        PresenceState::Mounted
+    } else {
+        PresenceState::Unmounted
+    };
+    let mut state = use_signal(|| initial);
+
+    use_effect(move || {
+        if open() {
+            state.set(PresenceState::Mounted);
+        } else if *state.peek() == PresenceState::Mounted {
+            state.set(PresenceState::UnmountSuspended);
+        }
+    });
+
+    UsePresence { state, open }
+}
+
 /// The side where the content will be displayed relative to the trigger
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ContentSide {

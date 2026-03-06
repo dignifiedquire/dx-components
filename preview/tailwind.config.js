@@ -3,6 +3,7 @@ module.exports = {
   content: [
     "./src/**/*.{rs,html,css}",
     "../primitives/src/**/*.rs",
+    "../components/src/**/*.rs",
   ],
   darkMode: ["class"],
   theme: {

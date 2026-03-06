@@ -1,175 +1,123 @@
-//! Defines the [`Accordion`] component and its sub-components.
+//! Defines the [`Accordion`] primitive and its sub-components.
+//!
+//! This is an unstyled behavioral primitive matching Radix UI's architecture.
+//! AccordionItem wraps Collapsible, AccordionTrigger wraps CollapsibleTrigger,
+//! and AccordionContent wraps CollapsibleContent with CSS variable aliases.
 
+use crate::collapsible::{Collapsible, CollapsibleContent, CollapsibleTrigger};
 use crate::dioxus_elements::Key;
-use crate::{use_animated_open, use_effect_cleanup, use_id_or, use_unique_id};
+use crate::{use_effect_cleanup, use_unique_id};
 use dioxus::prelude::*;
 use std::rc::Rc;
-use tailwind_fuse::*;
 
-// TODO: controlled version
-// TODO: rewrite this to use collapsible
-// TODO: keyboard should skip disabled items when focusing.
+// ---------------------------------------------------------------------------
+// Accordion-level context (manages which items are open, keyboard nav)
+// ---------------------------------------------------------------------------
 
-/// Internal accordion context.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 struct AccordionContext {
-    /// Used to track the next runtime-generated id.
-    next_id: Signal<usize>,
-
-    /// The runtime generated ids of the open items.
-    open_items: Signal<Vec<usize>>,
-
-    /// Whether multiple items can be open at once.
+    open_values: Signal<Vec<String>>,
     allow_multiple_open: ReadSignal<bool>,
-
-    /// Whether the entire accordion is disabled.
     disabled: ReadSignal<bool>,
-
-    /// Whether all accordion items can be collapsed.
     collapsible: ReadSignal<bool>,
-
-    /// Whether the accordion is horizontal.
     horizontal: ReadSignal<bool>,
-
-    /// Number of current accordion items.
     num_items: Signal<usize>,
-
-    /// The focused accordion item by index, if any.
     focused_index: Signal<Option<usize>>,
 }
 
 impl AccordionContext {
-    pub fn new(
-        allow_multiple_open: ReadSignal<bool>,
-        disabled: ReadSignal<bool>,
-        collapsible: ReadSignal<bool>,
-        horizontal: ReadSignal<bool>,
-    ) -> Self {
-        Self {
-            next_id: Signal::new(0),
-            num_items: Signal::new(0),
-            open_items: Signal::new(Vec::new()),
-            allow_multiple_open,
-            disabled,
-            collapsible,
-            horizontal,
-            focused_index: Signal::new(None),
+    fn on_item_open(&mut self, value: &str) {
+        let mut open = self.open_values.write();
+        if !(self.allow_multiple_open)() {
+            open.clear();
         }
+        open.push(value.to_string());
     }
 
-    pub fn register_item(&mut self) -> usize {
-        let mut next_id = self.next_id.write();
-        let id = *next_id;
-        *next_id += 1;
-
-        self.num_items += 1;
-
-        id
-    }
-
-    pub fn unregister_item(&mut self) {
-        self.num_items -= 1;
-    }
-
-    pub fn set_open(&mut self, id: usize) {
-        if !*self.allow_multiple_open.peek() {
-            self.open_items.clear();
-        }
-        self.open_items.push(id);
-    }
-
-    pub fn set_closed(&mut self, id: usize) {
-        let mut open_items = self.open_items.write();
-
-        // If the accordion is not collapsible, we can't close this one.
-        if !*self.collapsible.peek() && open_items.len() == 1 {
+    fn on_item_close(&mut self, value: &str) {
+        let mut open = self.open_values.write();
+        if !(self.collapsible)() && open.len() == 1 {
             return;
         }
-
-        *open_items = open_items
-            .iter()
-            .cloned()
-            .filter(|item| *item != id)
-            .collect();
+        open.retain(|v| v != value);
     }
 
-    pub fn is_open(&self, id: usize) -> bool {
-        self.open_items.read().contains(&id)
+    fn is_open(&self, value: &str) -> bool {
+        self.open_values.read().iter().any(|v| v == value)
     }
 
-    pub fn is_disabled(&self) -> bool {
+    fn is_disabled(&self) -> bool {
         (self.disabled)()
     }
 
-    pub fn is_focused(&self, index: usize) -> bool {
-        if let Some(current_index) = *self.focused_index.read() {
-            return current_index == index;
-        }
-
-        false
+    fn is_horizontal(&self) -> bool {
+        (self.horizontal)()
     }
 
-    /// Set the currently focused accordion item.
-    ///
-    /// This should be used by `focus`/`focusout` event only to start tracking focus.
-    pub fn set_focus(&mut self, id: Option<usize>) {
-        self.focused_index.set(id);
+    fn set_focus(&mut self, index: Option<usize>) {
+        self.focused_index.set(index);
     }
 
-    /// Focus the next accordion item.
-    pub fn focus_next(&mut self) {
-        let Some(id) = *self.focused_index.read() else {
+    fn is_focused(&self, index: usize) -> bool {
+        *self.focused_index.read() == Some(index)
+    }
+
+    fn focus_next(&mut self) {
+        let Some(current) = *self.focused_index.read() else {
             return;
         };
-
-        let mut next_focused = id.saturating_add(1);
-
-        let count = (self.num_items)() - 1;
-        if id == count {
-            next_focused = 0;
+        let count = (self.num_items)();
+        if count == 0 {
+            return;
         }
-
-        self.focused_index.set(Some(next_focused));
+        self.focused_index.set(Some((current + 1) % count));
     }
 
-    /// Focus the previous accordion item.
-    pub fn focus_prev(&mut self) {
-        let Some(id) = *self.focused_index.read() else {
+    fn focus_prev(&mut self) {
+        let Some(current) = *self.focused_index.read() else {
             return;
         };
-
-        let mut next_focused = id.saturating_sub(1);
-
-        let count = (self.num_items)() - 1;
-        if id == 0 {
-            next_focused = count;
+        let count = (self.num_items)();
+        if count == 0 {
+            return;
         }
-
-        self.focused_index.set(Some(next_focused));
+        self.focused_index
+            .set(Some(if current == 0 { count - 1 } else { current - 1 }));
     }
 
-    pub fn focus_start(&mut self) {
+    fn focus_start(&mut self) {
         self.focused_index.set(Some(0));
     }
 
-    pub fn focus_end(&mut self) {
-        self.focused_index.set(Some((self.num_items)() - 1));
-    }
-
-    pub fn is_horizontal(&self) -> bool {
-        (self.horizontal)()
+    fn focus_end(&mut self) {
+        let count = (self.num_items)();
+        if count > 0 {
+            self.focused_index.set(Some(count - 1));
+        }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Per-item context (shared between AccordionItem, Trigger, Content)
+// ---------------------------------------------------------------------------
+
+#[derive(Clone)]
+struct AccordionItemCtx {
+    value: String,
+    index: usize,
+    open: Memo<bool>,
+    trigger_id: Signal<String>,
+    content_id: Signal<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Accordion (root)
+// ---------------------------------------------------------------------------
 
 /// The props for the [`Accordion`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct AccordionProps {
-    /// The id of the accordion root element.
-    pub id: Option<String>,
-
     /// Whether multiple accordion items are allowed to be open at once.
-    ///
-    /// Defaults to false.
     #[props(default)]
     pub allow_multiple_open: ReadSignal<bool>,
 
@@ -184,12 +132,10 @@ pub struct AccordionProps {
     pub collapsible: ReadSignal<bool>,
 
     /// Whether the accordion is horizontal.
-    ///
-    /// Settings this to true will use left/right keybinds for navigation instead of up/down. Defaults to false.
     #[props(default)]
     pub horizontal: ReadSignal<bool>,
 
-    /// Additional Tailwind classes to apply.
+    /// Additional classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
@@ -197,77 +143,34 @@ pub struct AccordionProps {
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the accordion, which should contain [`AccordionItem`] components.
+    /// The children of the accordion.
     pub children: Element,
 }
 
 /// # Accordion
 ///
-/// The accordion component displays a list of collapsible items, allowing users to expand or collapse sections of content.
+/// A vertically stacked set of interactive headings that each reveal a section of content.
 ///
-/// ## Example
+/// ## Data attributes
 ///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::accordion::{
-///     Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-/// };
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Accordion {
-///             allow_multiple_open: false,
-///             horizontal: false,
-///             for i in 0..4 {
-///                 AccordionItem {
-///                     index: i,
-///                     on_change: move |open| {
-///                         tracing::info!("{open};");
-///                     },
-///                     on_trigger_click: move || {
-///                         tracing::info!("trigger");
-///                     },
-///                     AccordionTrigger {
-///                         "the quick brown fox"
-///                     }
-///                     AccordionContent {
-///                         div { padding_bottom: "1rem",
-///                             p {
-///                                 padding: "0",
-///                                 "Jumped over the lazy dog."
-///                             }
-///                         }
-///                     }
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
-/// ## Styling
-///
-/// The [`Accordion`] component defines the following data attributes you can use to control styling:
-/// - `data-disabled`: Indicates if the accordion is disabled. values are `true` or `false`.
+/// - `data-slot="accordion"`
+/// - `data-disabled`: Present when disabled
 #[component]
 pub fn Accordion(props: AccordionProps) -> Element {
-    let mut ctx = use_context_provider(|| {
-        AccordionContext::new(
-            props.allow_multiple_open,
-            props.disabled,
-            props.collapsible,
-            props.horizontal,
-        )
+    let mut ctx = use_context_provider(|| AccordionContext {
+        open_values: Signal::new(Vec::new()),
+        allow_multiple_open: props.allow_multiple_open,
+        disabled: props.disabled,
+        collapsible: props.collapsible,
+        horizontal: props.horizontal,
+        num_items: Signal::new(0),
+        focused_index: Signal::new(None),
     });
-
-    let class = tw_merge!(props.class);
 
     rsx! {
         div {
-            id: props.id,
             "data-slot": "accordion",
-            class: class,
+            class: props.class,
             "data-disabled": (props.disabled)(),
 
             onfocusout: move |_| {
@@ -281,9 +184,16 @@ pub fn Accordion(props: AccordionProps) -> Element {
     }
 }
 
+// ---------------------------------------------------------------------------
+// AccordionItem
+// ---------------------------------------------------------------------------
+
 /// The props for the [`AccordionItem`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct AccordionItemProps {
+    /// A unique string value for this accordion item.
+    pub value: String,
+
     /// Whether the accordion item is disabled.
     #[props(default)]
     pub disabled: ReadSignal<bool>,
@@ -292,22 +202,10 @@ pub struct AccordionItemProps {
     #[props(default)]
     pub default_open: bool,
 
-    /// Callback for when the accordion's open/closed state changes.
-    ///
-    /// The new value is provided.
-    #[props(default)]
-    pub on_change: Callback<bool, ()>,
-
-    /// Callback for when the trigger is clicked.
-    #[props(default)]
-    pub on_trigger_click: Callback,
-
     /// The index of the accordion item within the [`Accordion`].
-    ///
-    /// This is required to implement keyboard navigation and focus management.
     pub index: usize,
 
-    /// Additional Tailwind classes to apply.
+    /// Additional classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
@@ -319,222 +217,160 @@ pub struct AccordionItemProps {
     pub children: Element,
 }
 
-/// # Accordion Item
+/// # AccordionItem
 ///
-/// The accordion item component represents a single item within an accordion, which can be expanded or collapsed to show or hide its content.
+/// Contains all parts of a collapsible section inside an [`Accordion`].
+/// Wraps `Collapsible` root with controlled open state.
 ///
-/// The [`AccordionItem`] component must be used underneath the [`Accordion`] component.
+/// ## Data attributes
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::accordion::{
-///     Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-/// };
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Accordion {
-///             AccordionItem {
-///                 index: 0,
-///                 AccordionTrigger {
-///                     "the quick brown fox"
-///                 }
-///                 AccordionContent {
-///                     "Jumped over the lazy dog."
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
-/// ## Styling
-///
-/// The [`AccordionItem`] component defines the following data attributes you can use to control styling:
-/// - `data-open`: Indicates if the accordion item is open. values are `true` or `false`.
-/// - `data-disabled`: Indicates if the accordion is disabled. values are `true` or `false`.
+/// - `data-state`: `"open"` or `"closed"` (from Collapsible)
+/// - `data-disabled`: Present when disabled (from Collapsible)
 #[component]
 pub fn AccordionItem(props: AccordionItemProps) -> Element {
     let mut ctx: AccordionContext = use_context();
-    let aria_id = use_unique_id();
+    let trigger_id = use_unique_id();
+    let content_id = use_unique_id();
 
-    let item = use_context_provider(|| Item {
-        id: ctx.register_item(),
-        index: props.index,
-        aria_id,
-        disabled: props.disabled,
-        on_trigger_click: props.on_trigger_click,
+    let value = props.value.clone();
+
+    use_hook(|| {
+        ctx.num_items += 1;
+    });
+    use_effect_cleanup(move || {
+        ctx.num_items -= 1;
     });
 
-    use_effect_cleanup(move || ctx.unregister_item());
-
-    // Open this item if we're set as default.
-    use_hook(move || {
+    use_hook(|| {
         if props.default_open {
-            ctx.set_open(item.id);
+            ctx.on_item_open(&value);
         }
     });
 
-    // Handle calling `on_change` callback.
-    use_effect(move || {
-        let open = ctx.is_open(item.id);
-        props.on_change.call(open)
+    let item_value = props.value.clone();
+    let open = use_memo(move || ctx.is_open(&item_value));
+
+    use_context_provider(|| AccordionItemCtx {
+        value: props.value.clone(),
+        index: props.index,
+        open,
+        trigger_id,
+        content_id,
     });
 
-    let class = tw_merge!("border-b last:border-b-0", props.class);
+    let is_disabled = ctx.is_disabled() || (props.disabled)();
+
+    let on_open_change = {
+        let v = props.value.clone();
+        use_callback(move |new_open: bool| {
+            if new_open {
+                ctx.on_item_open(&v);
+            } else {
+                ctx.on_item_close(&v);
+            }
+        })
+    };
+
+    // Wrap the bool memo as Option<bool> so Collapsible sees a controlled value.
+    // Using a Memo (not Signal::new) keeps reactivity stable across renders.
+    let controlled_open = use_memo(move || Some(open()));
 
     rsx! {
-        div {
-            "data-slot": "accordion-item",
-            class: class,
-            "data-open": ctx.is_open(item.id),
-            "data-disabled": ctx.is_disabled() || item.is_disabled(),
-            ..props.attributes,
-
+        Collapsible {
+            open: controlled_open,
+            on_open_change: on_open_change,
+            disabled: if is_disabled { true } else { false },
+            class: props.class,
+            attributes: props.attributes,
             {props.children}
         }
     }
 }
 
-/// The props for the [`AccordionContent`] component.
+// ---------------------------------------------------------------------------
+// AccordionHeader
+// ---------------------------------------------------------------------------
+
+/// The props for the [`AccordionHeader`] component.
 #[derive(Props, Clone, PartialEq)]
-pub struct AccordionContentProps {
-    /// The id of the accordion content element.
-    pub id: ReadSignal<Option<String>>,
-    /// Additional Tailwind classes to apply.
+pub struct AccordionHeaderProps {
+    /// Additional classes to apply.
     #[props(default)]
     pub class: Option<String>,
-    /// Additional attributes to extend the content element.
+
+    /// Additional attributes to extend the header element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the accordion content element.
+
+    /// The children (should contain an [`AccordionTrigger`]).
     pub children: Element,
 }
 
-/// # Accordion Content
+/// # AccordionHeader
 ///
-/// The accordion content component represents the content of an accordion item that can be
-/// expanded or collapsed. The contents will only be displayed when the [`AccordionItem`] is open.
+/// Wraps the trigger in an `<h3>` element, matching Radix's `AccordionHeader`.
 ///
-/// This must be used underneath the [`AccordionItem`] component.
+/// ## Data attributes
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::accordion::{
-///     Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-/// };
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Accordion {
-///             AccordionItem {
-///                 index: 0,
-///                 AccordionTrigger {
-///                     "the quick brown fox"
-///                 }
-///                 AccordionContent {
-///                     "Jumped over the lazy dog."
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
-/// ## Styling
-///
-/// The [`AccordionContent`] component defines the following data attributes you can use to control styling:
-/// - `data-open`: Indicates if the accordion item is open. values are `true` or `false`.
+/// - `data-slot="accordion-header"`
+/// - `data-state`: `"open"` or `"closed"`
+/// - `data-disabled`: Present when disabled
 #[component]
-pub fn AccordionContent(props: AccordionContentProps) -> Element {
-    let item: Item = use_context();
-    let id = use_id_or(item.aria_id, props.id);
+pub fn AccordionHeader(props: AccordionHeaderProps) -> Element {
+    let item: AccordionItemCtx = use_context();
     let ctx: AccordionContext = use_context();
-    let open = use_memo(move || ctx.is_open(item.id));
-
-    let render_element = use_animated_open(id, open);
-
-    let class = tw_merge!(
-        "overflow-hidden text-sm data-[open=false]:animate-accordion-up data-[open=true]:animate-accordion-down",
-        props.class,
-    );
+    let data_state = if (item.open)() { "open" } else { "closed" };
+    let is_disabled = ctx.is_disabled();
 
     rsx! {
-        if render_element() {
-            div {
-                id: id,
-                "data-slot": "accordion-content",
-                class: class,
-                "data-open": open,
-                ..props.attributes,
-
-                {props.children}
-            }
+        h3 {
+            "data-slot": "accordion-header",
+            "data-state": data_state,
+            "data-disabled": is_disabled,
+            class: props.class,
+            ..props.attributes,
+            {props.children}
         }
     }
 }
 
+// ---------------------------------------------------------------------------
+// AccordionTrigger
+// ---------------------------------------------------------------------------
+
 /// The props for the [`AccordionTrigger`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct AccordionTriggerProps {
-    /// THe id of the accordion trigger element.
-    pub id: Option<String>,
-    /// Additional Tailwind classes to apply.
+    /// Additional classes to apply.
     #[props(default)]
     pub class: Option<String>,
+
     /// Additional attributes to extend the trigger element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
+
     /// The children of the accordion trigger element.
     pub children: Element,
 }
 
-/// # Accordion Trigger
+/// # AccordionTrigger
 ///
-/// The accordion trigger component is a button that toggles the open/closed state of an [`AccordionItem`].
+/// Toggles the open/closed state of an [`AccordionItem`].
+/// Wraps `CollapsibleTrigger` and adds keyboard navigation.
 ///
-/// The [`AccordionTrigger`] component must be used underneath the [`AccordionItem`] component.
+/// ## Data attributes
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::accordion::{
-///     Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-/// };
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Accordion {
-///             AccordionItem {
-///                 index: 0,
-///                 AccordionTrigger {
-///                     "the quick brown fox"
-///                 }
-///                 AccordionContent {
-///                     "Jumped over the lazy dog."
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// - `data-state`: `"open"` or `"closed"` (from CollapsibleTrigger)
+/// - `data-disabled`: Present when disabled (from CollapsibleTrigger)
 #[component]
 pub fn AccordionTrigger(props: AccordionTriggerProps) -> Element {
     let mut ctx: AccordionContext = use_context();
-    let item: Item = use_context();
-    let is_disabled = ctx.is_disabled() || item.is_disabled();
+    let item: AccordionItemCtx = use_context();
 
     let mut btn_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+    let index = item.index;
     use_effect(move || {
-        let is_focused = ctx.is_focused(item.index);
+        let is_focused = ctx.is_focused(index);
         if is_focused {
             if let Some(md) = btn_ref() {
                 spawn(async move {
@@ -544,28 +380,16 @@ pub fn AccordionTrigger(props: AccordionTriggerProps) -> Element {
         }
     });
 
-    let class = tw_merge!(
-        "flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&[aria-expanded=true]>svg]:rotate-180",
-        props.class,
-    );
-
     rsx! {
-        button {
-            id: props.id,
-            "data-slot": "accordion-trigger",
-            class: class,
-            disabled: is_disabled,
-            tabindex: "0",
-            type: "button",
-
-            aria_controls: item.aria_id(),
-            aria_expanded: ctx.is_open(item.id),
-
-            onmounted: move |data| btn_ref.set(Some(data.data())),
+        CollapsibleTrigger {
+            id: Signal::new(Some((item.trigger_id)())),
+            class: props.class,
+            attributes: props.attributes,
+            onmounted: move |data: MountedEvent| btn_ref.set(Some(data.data())),
             onfocus: move |_| {
-                ctx.set_focus(Some(item.id));
+                ctx.set_focus(Some(index));
             },
-            onkeydown: move |event| {
+            onkeydown: move |event: KeyboardEvent| {
                 let key = event.key();
                 let horizontal = ctx.is_horizontal();
                 let mut prevent_default = true;
@@ -585,42 +409,56 @@ pub fn AccordionTrigger(props: AccordionTriggerProps) -> Element {
                 }
             },
 
-            onclick: move |_| {
-                if is_disabled {
-                    return;
-                }
-                item.on_trigger_click.call(());
-
-                // If the item is not controlled, handle state.
-                match ctx.is_open(item.id) {
-                    true => ctx.set_closed(item.id),
-                    false => ctx.set_open(item.id),
-                }
-            },
-
-            ..props.attributes,
-
             {props.children}
         }
     }
 }
 
-/// Internal accordion-item context.
-#[derive(Clone, Copy, PartialEq)]
-struct Item {
-    id: usize,
-    index: usize,
-    aria_id: Signal<String>,
-    disabled: ReadSignal<bool>,
-    on_trigger_click: Callback,
+// ---------------------------------------------------------------------------
+// AccordionContent
+// ---------------------------------------------------------------------------
+
+/// The props for the [`AccordionContent`] component.
+#[derive(Props, Clone, PartialEq)]
+pub struct AccordionContentProps {
+    /// Additional classes to apply.
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Additional attributes to extend the content element.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// The children of the accordion content element.
+    pub children: Element,
 }
 
-impl Item {
-    pub fn is_disabled(&self) -> bool {
-        (self.disabled)()
-    }
+/// # AccordionContent
+///
+/// The collapsible content for an [`AccordionItem`].
+/// Wraps `CollapsibleContent` and aliases CSS variables for accordion-specific animations.
+///
+/// Sets `--radix-accordion-content-height` and `--radix-accordion-content-width`
+/// as aliases to `--radix-collapsible-content-height` and `--radix-collapsible-content-width`.
+///
+/// ## Data attributes
+///
+/// - `data-state`: `"open"` or `"closed"` (from CollapsibleContent)
+#[component]
+pub fn AccordionContent(props: AccordionContentProps) -> Element {
+    let item: AccordionItemCtx = use_context();
+    let content_id = item.content_id;
 
-    pub fn aria_id(&self) -> String {
-        (self.aria_id)()
+    rsx! {
+        CollapsibleContent {
+            id: Signal::new(Some(content_id())),
+            class: props.class,
+            attributes: props.attributes,
+            role: "region",
+            aria_labelledby: item.trigger_id,
+            style: "--radix-accordion-content-height: var(--radix-collapsible-content-height); --radix-accordion-content-width: var(--radix-collapsible-content-width);",
+
+            {props.children}
+        }
     }
 }

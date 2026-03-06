@@ -1,9 +1,10 @@
 [workspace]
 resolver = "3"
-members = ["primitives", "preview", "test-harness", "dioxus-attributes"]
+members = ["primitives", "components", "preview", "test-harness", "dioxus-attributes"]
 
 [workspace.dependencies]
 dioxus-primitives = { path = "primitives" }
+dioxus-components = { path = "components" }
 
 dioxus = "0.7.0"
 tailwind_fuse = { version = "0.3.2", features = ["variant"] }
