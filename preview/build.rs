@@ -159,19 +159,29 @@ fn process_markdown_to_html(markdown_path: &std::path::Path) -> String {
         std::fs::read_to_string(markdown_path).expect("Failed to read markdown file");
     let mut options = Options::empty();
     options.insert(Options::ENABLE_GFM);
+    options.insert(Options::ENABLE_TABLES);
     let parser = Parser::new_ext(&markdown_input, options);
 
     let mut html_output = String::new();
-    let mut in_code_block = false;
     let mut code_lang = String::new();
     let mut code_buf = String::new();
 
-    // Process events, intercepting code blocks for syntect highlighting
+    // Collect non-code-block events into a buffer so pulldown_cmark's HTML renderer
+    // can properly handle multi-event structures like tables.
+    let mut pending_events: Vec<Event> = Vec::new();
     let events: Vec<Event> = parser.collect();
+    let mut in_code_block = false;
     let mut i = 0;
     while i < events.len() {
         match &events[i] {
             Event::Start(Tag::CodeBlock(kind)) => {
+                // Flush any pending non-code events first
+                if !pending_events.is_empty() {
+                    pulldown_cmark::html::push_html(
+                        &mut html_output,
+                        pending_events.drain(..),
+                    );
+                }
                 in_code_block = true;
                 code_buf.clear();
                 code_lang = match kind {
@@ -195,12 +205,14 @@ fn process_markdown_to_html(markdown_path: &std::path::Path) -> String {
                 i += 1;
             }
             _ => {
-                // Process non-code events normally using pulldown_cmark's HTML renderer
-                let single = std::iter::once(events[i].clone());
-                pulldown_cmark::html::push_html(&mut html_output, single);
+                pending_events.push(events[i].clone());
                 i += 1;
             }
         }
+    }
+    // Flush remaining pending events
+    if !pending_events.is_empty() {
+        pulldown_cmark::html::push_html(&mut html_output, pending_events.drain(..));
     }
     html_output
 }
