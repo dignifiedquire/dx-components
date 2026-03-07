@@ -260,38 +260,31 @@ fn NavMain(items: &'static [NavMainItem]) -> Element {
                 for item in items.iter() {
                     Collapsible {
                         default_open: item.is_active,
-                        as: move |attributes: Vec<Attribute>| rsx! {
-                            SidebarMenuItem { key: "{item.title}", attributes,
-                                CollapsibleTrigger {
-                                    as: move |attributes: Vec<Attribute>| rsx! {
-                                        SidebarMenuButton {
-                                            tooltip: rsx! {
-                                                {item.title}
-                                            },
-                                            attributes,
-                                            Icon {}
-                                            span { {item.title} }
-                                            ChevronIcon {}
-                                        }
+                        SidebarMenuItem { key: "{item.title}",
+                            CollapsibleTrigger {
+                                SidebarMenuButton {
+                                    tooltip: rsx! {
+                                        {item.title}
                                     },
+                                    Icon {}
+                                    span { {item.title} }
+                                    ChevronIcon {}
                                 }
-                                CollapsibleContent {
-                                    SidebarMenuSub {
-                                        for sub_item in item.items {
-                                            SidebarMenuSubItem { key: "{sub_item.title}",
-                                                SidebarMenuSubButton {
-                                                    as: move |attributes: Vec<Attribute>| rsx! {
-                                                        a { href: sub_item.url, ..attributes,
-                                                            span { {sub_item.title} }
-                                                        }
-                                                    },
+                            }
+                            CollapsibleContent {
+                                SidebarMenuSub {
+                                    for sub_item in item.items {
+                                        SidebarMenuSubItem { key: "{sub_item.title}",
+                                            SidebarMenuSubButton {
+                                                a { href: sub_item.url,
+                                                    span { {sub_item.title} }
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
-                        },
+                        }
                     }
                 }
             }

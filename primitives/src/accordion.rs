@@ -291,9 +291,6 @@ pub struct AccordionItemProps {
     pub disabled: ReadSignal<bool>,
 
     #[props(default)]
-    pub keep_mounted: ReadSignal<bool>,
-
-    #[props(default)]
     pub class: Option<String>,
 
     #[props(extends = GlobalAttributes)]
@@ -345,8 +342,7 @@ pub fn AccordionItem(props: AccordionItemProps) -> Element {
         Collapsible {
             open: controlled_open,
             on_open_change: on_open_change,
-            disabled: is_disabled,
-            keep_mounted: props.keep_mounted,
+            disabled: is_disabled(),
             class: props.class,
             "data-slot": "accordion-item",
             "data-orientation": orientation,
@@ -435,7 +431,7 @@ pub fn AccordionTrigger(props: AccordionTriggerProps) -> Element {
     // Radix: CollapsiblePrimitive.Trigger
     rsx! {
         CollapsibleTrigger {
-            id: Signal::new(Some((item.trigger_id)())),
+            id: Some((item.trigger_id)()),
             class: props.class,
             "data-orientation": (ctx.orientation)().as_str(),
             "data-radix-collection-item": "",
@@ -461,6 +457,9 @@ pub fn AccordionTrigger(props: AccordionTriggerProps) -> Element {
 #[derive(Props, Clone, PartialEq)]
 pub struct AccordionContentProps {
     #[props(default)]
+    pub force_mount: bool,
+
+    #[props(default)]
     pub class: Option<String>,
 
     #[props(extends = GlobalAttributes)]
@@ -477,7 +476,8 @@ pub fn AccordionContent(props: AccordionContentProps) -> Element {
 
     rsx! {
         CollapsibleContent {
-            id: Signal::new(Some((item.content_id)())),
+            id: Some((item.content_id)()),
+            force_mount: props.force_mount,
             class: props.class,
             "data-orientation": (ctx.orientation)().as_str(),
             attributes: props.attributes,

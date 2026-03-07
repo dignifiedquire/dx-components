@@ -98,10 +98,6 @@ pub struct AccordionItemProps {
     #[props(default)]
     pub disabled: ReadSignal<bool>,
 
-    /// Keep content mounted when closed (maps to Radix's `forceMount`).
-    #[props(default)]
-    pub keep_mounted: ReadSignal<bool>,
-
     /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
@@ -123,7 +119,6 @@ pub fn AccordionItem(props: AccordionItemProps) -> Element {
         primitives::AccordionItem {
             value: props.value,
             disabled: props.disabled,
-            keep_mounted: props.keep_mounted,
             class: class,
             attributes: props.attributes,
             {props.children}
