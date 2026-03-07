@@ -1,18 +1,20 @@
 use dioxus::prelude::*;
-use dioxus_primitives::hover_card::{HoverCard, HoverCardContent, HoverCardTrigger};
+use dioxus_primitives::hover_card::{HoverCardContent, HoverCardRoot, HoverCardTrigger};
 use dioxus_primitives::ContentSide;
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        HoverCard {
+        HoverCardRoot {
             HoverCardTrigger {
-                a { href: "#", class: "text-sm font-medium underline underline-offset-4",
-                    "@dioxuslabs"
-                }
+                class: "text-sm font-medium underline underline-offset-4 cursor-pointer",
+                href: "#",
+                "@dioxuslabs"
             }
-            HoverCardContent { side: ContentSide::Bottom,
-                div { class: "flex justify-between gap-4 p-4",
+            HoverCardContent {
+                side: ContentSide::Bottom,
+                class: "z-50 w-80 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden",
+                div { class: "flex justify-between gap-4",
                     div { class: "flex size-10 items-center justify-center rounded-full bg-muted text-sm font-semibold",
                         "DX"
                     }
