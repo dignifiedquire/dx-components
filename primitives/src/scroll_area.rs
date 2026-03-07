@@ -1,26 +1,17 @@
 //! Defines the [`ScrollArea`] component for creating scrollable areas with customizable scrollbars.
 
 use dioxus::prelude::*;
-use tailwind_fuse::*;
 
 /// The props for the [`ScrollArea`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct ScrollAreaProps {
     /// The scroll direction.
     #[props(default)]
-    pub direction: ReadSignal<ScrollDirection>,
-
-    /// Whether the scrollbars should be always visible.
-    #[props(default)]
-    pub always_show_scrollbars: ReadSignal<bool>,
+    pub direction: ScrollDirection,
 
     /// The scroll type.
     #[props(default)]
-    pub scroll_type: ReadSignal<ScrollType>,
-
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
+    pub scroll_type: ScrollType,
 
     /// Additional attributes to apply to the scroll area element.
     #[props(extends = GlobalAttributes)]
@@ -93,34 +84,31 @@ pub fn ScrollArea(props: ScrollAreaProps) -> Element {
     let direction = props.direction;
     let scroll_type = props.scroll_type;
 
-    let (overflow_x, overflow_y, scrollbar_width) = match scroll_type() {
-        ScrollType::Auto => match direction() {
+    let (overflow_x, overflow_y, scrollbar_width) = match scroll_type {
+        ScrollType::Auto => match direction {
             ScrollDirection::Vertical => (Some("hidden"), Some("auto"), None),
             ScrollDirection::Horizontal => (Some("auto"), Some("hidden"), None),
             ScrollDirection::Both => (Some("auto"), Some("auto"), None),
         },
-        ScrollType::Always => match direction() {
+        ScrollType::Always => match direction {
             ScrollDirection::Vertical => (Some("hidden"), Some("scroll"), None),
             ScrollDirection::Horizontal => (Some("scroll"), Some("hidden"), None),
             ScrollDirection::Both => (Some("scroll"), Some("scroll"), None),
         },
-        ScrollType::Hidden => match direction() {
+        ScrollType::Hidden => match direction {
             ScrollDirection::Vertical => (Some("hidden"), Some("scroll"), Some("none")),
             ScrollDirection::Horizontal => (Some("scroll"), Some("hidden"), Some("none")),
             ScrollDirection::Both => (Some("scroll"), Some("scroll"), Some("none")),
         },
     };
 
-    let class = tw_merge!("relative", props.class);
-
     rsx! {
         div {
             "data-slot": "scroll-area",
-            class: class,
             overflow_x,
             overflow_y,
             "scrollbar-width": scrollbar_width,
-            "data-scroll-direction": match direction() {
+            "data-scroll-direction": match direction {
                 ScrollDirection::Vertical => "vertical",
                 ScrollDirection::Horizontal => "horizontal",
                 ScrollDirection::Both => "both",

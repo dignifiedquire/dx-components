@@ -1,5 +1,5 @@
+use super::super::component::*;
 use dioxus::prelude::*;
-use dioxus_primitives::scroll_area::*;
 
 #[component]
 pub fn Demo() -> Element {
