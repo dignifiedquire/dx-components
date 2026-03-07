@@ -43,6 +43,7 @@ pub mod menubar;
 pub mod navbar;
 pub mod number;
 pub mod popover;
+pub mod popper;
 mod portal;
 pub mod primitive;
 pub mod progress;
