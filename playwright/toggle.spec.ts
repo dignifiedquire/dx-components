@@ -7,7 +7,7 @@ const TIMEOUT = { timeout: 20 * 60 * 1000 };
 /** Navigate and wait for WASM hydration (toggle rendered). */
 async function gotoAndWait(page: import("@playwright/test").Page) {
   await page.goto(URL, TIMEOUT);
-  await page.locator('[data-slot="toggle"]').first().waitFor({ state: "visible", timeout: 60_000 });
+  await page.locator('[data-slot="preview"]').first().waitFor({ state: "visible", timeout: 60_000 });
 }
 
 // ---------------------------------------------------------------------------
@@ -17,21 +17,21 @@ async function gotoAndWait(page: import("@playwright/test").Page) {
 test.describe("toggle rendering", () => {
   test("renders toggle buttons", async ({ page }) => {
     await gotoAndWait(page);
-    const toggles = page.locator('[data-slot="toggle"]');
+    const toggles = page.locator('[data-slot="preview"] [data-slot="toggle"]');
     const count = await toggles.count();
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
   test("toggle is a button element", async ({ page }) => {
     await gotoAndWait(page);
-    const toggle = page.locator('[data-slot="toggle"]').first();
+    const toggle = page.locator('[data-slot="preview"] [data-slot="toggle"]').first();
     const tagName = await toggle.evaluate((el) => el.tagName.toLowerCase());
     expect(tagName).toBe("button");
   });
 
   test("toggle has type=button", async ({ page }) => {
     await gotoAndWait(page);
-    const toggle = page.locator('[data-slot="toggle"]').first();
+    const toggle = page.locator('[data-slot="preview"] [data-slot="toggle"]').first();
     await expect(toggle).toHaveAttribute("type", "button");
   });
 });
@@ -43,13 +43,13 @@ test.describe("toggle rendering", () => {
 test.describe("toggle ARIA", () => {
   test("has aria-pressed=false when off", async ({ page }) => {
     await gotoAndWait(page);
-    const toggle = page.locator('[data-slot="toggle"]').first();
+    const toggle = page.locator('[data-slot="preview"] [data-slot="toggle"]').first();
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
   });
 
   test("has aria-pressed=true when on", async ({ page }) => {
     await gotoAndWait(page);
-    const toggle = page.locator('[data-slot="toggle"]').first();
+    const toggle = page.locator('[data-slot="preview"] [data-slot="toggle"]').first();
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-pressed", "true");
   });
@@ -62,13 +62,13 @@ test.describe("toggle ARIA", () => {
 test.describe("toggle data attributes", () => {
   test("has data-state=off initially", async ({ page }) => {
     await gotoAndWait(page);
-    const toggle = page.locator('[data-slot="toggle"]').first();
+    const toggle = page.locator('[data-slot="preview"] [data-slot="toggle"]').first();
     await expect(toggle).toHaveAttribute("data-state", "off");
   });
 
   test("has data-state=on after click", async ({ page }) => {
     await gotoAndWait(page);
-    const toggle = page.locator('[data-slot="toggle"]').first();
+    const toggle = page.locator('[data-slot="preview"] [data-slot="toggle"]').first();
     await toggle.click();
     await expect(toggle).toHaveAttribute("data-state", "on");
   });
@@ -81,7 +81,7 @@ test.describe("toggle data attributes", () => {
 test.describe("toggle interaction", () => {
   test("click toggles on then off", async ({ page }) => {
     await gotoAndWait(page);
-    const toggle = page.locator('[data-slot="toggle"]').first();
+    const toggle = page.locator('[data-slot="preview"] [data-slot="toggle"]').first();
 
     await expect(toggle).toHaveAttribute("data-state", "off");
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
@@ -99,7 +99,7 @@ test.describe("toggle interaction", () => {
 
   test("Space key toggles state", async ({ page }) => {
     await gotoAndWait(page);
-    const toggle = page.locator('[data-slot="toggle"]').first();
+    const toggle = page.locator('[data-slot="preview"] [data-slot="toggle"]').first();
     await toggle.focus();
 
     await expect(toggle).toHaveAttribute("data-state", "off");
@@ -119,20 +119,20 @@ test.describe("toggle interaction", () => {
 test.describe("toggle disabled", () => {
   test("disabled toggle has disabled attribute", async ({ page }) => {
     await gotoAndWait(page);
-    const disabled = page.locator('[data-slot="toggle"][disabled]');
+    const disabled = page.locator('[data-slot="preview"] [data-slot="toggle"][disabled]');
     await expect(disabled.first()).toBeVisible();
     await expect(disabled.first()).toBeDisabled();
   });
 
   test("disabled toggle has data-disabled attribute", async ({ page }) => {
     await gotoAndWait(page);
-    const disabled = page.locator('[data-slot="toggle"][disabled]');
+    const disabled = page.locator('[data-slot="preview"] [data-slot="toggle"][disabled]');
     await expect(disabled.first()).toHaveAttribute("data-disabled", "");
   });
 
   test("click does nothing when disabled", async ({ page }) => {
     await gotoAndWait(page);
-    const disabled = page.locator('[data-slot="toggle"][disabled]').first();
+    const disabled = page.locator('[data-slot="preview"] [data-slot="toggle"][disabled]').first();
     const stateBefore = await disabled.getAttribute("data-state");
     await disabled.click({ force: true });
     await expect(disabled).toHaveAttribute("data-state", stateBefore!);
@@ -147,7 +147,7 @@ test.describe("toggle accessibility", () => {
   test("no accessibility violations", async ({ page }) => {
     await gotoAndWait(page);
     const results = await new AxeBuilder({ page })
-      .include('[data-slot="toggle"]')
+      .include('[data-slot="preview"]')
       .analyze();
     expect(results.violations).toEqual([]);
   });

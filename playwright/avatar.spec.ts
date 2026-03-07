@@ -7,7 +7,7 @@ const TIMEOUT = { timeout: 20 * 60 * 1000 };
 /** Navigate and wait for WASM hydration (avatar rendered). */
 async function gotoAndWait(page: import("@playwright/test").Page) {
   await page.goto(URL, TIMEOUT);
-  await page.locator('[data-slot="avatar"]').first().waitFor({ state: "visible", timeout: 60_000 });
+  await page.locator('[data-slot="preview"]').first().waitFor({ state: "visible", timeout: 60_000 });
 }
 
 // ---------------------------------------------------------------------------
@@ -17,14 +17,14 @@ async function gotoAndWait(page: import("@playwright/test").Page) {
 test.describe("avatar rendering", () => {
   test("renders multiple avatars", async ({ page }) => {
     await gotoAndWait(page);
-    const avatars = page.locator('[data-slot="avatar"]');
+    const avatars = page.locator('[data-slot="preview"] [data-slot="avatar"]');
     const count = await avatars.count();
     expect(count).toBeGreaterThanOrEqual(4);
   });
 
   test("avatar root is a span element", async ({ page }) => {
     await gotoAndWait(page);
-    const avatar = page.locator('[data-slot="avatar"]').first();
+    const avatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').first();
     const tagName = await avatar.evaluate((el) => el.tagName.toLowerCase());
     expect(tagName).toBe("span");
   });
@@ -37,13 +37,13 @@ test.describe("avatar rendering", () => {
 test.describe("avatar data attributes", () => {
   test("avatar root has data-slot=avatar", async ({ page }) => {
     await gotoAndWait(page);
-    const avatar = page.locator('[data-slot="avatar"]').first();
+    const avatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').first();
     await expect(avatar).toHaveAttribute("data-slot", "avatar");
   });
 
   test("avatar image has data-slot=avatar-image", async ({ page }) => {
     await gotoAndWait(page);
-    const avatar = page.locator('[data-slot="avatar"]').first();
+    const avatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').first();
     const image = avatar.locator('[data-slot="avatar-image"]');
     await expect(image).toBeAttached();
     await expect(image).toHaveAttribute("data-slot", "avatar-image");
@@ -57,7 +57,7 @@ test.describe("avatar data attributes", () => {
 test.describe("avatar image loading", () => {
   test("basic avatar image becomes visible when loaded", async ({ page }) => {
     await gotoAndWait(page);
-    const avatar = page.locator('[data-slot="avatar"]').first();
+    const avatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').first();
     const image = avatar.locator('[data-slot="avatar-image"]');
 
     // Wait for image to load and become visible
@@ -70,7 +70,7 @@ test.describe("avatar image loading", () => {
 
   test("basic avatar image has a src attribute", async ({ page }) => {
     await gotoAndWait(page);
-    const avatar = page.locator('[data-slot="avatar"]').first();
+    const avatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').first();
     const image = avatar.locator('[data-slot="avatar-image"]');
     const src = await image.getAttribute("src");
     expect(src).toBeTruthy();
@@ -85,7 +85,7 @@ test.describe("avatar fallback", () => {
   test("error state avatar shows fallback text", async ({ page }) => {
     await gotoAndWait(page);
     // Third avatar (index 2) has an invalid URL and shows fallback
-    const errorAvatar = page.locator('[data-slot="avatar"]').nth(2);
+    const errorAvatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').nth(2);
     await expect(errorAvatar).toBeVisible();
 
     const fallback = errorAvatar.locator('[data-slot="avatar-fallback"]');
@@ -95,7 +95,7 @@ test.describe("avatar fallback", () => {
 
   test("fallback has data-slot=avatar-fallback", async ({ page }) => {
     await gotoAndWait(page);
-    const errorAvatar = page.locator('[data-slot="avatar"]').nth(2);
+    const errorAvatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').nth(2);
     const fallback = errorAvatar.locator('[data-slot="avatar-fallback"]');
     await expect(fallback).toBeVisible({ timeout: 10_000 });
     await expect(fallback).toHaveAttribute("data-slot", "avatar-fallback");
@@ -103,7 +103,7 @@ test.describe("avatar fallback", () => {
 
   test("fallback is a span element", async ({ page }) => {
     await gotoAndWait(page);
-    const errorAvatar = page.locator('[data-slot="avatar"]').nth(2);
+    const errorAvatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').nth(2);
     const fallback = errorAvatar.locator('[data-slot="avatar-fallback"]');
     await expect(fallback).toBeVisible({ timeout: 10_000 });
     const tagName = await fallback.evaluate((el) => el.tagName.toLowerCase());
@@ -112,7 +112,7 @@ test.describe("avatar fallback", () => {
 
   test("error avatar image is hidden when fallback shows", async ({ page }) => {
     await gotoAndWait(page);
-    const errorAvatar = page.locator('[data-slot="avatar"]').nth(2);
+    const errorAvatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').nth(2);
 
     // Wait for fallback to appear (indicates image load failed)
     const fallback = errorAvatar.locator('[data-slot="avatar-fallback"]');
@@ -134,7 +134,7 @@ test.describe("avatar accessibility", () => {
   test("no accessibility violations", async ({ page }) => {
     await gotoAndWait(page);
     const results = await new AxeBuilder({ page })
-      .include('[data-slot="avatar"]')
+      .include('[data-slot="preview"]')
       .analyze();
     expect(results.violations).toEqual([]);
   });

@@ -7,7 +7,7 @@ const TIMEOUT = { timeout: 20 * 60 * 1000 };
 /** Navigate and wait for WASM hydration (label rendered). */
 async function gotoAndWait(page: import("@playwright/test").Page) {
   await page.goto(URL, TIMEOUT);
-  await page.locator('[data-slot="label"]').first().waitFor({ state: "visible", timeout: 60_000 });
+  await page.locator('[data-slot="preview"]').first().waitFor({ state: "visible", timeout: 60_000 });
 }
 
 // ---------------------------------------------------------------------------
@@ -17,21 +17,21 @@ async function gotoAndWait(page: import("@playwright/test").Page) {
 test.describe("label rendering", () => {
   test("label is visible with correct data-slot", async ({ page }) => {
     await gotoAndWait(page);
-    const label = page.locator('[data-slot="label"]').first();
+    const label = page.locator('[data-slot="preview"] [data-slot="label"]').first();
     await expect(label).toBeVisible();
     await expect(label).toHaveAttribute("data-slot", "label");
   });
 
   test("renders as a label element", async ({ page }) => {
     await gotoAndWait(page);
-    const label = page.locator('[data-slot="label"]').first();
+    const label = page.locator('[data-slot="preview"] [data-slot="label"]').first();
     const tagName = await label.evaluate((el) => el.tagName.toLowerCase());
     expect(tagName).toBe("label");
   });
 
   test("displays correct text content", async ({ page }) => {
     await gotoAndWait(page);
-    const label = page.locator('[data-slot="label"]').first();
+    const label = page.locator('[data-slot="preview"] [data-slot="label"]').first();
     await expect(label).toHaveText("Name");
   });
 });
@@ -43,7 +43,7 @@ test.describe("label rendering", () => {
 test.describe("label association", () => {
   test("has for attribute pointing to input", async ({ page }) => {
     await gotoAndWait(page);
-    const label = page.locator('[data-slot="label"]').first();
+    const label = page.locator('[data-slot="preview"] [data-slot="label"]').first();
     await expect(label).toHaveAttribute("for", "name");
   });
 
@@ -62,7 +62,7 @@ test.describe("label accessibility", () => {
   test("no accessibility violations", async ({ page }) => {
     await gotoAndWait(page);
     const results = await new AxeBuilder({ page })
-      .include('[data-slot="label"]')
+      .include('[data-slot="preview"]')
       .analyze();
     expect(results.violations).toEqual([]);
   });

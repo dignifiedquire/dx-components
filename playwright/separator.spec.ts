@@ -7,7 +7,7 @@ const TIMEOUT = { timeout: 20 * 60 * 1000 };
 /** Navigate and wait for WASM hydration (separator rendered). */
 async function gotoAndWait(page: import("@playwright/test").Page) {
   await page.goto(URL, TIMEOUT);
-  await page.locator('[data-slot="separator"]').first().waitFor({ state: "visible", timeout: 60_000 });
+  await page.locator('[data-slot="preview"]').first().waitFor({ state: "visible", timeout: 60_000 });
 }
 
 // ---------------------------------------------------------------------------
@@ -17,21 +17,21 @@ async function gotoAndWait(page: import("@playwright/test").Page) {
 test.describe("separator rendering", () => {
   test("separator is visible with correct data-slot", async ({ page }) => {
     await gotoAndWait(page);
-    const separator = page.locator('[data-slot="separator"]').first();
+    const separator = page.locator('[data-slot="preview"] [data-slot="separator"]').first();
     await expect(separator).toBeVisible();
     await expect(separator).toHaveAttribute("data-slot", "separator");
   });
 
   test("renders as a div element", async ({ page }) => {
     await gotoAndWait(page);
-    const separator = page.locator('[data-slot="separator"]').first();
+    const separator = page.locator('[data-slot="preview"] [data-slot="separator"]').first();
     const tagName = await separator.evaluate((el) => el.tagName.toLowerCase());
     expect(tagName).toBe("div");
   });
 
   test("has horizontal orientation by default", async ({ page }) => {
     await gotoAndWait(page);
-    const separator = page.locator('[data-slot="separator"]').first();
+    const separator = page.locator('[data-slot="preview"] [data-slot="separator"]').first();
     await expect(separator).toHaveAttribute("data-orientation", "horizontal");
   });
 });
@@ -43,7 +43,7 @@ test.describe("separator rendering", () => {
 test.describe("separator ARIA attributes", () => {
   test("decorative separator has role none", async ({ page }) => {
     await gotoAndWait(page);
-    const separator = page.locator('[data-slot="separator"]').first();
+    const separator = page.locator('[data-slot="preview"] [data-slot="separator"]').first();
     // The demo uses decorative: true, so the role should be "none"
     await expect(separator).toHaveAttribute("role", "none");
   });
@@ -57,7 +57,7 @@ test.describe("separator accessibility", () => {
   test("no accessibility violations", async ({ page }) => {
     await gotoAndWait(page);
     const results = await new AxeBuilder({ page })
-      .include('[data-slot="separator"]')
+      .include('[data-slot="preview"]')
       .analyze();
     expect(results.violations).toEqual([]);
   });
