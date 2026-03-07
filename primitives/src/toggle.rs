@@ -1,20 +1,22 @@
-//! Defines the [`Toggle`] component for creating toggle buttons with Tailwind-based styling.
+//! Toggle primitive — matches `@radix-ui/react-toggle`.
+//!
+//! A two-state button that can be toggled on or off.
 
 use crate::use_controlled;
 use dioxus::prelude::*;
-use tailwind_fuse::*;
 
-/// Visual variant of the [`Toggle`] component.
-#[derive(Debug, PartialEq, TwVariant)]
+// ---------------------------------------------------------------------------
+// Backward-compat types (used by toggle_group.rs, will be removed when
+// toggle_group is rewritten in Phase 2)
+// ---------------------------------------------------------------------------
+
+/// Visual variant of a toggle — kept for backward compat with ToggleGroup.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum ToggleVariant {
-    /// Transparent background toggle.
-    #[tw(default, class = "bg-transparent")]
+    /// Default variant.
+    #[default]
     Default,
-
-    /// Bordered toggle with shadow.
-    #[tw(
-        class = "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground"
-    )]
+    /// Outline variant.
     Outline,
 }
 
@@ -28,19 +30,15 @@ impl ToggleVariant {
     }
 }
 
-/// Size variant for the [`Toggle`] component.
-#[derive(Debug, PartialEq, TwVariant)]
+/// Size variant of a toggle — kept for backward compat with ToggleGroup.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum ToggleSize {
     /// Default size.
-    #[tw(default, class = "h-9 min-w-9 px-2")]
+    #[default]
     Default,
-
-    /// Small toggle.
-    #[tw(class = "h-8 min-w-8 px-1.5")]
+    /// Small.
     Sm,
-
-    /// Large toggle.
-    #[tw(class = "h-10 min-w-10 px-2.5")]
+    /// Large.
     Lg,
 }
 
@@ -55,18 +53,11 @@ impl ToggleSize {
     }
 }
 
-/// The props for the [`Toggle`] component.
+/// Props for [`Toggle`].
 #[derive(Props, Clone, PartialEq)]
 pub struct ToggleProps {
-    /// Visual variant of the toggle.
-    #[props(default = ToggleVariant::Default)]
-    pub variant: ToggleVariant,
-
-    /// Size of the toggle.
-    #[props(default = ToggleSize::Default)]
-    pub size: ToggleSize,
-
-    /// The controlled pressed state of the toggle.
+    /// The controlled pressed state.
+    #[props(default)]
     pub pressed: ReadSignal<Option<bool>>,
 
     /// The default pressed state when uncontrolled.
@@ -75,65 +66,53 @@ pub struct ToggleProps {
 
     /// Whether the toggle is disabled.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
     /// Callback fired when the pressed state changes.
     #[props(default)]
     pub on_pressed_change: Callback<bool>,
 
-    // https://github.com/DioxusLabs/dioxus/issues/2467
-    /// Callback fired when the toggle is mounted.
+    // Backward-compat props (used by toggle_group.rs, removed when it's rewritten)
+    #[allow(missing_docs)]
+    #[props(default)]
+    pub variant: ToggleVariant,
+    #[allow(missing_docs)]
+    #[props(default)]
+    pub size: ToggleSize,
+    #[allow(missing_docs)]
     #[props(default)]
     pub onmounted: Callback<Event<MountedData>>,
-    /// Callback fired when the toggle receives focus.
+    #[allow(missing_docs)]
     #[props(default)]
     pub onfocus: Callback<Event<FocusData>>,
-    /// Callback fired when a key is pressed on the toggle.
+    #[allow(missing_docs)]
     #[props(default)]
     pub onkeydown: Callback<Event<KeyboardData>>,
 
-    /// Additional Tailwind classes to apply.
+    /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the toggle element.
+    /// Spread attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the toggle component.
+    /// Children.
     pub children: Element,
 }
 
-/// # Toggle
+/// A two-state toggle button.
 ///
-/// The `Toggle` component is a button that can be on or off.
+/// Matches Radix's `Toggle`. Renders a `<button>` with `aria-pressed` and
+/// `data-state` (on/off).
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::toggle::{Toggle, ToggleVariant, ToggleSize};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Toggle { em { "B" } }
-///
-///         Toggle { variant: ToggleVariant::Outline, "Outline" }
-///
-///         Toggle { size: ToggleSize::Sm, "Small" }
-///     }
-/// }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::toggle::Toggle;
+/// rsx! {
+///     Toggle { "Bold" }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`Toggle`] component defines the following data attributes for external styling:
-/// - `data-slot`: Always `"toggle"`.
-/// - `data-variant`: The current variant (e.g. `"default"`, `"outline"`).
-/// - `data-size`: The current size (e.g. `"default"`, `"sm"`, `"lg"`).
-/// - `data-state`: Indicates the state of the toggle. Values are `on` or `off`.
-/// - `data-disabled`: Indicates if the toggle is disabled.
 #[component]
 pub fn Toggle(props: ToggleProps) -> Element {
     let (pressed, set_pressed) = use_controlled(
@@ -142,35 +121,26 @@ pub fn Toggle(props: ToggleProps) -> Element {
         props.on_pressed_change,
     );
 
-    let variant_attr = props.variant.as_data_attr();
-    let size_attr = props.size.as_data_attr();
-
-    let class = tw_merge!(
-        "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,box-shadow] outline-none hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        props.variant,
-        props.size,
-        props.class,
-    );
+    let disabled = props.disabled;
 
     rsx! {
         button {
+            r#type: "button",
+            "data-slot": "toggle",
+            "data-state": if pressed() { "on" } else { "off" },
+            "data-disabled": if disabled { "" },
+            aria_pressed: pressed,
+            disabled: disabled,
+            class: props.class,
+
             onmounted: props.onmounted,
             onfocus: props.onfocus,
             onkeydown: props.onkeydown,
 
-            r#type: "button",
-            disabled: props.disabled,
-            aria_pressed: pressed,
-            "data-slot": "toggle",
-            "data-variant": variant_attr,
-            "data-size": size_attr,
-            "data-state": if pressed() { "on" } else { "off" },
-            "data-disabled": props.disabled,
-            class: class,
-
             onclick: move |_| {
-                let new_pressed = !pressed();
-                set_pressed.call(new_pressed);
+                if !disabled {
+                    set_pressed.call(!pressed());
+                }
             },
 
             ..props.attributes,

@@ -1,312 +1,227 @@
-//! Defines the [`Avatar`] component and its subcomponents, which manage user profile images with fallback options.
+//! Avatar primitive — matches `@radix-ui/react-avatar`.
+//!
+//! Displays a user avatar image with fallback support. The image loading
+//! state machine drives whether the image or fallback is shown.
 
 use dioxus::prelude::*;
-use tailwind_fuse::*;
 
-/// Represents the different states an Avatar can be in
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/// Image loading status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AvatarState {
-    /// Initial loading state
+pub enum ImageLoadingStatus {
+    /// Initial state, no load attempted.
+    Idle,
+    /// Image is currently loading.
     Loading,
-    /// Image loaded successfully
+    /// Image loaded successfully.
     Loaded,
-    /// Error loading the image
+    /// Image failed to load.
     Error,
-    /// No image source provided
-    Empty,
 }
 
-#[derive(Clone)]
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy)]
 struct AvatarCtx {
-    // State
-    state: Signal<AvatarState>,
-    has_fallback_child: Signal<bool>,
-    has_image_child: Signal<bool>,
-
-    // Callbacks
-    on_load: Option<EventHandler<()>>,
-    on_error: Option<EventHandler<()>>,
-    on_state_change: Option<EventHandler<AvatarState>>,
+    status: Signal<ImageLoadingStatus>,
 }
 
-/// The props for the [`Avatar`] component.
+// ---------------------------------------------------------------------------
+// Avatar
+// ---------------------------------------------------------------------------
+
+/// Props for [`Avatar`].
 #[derive(Props, Clone, PartialEq)]
 pub struct AvatarProps {
-    /// Callback when image loads successfully
-    #[props(default)]
-    pub on_load: Option<EventHandler<()>>,
-
-    /// Callback when image fails to load
-    #[props(default)]
-    pub on_error: Option<EventHandler<()>>,
-
-    /// Callback when the avatar state changes
-    #[props(default)]
-    pub on_state_change: Option<EventHandler<AvatarState>>,
-
-    /// Additional Tailwind classes to apply.
+    /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes for the avatar element
+    /// Spread attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the Avatar component, which can include AvatarImage and AvatarFallback
+    /// Children (typically [`AvatarImage`] and [`AvatarFallback`]).
     pub children: Element,
 }
 
-/// # Avatar
+/// Root container for an avatar with image + fallback support.
 ///
-/// A component that displays a user profile image with fallback options.
+/// Matches Radix's `Avatar`. Provides context for image loading status
+/// so [`AvatarImage`] and [`AvatarFallback`] coordinate display.
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::avatar::{Avatar, AvatarFallback, AvatarImage};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Avatar {
-///             aria_label: "Basic avatar",
-///             AvatarImage {
-///                 src: "https://avatars.githubusercontent.com/u/66571940?s=96&v=4",
-///                 alt: "ealmloff user avatar",
-///             }
-///             AvatarFallback { class: "avatar-fallback", "EA" }
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::avatar::{Avatar, AvatarImage, AvatarFallback};
+/// rsx! {
+///     Avatar {
+///         AvatarImage { src: "https://example.com/avatar.jpg", alt: "User" }
+///         AvatarFallback { "JD" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`Avatar`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the current state of the avatar. Possible values are `loading`, `loaded`, `error`, or `empty`.
 #[component]
 pub fn Avatar(props: AvatarProps) -> Element {
-    // Internal state tracking
-    let state = use_signal(|| AvatarState::Empty);
-    let has_fallback_child = use_signal(|| false);
-    let has_image_child = use_signal(|| false);
-
-    // Notify about initial state
-    use_effect(move || {
-        if let Some(handler) = &props.on_state_change {
-            handler.call(state());
-        }
-    });
-
-    // Create context for child components
-    use_context_provider(|| AvatarCtx {
-        state,
-        has_fallback_child,
-        has_image_child,
-        on_load: props.on_load,
-        on_error: props.on_error,
-        on_state_change: props.on_state_change,
-    });
-
-    // Determine if fallback should be shown
-    let show_fallback =
-        use_memo(move || matches!(state(), AvatarState::Error | AvatarState::Empty));
-
-    let class = tw_merge!(
-        "relative flex size-8 shrink-0 overflow-hidden rounded-full select-none",
-        props.class,
-    );
+    let status = use_signal(|| ImageLoadingStatus::Idle);
+    use_context_provider(|| AvatarCtx { status });
 
     rsx! {
         span {
             "data-slot": "avatar",
-            role: "img",
-            "data-state": match state() {
-                AvatarState::Loading => "loading",
-                AvatarState::Loaded => "loaded",
-                AvatarState::Error => "error",
-                AvatarState::Empty => "empty",
-            },
-            class: class,
-            ..props.attributes,
-
-            // Children (which may include AvatarImage and AvatarFallback)
-            {props.children}
-
-            // Default fallback if no AvatarFallback is provided and fallback should be shown
-            if show_fallback() && !has_fallback_child() && has_image_child() {
-                span {
-                    class: "flex size-full items-center justify-center rounded-full bg-muted",
-                    "??"
-                }
-            }
-        }
-    }
-}
-
-/// The props for the [`AvatarFallback`] component.
-#[derive(Props, Clone, PartialEq)]
-pub struct AvatarFallbackProps {
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-
-    /// Additional attributes for the fallback element
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-    /// The children of the AvatarFallback component, typically text or an icon
-    pub children: Element,
-}
-
-/// # AvatarFallback
-///
-/// A component that displays a fallback avatar when the image fails to load. The contents will only
-/// be rendered if the avatar is in an error or empty state.
-///
-/// This component must be used inside an [`Avatar`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::avatar::{Avatar, AvatarFallback, AvatarImage};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Avatar {
-///             aria_label: "Basic avatar",
-///             AvatarImage {
-///                 src: "https://avatars.githubusercontent.com/u/66571940?s=96&v=4",
-///                 alt: "ealmloff user avatar",
-///             }
-///             AvatarFallback { class: "avatar-fallback", "EA" }
-///         }
-///     }
-/// }
-/// ```
-#[component]
-pub fn AvatarFallback(props: AvatarFallbackProps) -> Element {
-    let mut ctx: AvatarCtx = use_context();
-
-    // Mark that a fallback child is provided
-    use_effect(move || {
-        ctx.has_fallback_child.set(true);
-    });
-
-    let show_fallback =
-        use_memo(move || matches!((ctx.state)(), AvatarState::Error | AvatarState::Empty));
-
-    if !show_fallback() {
-        return rsx!({});
-    }
-
-    let class = tw_merge!(
-        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground",
-        props.class,
-    );
-
-    rsx! {
-        span {
-            "data-slot": "avatar-fallback",
-            class: class,
+            class: props.class,
             ..props.attributes,
             {props.children}
         }
     }
 }
 
-/// The props for the [`AvatarImage`] component.
+// ---------------------------------------------------------------------------
+// AvatarImage
+// ---------------------------------------------------------------------------
+
+/// Props for [`AvatarImage`].
 #[derive(Props, Clone, PartialEq)]
 pub struct AvatarImageProps {
-    /// The image source URL
+    /// The image source URL.
     pub src: String,
 
-    /// Alt text for the image
+    /// Alt text for the image.
     #[props(default)]
     pub alt: Option<String>,
 
-    /// Additional Tailwind classes to apply.
+    /// Callback when the loading status changes.
+    #[props(default)]
+    pub on_loading_status_change: Option<Callback<ImageLoadingStatus>>,
+
+    /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes for the image element
+    /// Spread attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 }
 
-/// # AvatarImage
+/// The avatar image. Only renders when the image has loaded successfully.
 ///
-/// A component that displays a user profile image. If the image fails to load, it will stop rendering
-/// and the Avatar will switch to the error state, which can be handled by an [`AvatarFallback`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::avatar::{Avatar, AvatarFallback, AvatarImage};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Avatar {
-///             aria_label: "Basic avatar",
-///             AvatarImage {
-///                 src: "https://avatars.githubusercontent.com/u/66571940?s=96&v=4",
-///                 alt: "ealmloff user avatar",
-///             }
-///             AvatarFallback { class: "avatar-fallback", "EA" }
-///         }
-///     }
-/// }
-/// ```
+/// Must be used inside an [`Avatar`] component.
 #[component]
 pub fn AvatarImage(props: AvatarImageProps) -> Element {
     let mut ctx: AvatarCtx = use_context();
 
-    // Mark that an image child is provided and set initial loading state
+    // Set loading state when src is provided
     use_effect(move || {
-        ctx.has_image_child.set(true);
-        ctx.state.set(AvatarState::Loading);
+        ctx.status.set(ImageLoadingStatus::Loading);
+        if let Some(cb) = &props.on_loading_status_change {
+            cb.call(ImageLoadingStatus::Loading);
+        }
     });
 
-    let handle_load = move |_| {
-        ctx.state.set(AvatarState::Loaded);
-        if let Some(handler) = &ctx.on_load {
-            handler.call(());
-        }
-        if let Some(handler) = &ctx.on_state_change {
-            handler.call(AvatarState::Loaded);
-        }
-    };
+    let status = (ctx.status)();
 
-    let handle_error = move |_| {
-        ctx.state.set(AvatarState::Error);
-        if let Some(handler) = &ctx.on_error {
-            handler.call(());
+    if status != ImageLoadingStatus::Loaded {
+        // Still loading — render the img so onload/onerror can fire,
+        // but only if we haven't errored
+        if status == ImageLoadingStatus::Error {
+            return rsx!({});
         }
-        if let Some(handler) = &ctx.on_state_change {
-            handler.call(AvatarState::Error);
-        }
-    };
 
-    let show_image = (ctx.state)() != AvatarState::Error;
-    if !show_image {
-        return rsx!({});
+        return rsx! {
+            img {
+                "data-slot": "avatar-image",
+                src: props.src.clone(),
+                alt: props.alt.clone().unwrap_or_default(),
+                class: props.class.clone(),
+                style: "display: none;",
+                onload: move |_| {
+                    ctx.status.set(ImageLoadingStatus::Loaded);
+                    if let Some(cb) = &props.on_loading_status_change {
+                        cb.call(ImageLoadingStatus::Loaded);
+                    }
+                },
+                onerror: move |_| {
+                    ctx.status.set(ImageLoadingStatus::Error);
+                    if let Some(cb) = &props.on_loading_status_change {
+                        cb.call(ImageLoadingStatus::Error);
+                    }
+                },
+                ..props.attributes,
+            }
+        };
     }
-
-    let class = tw_merge!("aspect-square size-full", props.class,);
 
     rsx! {
         img {
             "data-slot": "avatar-image",
             src: props.src.clone(),
             alt: props.alt.clone().unwrap_or_default(),
-            onload: handle_load,
-            onerror: handle_error,
-            class: class,
+            class: props.class,
             ..props.attributes,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AvatarFallback
+// ---------------------------------------------------------------------------
+
+/// Props for [`AvatarFallback`].
+#[derive(Props, Clone, PartialEq)]
+pub struct AvatarFallbackProps {
+    /// Delay in milliseconds before showing the fallback. Useful to avoid
+    /// a flash of fallback content for fast-loading images.
+    #[props(default)]
+    pub delay_ms: Option<u64>,
+
+    /// Additional CSS classes.
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Spread attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// Children (typically text initials or an icon).
+    pub children: Element,
+}
+
+/// Fallback content shown when the avatar image hasn't loaded.
+///
+/// Matches Radix's `AvatarFallback`. Supports an optional `delay_ms` to
+/// avoid flashing the fallback for images that load quickly.
+///
+/// Must be used inside an [`Avatar`] component.
+#[component]
+pub fn AvatarFallback(props: AvatarFallbackProps) -> Element {
+    let ctx: AvatarCtx = use_context();
+    let mut can_render = use_signal(|| props.delay_ms.is_none());
+
+    // Handle delayed rendering
+    use_effect(move || {
+        if let Some(delay) = props.delay_ms {
+            spawn(async move {
+                dioxus_sdk_time::sleep(std::time::Duration::from_millis(delay)).await;
+                can_render.set(true);
+            });
+        }
+    });
+
+    let status = (ctx.status)();
+    if !can_render() || status == ImageLoadingStatus::Loaded {
+        return rsx!({});
+    }
+
+    rsx! {
+        span {
+            "data-slot": "avatar-fallback",
+            class: props.class,
+            ..props.attributes,
+            {props.children}
         }
     }
 }

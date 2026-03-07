@@ -1,46 +1,58 @@
-//! Defines the [`Checkbox`] component and its subcomponents, which manage checkbox inputs with controlled state.
+//! Checkbox primitive — matches `@radix-ui/react-checkbox`.
+//!
+//! A tri-state checkbox control (checked/unchecked/indeterminate).
 
-use crate::{use_controlled, use_unique_id};
-use dioxus::{document::eval, prelude::*};
+use crate::use_controlled;
+use dioxus::prelude::*;
 use std::ops::Not;
-use tailwind_fuse::*;
 
-/// The state of a [`Checkbox`] component.
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/// The state of a checkbox.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum CheckboxState {
+pub enum CheckedState {
     /// The checkbox is checked.
     Checked,
-    /// The checkbox is in an indeterminate state, meaning it is neither checked nor unchecked.
+    /// The checkbox is in an indeterminate state.
     Indeterminate,
     /// The checkbox is unchecked.
     Unchecked,
 }
 
-impl CheckboxState {
-    fn to_aria_checked(self) -> &'static str {
+impl CheckedState {
+    /// Returns the ARIA `aria-checked` value.
+    pub fn to_aria_checked(self) -> &'static str {
         match self {
-            CheckboxState::Checked => "true",
-            CheckboxState::Indeterminate => "mixed",
-            CheckboxState::Unchecked => "false",
+            Self::Checked => "true",
+            Self::Indeterminate => "mixed",
+            Self::Unchecked => "false",
         }
     }
 
-    fn to_data_state(self) -> &'static str {
+    /// Returns the `data-state` value.
+    pub fn to_data_state(self) -> &'static str {
         match self {
-            CheckboxState::Checked => "checked",
-            CheckboxState::Indeterminate => "indeterminate",
-            CheckboxState::Unchecked => "unchecked",
+            Self::Checked => "checked",
+            Self::Indeterminate => "indeterminate",
+            Self::Unchecked => "unchecked",
         }
     }
-}
 
-impl From<CheckboxState> for bool {
-    fn from(value: CheckboxState) -> Self {
-        !matches!(value, CheckboxState::Unchecked)
+    /// Returns `true` if checked or indeterminate.
+    pub fn is_checked(self) -> bool {
+        !matches!(self, Self::Unchecked)
     }
 }
 
-impl Not for CheckboxState {
+impl From<CheckedState> for bool {
+    fn from(value: CheckedState) -> Self {
+        value.is_checked()
+    }
+}
+
+impl Not for CheckedState {
     type Output = Self;
 
     fn not(self) -> Self::Output {
@@ -51,82 +63,77 @@ impl Not for CheckboxState {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
 #[derive(Clone, Copy)]
 struct CheckboxCtx {
-    checked: Memo<CheckboxState>,
-    disabled: ReadSignal<bool>,
+    checked: Memo<CheckedState>,
+    disabled: bool,
 }
 
-/// The props for the [`Checkbox`] component.
+// ---------------------------------------------------------------------------
+// Checkbox
+// ---------------------------------------------------------------------------
+
+/// Props for [`Checkbox`].
 #[derive(Props, Clone, PartialEq)]
 pub struct CheckboxProps {
-    /// The controlled state of the checkbox.
-    pub checked: ReadSignal<Option<CheckboxState>>,
+    /// The controlled checked state.
+    #[props(default)]
+    pub checked: ReadSignal<Option<CheckedState>>,
 
-    /// The default state of the checkbox when it is not controlled.
-    #[props(default = CheckboxState::Unchecked)]
-    pub default_checked: CheckboxState,
+    /// The default checked state when uncontrolled.
+    #[props(default = CheckedState::Unchecked)]
+    pub default_checked: CheckedState,
 
     /// Whether the checkbox is required in a form.
     #[props(default)]
-    pub required: ReadSignal<bool>,
+    pub required: bool,
 
     /// Whether the checkbox is disabled.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// The name of the checkbox, used in forms.
+    /// The name for form submission.
     #[props(default)]
-    pub name: ReadSignal<String>,
+    pub name: Option<String>,
 
-    /// The value of the checkbox, which can be used in forms.
-    #[props(default = ReadSignal::new(Signal::new(String::from("on"))))]
-    pub value: ReadSignal<String>,
+    /// The value for form submission. Defaults to `"on"`.
+    #[props(default = "on".to_string())]
+    pub value: String,
 
-    /// Callback that is called when the checked state changes.
+    /// Callback fired when the checked state changes.
     #[props(default)]
-    pub on_checked_change: Callback<CheckboxState>,
+    pub on_checked_change: Callback<CheckedState>,
 
-    /// Additional Tailwind classes to apply.
+    /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the checkbox element.
+    /// Spread attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children to render inside the checkbox.
+    /// Children (typically a [`CheckboxIndicator`]).
     pub children: Element,
 }
 
-/// # Checkbox
+/// A tri-state checkbox control.
 ///
-/// The `Checkbox` component is a controlled checkbox input that allows users to toggle a state. It can be used in forms or standalone.
+/// Matches Radix's `Checkbox`. Renders a `<button>` with `role="checkbox"`,
+/// `aria-checked` (true/false/mixed), and `data-state`.
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::checkbox::{Checkbox, CheckboxIndicator};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Checkbox {
-///             name: "tos-check",
-///             aria_label: "Demo Checkbox",
-///             CheckboxIndicator {
-///                 "✅"
-///             }
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::checkbox::{Checkbox, CheckboxIndicator};
+/// rsx! {
+///     Checkbox {
+///         CheckboxIndicator { "✓" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`Checkbox`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: The state of the checkbox. Possible values are `checked`, `indeterminate`, or `unchecked`.
-/// - `data-disabled`: Indicates if the checkbox is disabled. values are `true` or `false`.
 #[component]
 pub fn Checkbox(props: CheckboxProps) -> Element {
     let (checked, set_checked) = use_controlled(
@@ -135,35 +142,28 @@ pub fn Checkbox(props: CheckboxProps) -> Element {
         props.on_checked_change,
     );
 
-    let class = tw_merge!(
-        "peer size-4 shrink-0 rounded-[4px] border border-input shadow-xs transition-shadow outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:bg-input/30",
-        props.class,
-    );
+    let disabled = props.disabled;
 
-    use_context_provider(|| CheckboxCtx {
-        checked,
-        disabled: props.disabled,
-    });
+    use_context_provider(|| CheckboxCtx { checked, disabled });
 
     rsx! {
         button {
-            type: "button",
-            value: props.value,
+            r#type: "button",
             role: "checkbox",
-            aria_checked: checked().to_aria_checked(),
-            aria_required: props.required,
-            disabled: props.disabled,
             "data-slot": "checkbox",
             "data-state": checked().to_data_state(),
-            "data-disabled": props.disabled,
-            class: class,
+            "data-disabled": if disabled { "" },
+            aria_checked: checked().to_aria_checked(),
+            aria_required: if props.required { "true" },
+            disabled: disabled,
+            value: props.value.clone(),
+            class: props.class,
 
             onclick: move |_| {
-                let new_checked = !checked();
-                set_checked.call(new_checked);
+                set_checked.call(!checked());
             },
 
-            // Aria says only spacebar can change state of checkboxes.
+            // Checkboxes don't activate on Enter (WAI-ARIA)
             onkeydown: move |e| {
                 if e.key() == Key::Enter {
                     e.prevent_default();
@@ -173,132 +173,67 @@ pub fn Checkbox(props: CheckboxProps) -> Element {
             ..props.attributes,
             {props.children}
         }
-        BubbleInput {
-            checked: checked,
-            default_checked: props.default_checked,
 
+        // Hidden input for form submission
+        input {
+            r#type: "checkbox",
+            aria_hidden: true,
+            tabindex: "-1",
+            name: props.name.clone(),
+            value: props.value.clone(),
+            checked: checked().is_checked(),
+            disabled: disabled,
             required: props.required,
-            name: props.name,
-            value: props.value,
-            disabled: props.disabled,
+            style: "position: absolute; pointer-events: none; opacity: 0; margin: 0; transform: translateX(-100%);",
         }
     }
 }
 
-/// # CheckboxIndicator
+// ---------------------------------------------------------------------------
+// CheckboxIndicator
+// ---------------------------------------------------------------------------
+
+/// Props for [`CheckboxIndicator`].
+#[derive(Props, Clone, PartialEq)]
+pub struct CheckboxIndicatorProps {
+    /// When `true`, the indicator is always mounted regardless of checked state.
+    #[props(default)]
+    pub force_mount: bool,
+
+    /// Additional CSS classes.
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Spread attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// Children (typically a check icon or text).
+    pub children: Element,
+}
+
+/// Visual indicator for a [`Checkbox`].
 ///
-/// The indicator for the [`Checkbox`] component, which visually represents the checkbox state. The
-/// children will only be rendered when the checkbox is checked.
-///
-/// This must be used inside a [`Checkbox`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::checkbox::{Checkbox, CheckboxIndicator};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Checkbox {
-///             name: "tos-check",
-///             aria_label: "Demo Checkbox",
-///             CheckboxIndicator {
-///                 "✅"
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
-/// ## Styling
-///
-/// The [`CheckboxIndicator`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: The state of the checkbox. Possible values are `checked`, `indeterminate`, or `unchecked`.
-/// - `data-disabled`: Indicates if the checkbox is disabled. values are `true` or `false`.
+/// Only renders children when the checkbox is checked or indeterminate
+/// (unless `force_mount` is true). Must be inside a [`Checkbox`].
 #[component]
-pub fn CheckboxIndicator(
-    #[props(default)] class: Option<String>,
-    #[props(extends = GlobalAttributes)] attributes: Vec<Attribute>,
-    children: Element,
-) -> Element {
+pub fn CheckboxIndicator(props: CheckboxIndicatorProps) -> Element {
     let ctx: CheckboxCtx = use_context();
     let checked = (ctx.checked)();
-
-    let class = tw_merge!(
-        "grid place-content-center text-current transition-none",
-        class,
-    );
+    let should_render = props.force_mount || checked.is_checked();
 
     rsx! {
         span {
             "data-slot": "checkbox-indicator",
             "data-state": checked.to_data_state(),
-            "data-disabled": ctx.disabled,
-            class: class,
-            ..attributes,
+            "data-disabled": if ctx.disabled { "" },
+            style: "pointer-events: none;",
+            class: props.class,
+            ..props.attributes,
 
-            if checked.into() {
-                {children}
+            if should_render {
+                {props.children}
             }
-        }
-    }
-}
-
-#[component]
-fn BubbleInput(
-    checked: ReadSignal<CheckboxState>,
-    default_checked: CheckboxState,
-    #[props(extends = input)] attributes: Vec<Attribute>,
-) -> Element {
-    let id = use_unique_id();
-
-    // Update the actual input state to match our virtual state.
-    use_effect(move || {
-        let checked = checked();
-        let js = eval(
-            r#"
-            let id = await dioxus.recv();
-            let action = await dioxus.recv();
-            let input = document.getElementById(id);
-
-            switch(action) {
-                case "checked":
-                    input.checked = true;
-                    input.indeterminate = false;
-                    break;
-                case "indeterminate":
-                    input.indeterminate = true;
-                    input.checked = true;
-                    break;
-                case "unchecked":
-                    input.checked = false;
-                    input.indeterminate = false;
-                    break;
-            }
-            "#,
-        );
-
-        let _ = js.send(id());
-        let _ = js.send(checked.to_data_state());
-    });
-
-    rsx! {
-        input {
-            id,
-            type: "checkbox",
-            aria_hidden: "true",
-            tabindex: "-1",
-            position: "absolute",
-            pointer_events: "none",
-            opacity: "0",
-            margin: "0",
-            transform: "translateX(-100%)",
-
-            // Default checked
-            checked: default_checked != CheckboxState::Unchecked,
-
-            ..attributes,
         }
     }
 }

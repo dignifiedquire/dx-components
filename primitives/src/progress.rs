@@ -1,146 +1,155 @@
-//! Defines the [`Progress`] component and its sub-components.
+//! Progress primitive — matches `@radix-ui/react-progress`.
+//!
+//! Displays the completion progress of a task with proper ARIA attributes.
 
 use dioxus::prelude::*;
-use tailwind_fuse::*;
 
-/// The props for the [`Progress`] component.
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy)]
+struct ProgressCtx {
+    value: ReadSignal<Option<f64>>,
+    max: f64,
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+fn get_progress_state(value: Option<f64>, max: f64) -> &'static str {
+    match value {
+        None => "indeterminate",
+        Some(v) if v >= max => "complete",
+        Some(_) => "loading",
+    }
+}
+
+fn default_get_value_label(value: f64, max: f64) -> String {
+    format!("{}%", ((value / max) * 100.0).round() as i64)
+}
+
+// ---------------------------------------------------------------------------
+// Progress
+// ---------------------------------------------------------------------------
+
+/// Props for [`Progress`].
 #[derive(Props, Clone, PartialEq)]
 pub struct ProgressProps {
-    /// The current progress value, between 0 and max.
+    /// The current progress value. `None` for indeterminate.
+    #[props(default)]
     pub value: ReadSignal<Option<f64>>,
 
-    /// The maximum value. Defaults to 100.
-    #[props(default = ReadSignal::new(Signal::new(100.0)))]
-    pub max: ReadSignal<f64>,
+    /// The maximum value. Defaults to `100`.
+    #[props(default = 100.0)]
+    pub max: f64,
 
-    /// Additional Tailwind classes to apply.
+    /// Custom function to generate the accessible value label.
+    /// Receives `(value, max)`, should return a human-readable string.
+    #[props(default)]
+    pub get_value_label: Option<Callback<(f64, f64), String>>,
+
+    /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the progress element.
+    /// Spread attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the progress component.
+    /// Children (typically a [`ProgressIndicator`]).
     pub children: Element,
 }
 
-/// # Progress
+/// Displays the completion progress of a task.
 ///
-/// The `Progress` component shows the progress of an operation.
+/// Matches Radix's `Progress`. Renders with `role="progressbar"` and full
+/// ARIA value attributes.
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::progress::{Progress, ProgressIndicator};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Progress {
-///             aria_label: "Progressbar Demo",
-///             value: 50.0,
-///             ProgressIndicator {}
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::progress::{Progress, ProgressIndicator};
+/// rsx! {
+///     Progress { value: 50.0, max: 100.0,
+///         ProgressIndicator {}
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`Progress`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the state of the progress. Values are `loading` or `indeterminate`.
-/// - `data-value`: The current progress value between 0 and max.
-/// - `data-max`: The maximum progress value.
-///
-/// The [`Progress`] component defines the following css variables you can use to control styling:
-/// - `--progress-value`: A value between 0 and 100 representing the current progress percentage.
 #[component]
 pub fn Progress(props: ProgressProps) -> Element {
-    // Calculate percentage for styling and "data-state"
-    let percentage = use_memo(move || {
-        props.value.cloned().map(|v| {
-            let max = (props.max)();
-            (v / max) * 100.0
+    let max = props.max;
+    let value = props.value;
+
+    use_context_provider(|| ProgressCtx { value, max });
+
+    let state = use_memo(move || get_progress_state(value(), max));
+
+    let value_label = use_memo(move || {
+        value().map(|v| {
+            if let Some(cb) = &props.get_value_label {
+                cb.call((v, max))
+            } else {
+                default_get_value_label(v, max)
+            }
         })
     });
-
-    let state = use_memo(move || match percentage() {
-        Some(_) => "loading",
-        None => "indeterminate",
-    });
-
-    let class = tw_merge!(
-        "relative h-2 w-full overflow-hidden rounded-full bg-primary/20",
-        props.class,
-    );
 
     rsx! {
         div {
             "data-slot": "progress",
             role: "progressbar",
-            "aria-valuemin": 0,
-            "aria-valuemax": props.max,
-            "aria-valuenow": props.value.cloned(),
+            "aria-valuemin": "0",
+            "aria-valuemax": "{max}",
+            "aria-valuenow": value().map(|v| format!("{v}")),
+            "aria-valuetext": value_label(),
             "data-state": state,
-            "data-value": props.value.cloned().map(|v| v.to_string()),
-            "data-max": props.max,
-            class: class,
-            style: percentage().map(|p| format!("--progress-value: {p}%")),
+            "data-value": value().map(|v| format!("{v}")),
+            "data-max": "{max}",
+            class: props.class,
             ..props.attributes,
-
             {props.children}
         }
     }
 }
 
-/// The props for the [`ProgressIndicator`] component.
+// ---------------------------------------------------------------------------
+// ProgressIndicator
+// ---------------------------------------------------------------------------
+
+/// Props for [`ProgressIndicator`].
 #[derive(Props, Clone, PartialEq)]
 pub struct ProgressIndicatorProps {
-    /// Additional Tailwind classes to apply.
+    /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the indicator element.
+    /// Spread attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the indicator component.
+
+    /// Children.
     pub children: Element,
 }
 
-/// # ProgressIndicator
+/// The visual indicator showing progress completion.
 ///
-/// The `ProgressIndicator` component represents the visual indicator that shows the progress completion.
-///
-/// This must be used inside a [`Progress`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::progress::{Progress, ProgressIndicator};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Progress {
-///             aria_label: "Progressbar Demo",
-///             value: 50.0,
-///             ProgressIndicator {}
-///         }
-///     }
-/// }
-/// ```
+/// Must be used inside a [`Progress`] component. Inherits `data-state`,
+/// `data-value`, and `data-max` from the parent context.
 #[component]
 pub fn ProgressIndicator(props: ProgressIndicatorProps) -> Element {
-    let class = tw_merge!(
-        "h-full w-full flex-1 bg-primary transition-all",
-        props.class,
-    );
+    let ctx: ProgressCtx = use_context();
+    let value = (ctx.value)();
+    let max = ctx.max;
+    let state = get_progress_state(value, max);
 
     rsx! {
         div {
             "data-slot": "progress-indicator",
-            class: class,
+            "data-state": state,
+            "data-value": value.map(|v| format!("{v}")),
+            "data-max": "{max}",
+            class: props.class,
             ..props.attributes,
             {props.children}
         }

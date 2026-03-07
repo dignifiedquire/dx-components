@@ -1,67 +1,49 @@
-//! Defines the [`Label`] component with Tailwind-based styling.
+//! Label primitive — matches `@radix-ui/react-label`.
+//!
+//! Renders a `<label>` element that prevents text selection on double-click
+//! (unless clicking inside a button, input, select, or textarea).
 
 use dioxus::prelude::*;
-use tailwind_fuse::*;
 
-/// The props for the [`Label`] component.
+/// Props for [`Label`].
 #[derive(Props, Clone, PartialEq)]
 pub struct LabelProps {
-    /// The id of the element that this label is associated with.
-    pub html_for: ReadSignal<String>,
+    /// The id of the element this label is associated with.
+    #[props(default)]
+    pub html_for: Option<String>,
 
-    /// Additional Tailwind classes to apply. Conflicts with base classes
-    /// are resolved in favor of this override.
+    /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the label element.
+    /// Spread attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the label element.
+    /// Children.
     pub children: Element,
 }
 
-/// # Label
+/// An accessible label for form controls.
 ///
-/// The `Label` component is used to create a label for form elements. It must be associated with an element using the [`LabelProps::html_for`] attribute.
+/// Matches Radix's `Label`. Prevents text selection on double-click to avoid
+/// accidental selection when rapidly interacting with the associated control.
 ///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::label::Label;
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Label {
-///             html_for: "name",
-///             "Name"
-///         }
-///
-///         input {
-///             id: "name",
-///             placeholder: "Enter your name",
-///         }
-///     }
-/// }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::label::Label;
+/// rsx! {
+///     Label { html_for: "name", "Name" }
+///     input { id: "name", placeholder: "Enter your name" }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`Label`] component defines the following data attributes for external styling:
-/// - `data-slot`: Always `"label"`.
 #[component]
 pub fn Label(props: LabelProps) -> Element {
-    let class = tw_merge!(
-        "flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
-        props.class,
-    );
-
     rsx! {
         label {
             "data-slot": "label",
             r#for: props.html_for,
-            class: class,
+            class: props.class,
             ..props.attributes,
             {props.children}
         }

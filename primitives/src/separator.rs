@@ -1,77 +1,70 @@
-//! Defines the [`Separator`] component for creating visual or semantic separators.
+//! Separator primitive — matches `@radix-ui/react-separator`.
+//!
+//! Renders a visual or semantic divider. When `decorative` is false (default),
+//! it renders with `role="separator"` for assistive technologies.
 
+use crate::direction::Orientation;
 use dioxus::prelude::*;
-use tailwind_fuse::*;
 
-/// The props for the [`Separator`] component.
+/// Props for [`Separator`].
 #[derive(Props, Clone, PartialEq)]
 pub struct SeparatorProps {
-    /// Horizontal if true, vertical if false.
-    #[props(default = true)]
-    pub horizontal: bool,
+    /// Orientation of the separator. Defaults to `Horizontal`.
+    #[props(default)]
+    pub orientation: Orientation,
 
-    /// If the separator is decorative and should not be classified
-    /// as a separator to the ARIA standard.
-    #[props(default = true)]
+    /// Whether the separator is purely decorative. When `true`, it is removed
+    /// from the accessibility tree (`role="none"`). Defaults to `false`.
+    #[props(default)]
     pub decorative: bool,
 
-    /// Additional Tailwind classes to apply. Conflicts with base classes
-    /// are resolved in favor of this override.
+    /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the separator element.
+    /// Spread attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the separator component.
+    /// Children.
     pub children: Element,
 }
 
-/// # Separator
+/// A visual or semantic divider between content sections.
 ///
-/// The `Separator` component creates a visual or semantic divider between sections of content. If the divider
-/// is purely decorative, it can be marked as such to avoid being classified as a separator by assistive technologies.
+/// Matches Radix's `Separator`. Sets `role="separator"` by default, or
+/// `role="none"` when `decorative` is true.
 ///
-/// ## Example
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::separator::Separator;
+/// # use dioxus_primitives::direction::Orientation;
+/// rsx! {
+///     "Above"
+///     Separator {}
+///     "Below"
 ///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::separator::Separator;
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         "One thing"
-///         Separator { horizontal: true, decorative: true }
-///         "Another thing"
-///     }
-/// }
+///     Separator { orientation: Orientation::Vertical }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`Separator`] component defines the following data attributes for external styling:
-/// - `data-slot`: Always `"separator"`.
-/// - `data-orientation`: Indicates the orientation. Values are `horizontal` or `vertical`.
 #[component]
 pub fn Separator(props: SeparatorProps) -> Element {
-    let orientation = match props.horizontal {
-        true => "horizontal",
-        false => "vertical",
-    };
+    let orientation = props.orientation;
 
-    let class = tw_merge!(
-        "shrink-0 bg-border data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px",
-        props.class,
-    );
+    // `aria-orientation` defaults to `horizontal` per WAI-ARIA, so we only
+    // set it explicitly when vertical.
+    let aria_orientation = match orientation {
+        Orientation::Vertical => Some("vertical"),
+        Orientation::Horizontal => None,
+    };
 
     rsx! {
         div {
             "data-slot": "separator",
-            role: if !props.decorative { "separator" } else { "none" },
-            aria_orientation: if !props.decorative { orientation },
-            "data-orientation": orientation,
-            class: class,
+            "data-orientation": orientation.as_str(),
+            role: if props.decorative { "none" } else { "separator" },
+            aria_orientation: if !props.decorative { aria_orientation },
+            class: props.class,
             ..props.attributes,
             {props.children}
         }

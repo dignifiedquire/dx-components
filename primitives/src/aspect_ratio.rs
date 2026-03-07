@@ -1,53 +1,56 @@
-//! Defines the [`AspectRatio`] component, which maintains a specific aspect ratio for its children.
+//! AspectRatio primitive — matches `@radix-ui/react-aspect-ratio`.
+//!
+//! Maintains a specified aspect ratio for its children using the
+//! padding-bottom technique.
 
 use dioxus::prelude::*;
 
-/// The props for the [`AspectRatio`] component.
+/// Props for [`AspectRatio`].
 #[derive(Props, Clone, PartialEq)]
 pub struct AspectRatioProps {
-    /// The desired ratio. E.g. 16.0 / 9.0
+    /// The desired aspect ratio (width / height). Defaults to `1.0` (square).
     #[props(default = 1.0)]
     pub ratio: f64,
 
-    /// Additional attributes to apply to the aspect ratio container.
+    /// Additional CSS classes applied to the inner content element.
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Spread attributes applied to the inner content element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children to render inside the aspect ratio container.
+    /// Children rendered inside the aspect-ratio container.
     pub children: Element,
 }
 
-/// # AspectRatio
+/// A container that maintains a specific aspect ratio for its children.
 ///
-/// A component that maintains a specific aspect ratio for its children.
+/// Matches Radix's `AspectRatio`. Uses the padding-bottom trick to enforce
+/// the ratio, with children absolutely positioned to fill the space.
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::aspect_ratio::AspectRatio;
-/// fn App() -> Element {
-///     rsx! {
-///         AspectRatio { ratio: 16.0 / 9.0,
-///             div { style: "background-color: lightblue; width: 100%; height: 100%;",
-///                 "This div maintains a 16:9 aspect ratio."
-///             }
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::aspect_ratio::AspectRatio;
+/// rsx! {
+///     AspectRatio { ratio: 16.0 / 9.0,
+///         img { src: "photo.jpg", style: "width: 100%; height: 100%; object-fit: cover;" }
 ///     }
-/// }
+/// };
 /// ```
 #[component]
 pub fn AspectRatio(props: AspectRatioProps) -> Element {
-    let ratio = 100.0 / (props.ratio);
+    let padding_bottom = 100.0 / props.ratio;
 
     rsx! {
         div {
             "data-slot": "aspect-ratio",
-            style: "position: relative; width: 100%; padding-bottom: {ratio}%;",
+            "data-radix-aspect-ratio-wrapper": "",
+            style: "position: relative; width: 100%; padding-bottom: {padding_bottom}%;",
             div {
-                style: "position: absolute; inset: 0;",
+                style: "position: absolute; top: 0; right: 0; bottom: 0; left: 0;",
+                class: props.class,
                 ..props.attributes,
-
                 {props.children}
             }
         }
