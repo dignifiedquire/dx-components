@@ -1,349 +1,351 @@
-//! Defines the [`RadioGroup`] component and its sub-components.
+//! RadioGroup primitive — matches `@radix-ui/react-radio-group`.
+//!
+//! A set of checkable buttons (radios) where only one can be checked at a time.
 
-use std::collections::HashMap;
-
-use crate::{
-    focus::{use_focus_controlled_item_disabled, use_focus_provider, FocusState},
-    use_controlled,
-};
+use crate::direction::{Direction, Orientation};
+use crate::merge_attributes;
+use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
+use crate::use_controlled;
+use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
-use tailwind_fuse::*;
+use dioxus_attributes::attributes;
 
-#[derive(Clone, Copy)]
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
+#[derive(Clone)]
 struct RadioGroupCtx {
-    // State
-    disabled: ReadSignal<bool>,
     value: Memo<String>,
     set_value: Callback<String>,
-
-    // Keyboard nav data
-    // A map of tabindex -> value in the enabled radio items
-    values: Signal<HashMap<usize, String>>,
-    focus: FocusState,
-
-    horizontal: ReadSignal<bool>,
-    roving_loop: ReadSignal<bool>,
+    disabled: bool,
+    required: bool,
+    name: Option<String>,
 }
 
-impl RadioGroupCtx {
-    /// Set the currently focused radio item.
-    ///
-    /// This should be used by `focus`/`focusout` event only to start tracking focus.
-    fn set_focus(&mut self, id: Option<usize>) {
-        self.focus.set_focus(id);
-    }
-
-    /// Set the value of the radio group.
-    fn set_value(&mut self, value: String) {
-        let current_value = self.value.peek();
-        if *current_value == value {
-            return; // No change, do nothing
-        }
-        self.set_value.call(value);
-    }
-
-    fn focus_next(&mut self) {
-        self.focus.focus_next();
-        self.select_focused_value();
-    }
-
-    fn focus_prev(&mut self) {
-        self.focus.focus_prev();
-        self.select_focused_value();
-    }
-
-    fn select_focused_value(&mut self) {
-        if let Some(current_focus) = self.focus.current_focus() {
-            let value = { self.values.read().get(&current_focus).cloned() };
-            if let Some(value) = value {
-                self.set_value(value.clone());
-            }
-        }
-    }
-
-    fn focus_start(&mut self) {
-        self.focus.focus_first();
-    }
-
-    fn focus_end(&mut self) {
-        self.focus.focus_last();
-    }
+#[derive(Clone)]
+struct RadioCtx {
+    checked: Memo<bool>,
+    disabled: bool,
 }
 
-/// The props for the [`RadioGroup`] component.
+// ---------------------------------------------------------------------------
+// RadioGroup (root)
+// ---------------------------------------------------------------------------
+
+/// Props for [`RadioGroup`].
+#[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
 pub struct RadioGroupProps {
-    /// The controlled value of the selected radio item.
+    /// Controlled value. Pass `None` for uncontrolled.
+    #[props(default)]
     pub value: ReadSignal<Option<String>>,
 
-    /// The default selected value when uncontrolled.
+    /// Default value when uncontrolled.
     #[props(default)]
     pub default_value: String,
 
-    /// Callback fired when the selected value changes.
+    /// Callback when the value changes.
     #[props(default)]
     pub on_value_change: Callback<String>,
 
-    /// Whether the radio group is disabled.
+    /// Whether the entire group is disabled.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// Whether the radio group is required in a form.
+    /// Whether a selection is required for form submission.
     #[props(default)]
-    pub required: ReadSignal<bool>,
+    pub required: bool,
 
-    /// The name attribute for form submission.
+    /// The `name` attribute for hidden form inputs.
     #[props(default)]
-    pub name: ReadSignal<String>,
+    pub name: Option<String>,
 
-    /// Whether the radio group is horizontal.
+    /// Layout orientation. Defaults to `Vertical` (matching Radix).
     #[props(default)]
-    pub horizontal: ReadSignal<bool>,
+    pub orientation: Orientation,
 
-    /// Whether focus should loop around when reaching the end.
-    #[props(default = ReadSignal::new(Signal::new(true)))]
-    pub roving_loop: ReadSignal<bool>,
+    /// Text direction for RTL support.
+    #[props(default)]
+    pub dir: Direction,
 
-    /// Additional Tailwind classes to apply.
+    /// Whether keyboard navigation loops. Defaults to `true`.
+    #[props(default = true)]
+    pub r#loop: bool,
+
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the radio group element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the radio group component.
     pub children: Element,
 }
 
-/// # RadioGroup
+/// A set of checkable buttons where only one can be checked at a time.
 ///
-/// The `RadioGroup` component is a container for a group of [`RadioItem`] components that allows users to select a single option from a list of choices.
+/// Matches Radix's `RadioGroup`.
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::radio_group::{RadioGroup, RadioItem};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         RadioGroup {
-///             RadioItem {
-///                 value: "option1".to_string(),
-///                 index: 0usize,
-///                 "Blue"
-///             }
-///             RadioItem {
-///                 value: "option2".to_string(),
-///                 index: 1usize,
-///                 "Red"
-///             }
-///             RadioItem {
-///                 value: "option3".to_string(),
-///                 index: 2usize,
-///                 disabled: true,
-///                 "Green"
-///             }
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::radio_group::*;
+/// rsx! {
+///     RadioGroup { default_value: "a".to_string(),
+///         RadioGroupItem { value: "a".to_string(), "Option A" }
+///         RadioGroupItem { value: "b".to_string(), "Option B" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`RadioGroup`] component defines the following data attributes you can use to control styling:
-/// - `data-orientation`: Indicates the orientation of the radio group. Values are `horizontal` or `vertical`.
-/// - `data-disabled`: Indicates if the radio group is disabled. Values are `true` or `false`.
 #[component]
 pub fn RadioGroup(props: RadioGroupProps) -> Element {
     let (value, set_value) =
         use_controlled(props.value, props.default_value, props.on_value_change);
 
-    let class = tw_merge!("grid gap-3", props.class);
-
-    let focus = use_focus_provider(props.roving_loop);
-    let mut ctx = use_context_provider(|| RadioGroupCtx {
+    use_context_provider(|| RadioGroupCtx {
         value,
         set_value,
         disabled: props.disabled,
-
-        values: Signal::new(Default::default()),
-        focus,
-        horizontal: props.horizontal,
-        roving_loop: props.roving_loop,
+        required: props.required,
+        name: props.name.clone(),
     });
 
+    let class = props.class;
+    let user_attrs = props.attributes;
+    let children = props.children;
+
     rsx! {
-        div {
-            role: "radiogroup",
-            "data-slot": "radio-group",
-            "data-orientation": if (props.horizontal)() { "horizontal" } else { "vertical" },
-            "data-disabled": (props.disabled)(),
-            aria_required: props.required,
-            class: class,
+        RovingFocusGroup {
+            orientation: Signal::new(Some(props.orientation)),
+            dir: Signal::new(props.dir),
+            r#loop: Signal::new(props.r#loop),
+            r#as: {
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                let children = children.clone();
+                move |roving_attrs: Vec<Attribute>| {
+                    let group_attrs = attributes!(div {
+                        role: "radiogroup",
+                        "data-slot": "radio-group",
+                        "data-orientation": props.orientation.as_str(),
+                        "data-disabled": if props.disabled { "" },
+                        aria_required: props.required,
+                        aria_orientation: props.orientation.as_str(),
+                        class: class.clone(),
+                    });
+                    let merged = merge_attributes(vec![roving_attrs, group_attrs, user_attrs.clone()]);
 
-            onfocusout: move |_| ctx.set_focus(None),
-            ..props.attributes,
-
-            {props.children}
+                    rsx! {
+                        div { ..merged, {children.clone()} }
+                    }
+                }
+            },
         }
     }
 }
 
-/// The props for the [`RadioItem`] component
+// ---------------------------------------------------------------------------
+// RadioGroupItem
+// ---------------------------------------------------------------------------
+
+/// Props for [`RadioGroupItem`].
+#[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
-pub struct RadioItemProps {
-    /// The value of the radio item. This will be passed to [`RadioGroupProps::on_value_change`] when selected.
-    pub value: ReadSignal<String>,
-    /// The index of the radio item within the [`RadioGroup`]. This is used to order the items for keyboard navigation.
-    pub index: ReadSignal<usize>,
+pub struct RadioGroupItemProps {
+    /// The value that identifies this item.
+    pub value: String,
 
-    /// Whether the radio item is disabled.
+    /// Whether this item is disabled.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// Optional ID for the radio item element.
-    pub id: Option<String>,
-    /// Optional class for the radio item element.
+    #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the radio item element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the radio item component.
     pub children: Element,
 }
 
-/// # RadioItem
+/// An individual radio button within a [`RadioGroup`].
 ///
-/// The `RadioItem` component represents a single radio button within a [`RadioGroup`]. Only one radio item can be selected at a time within a group.
+/// Matches Radix's `RadioGroupItem`. Wraps `RovingFocusGroupItem` via `r#as`
+/// to compose keyboard navigation handlers.
 ///
-/// This must be used inside a [`RadioGroup`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::radio_group::{RadioGroup, RadioItem};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         RadioGroup {
-///             RadioItem {
-///                 value: "option1".to_string(),
-///                 index: 0usize,
-///                 "Blue"
-///             }
-///             RadioItem {
-///                 value: "option2".to_string(),
-///                 index: 1usize,
-///                 "Red"
-///             }
-///             RadioItem {
-///                 value: "option3".to_string(),
-///                 index: 2usize,
-///                 disabled: true,
-///                 "Green"
-///             }
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::radio_group::*;
+/// rsx! {
+///     RadioGroup { default_value: "a".to_string(),
+///         RadioGroupItem { value: "a".to_string(), "Option A" }
+///         RadioGroupItem { value: "b".to_string(), "Option B" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`RadioItem`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the state of the radio item. Values are `checked` or `unchecked`.
-/// - `data-disabled`: Indicates if the radio item is disabled. Values are `true` or `false`.
 #[component]
-pub fn RadioItem(props: RadioItemProps) -> Element {
-    let mut ctx: RadioGroupCtx = use_context();
+pub fn RadioGroupItem(props: RadioGroupItemProps) -> Element {
+    let ctx: RadioGroupCtx = use_context();
+    let is_disabled = ctx.disabled || props.disabled;
 
-    use_effect(move || {
-        if (props.disabled)() {
-            return;
-        }
-        // Register on mount
-        ctx.values.write().insert((props.index)(), (props.value)());
+    let item_value = props.value.clone();
+    let checked = use_memo(move || (ctx.value)() == item_value);
+
+    use_context_provider(|| RadioCtx {
+        checked,
+        disabled: is_disabled,
     });
 
-    let value = (props.value)().clone();
-    let checked = use_memo(move || (ctx.value)() == value);
+    let class = props.class;
+    let user_attrs = props.attributes;
+    let children = props.children;
 
-    // Tab index for roving index
-    let tab_index = use_memo(move || {
-        if !(ctx.roving_loop)() {
-            return "0";
-        }
-
-        if checked() {
-            return "0";
-        }
-        let current_focus = ctx.focus.current_focus();
-        if let Some(current_focus) = current_focus {
-            if current_focus == (props.index)() {
-                return "0";
-            }
-        } else if (ctx.value)().is_empty() {
-            return "0";
-        }
-
-        "-1"
-    });
-
-    let onmounted = use_focus_controlled_item_disabled(props.index, props.disabled);
-
-    let class = tw_merge!(
-        "aspect-square size-4 shrink-0 rounded-full border border-input text-primary shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30",
-        props.class,
-    );
+    let click_value = props.value.clone();
+    let focus_value = props.value.clone();
 
     rsx! {
-        button {
-            role: "radio",
-            id: props.id,
-            class: class,
-            tabindex: tab_index,
-            type: "button",
+        RovingFocusGroupItem {
+            focusable: !is_disabled,
+            active: checked(),
+            r#as: {
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                let children = children.clone();
+                let click_value = click_value.clone();
+                let focus_value = focus_value.clone();
+                move |slot: RovingFocusSlotProps| {
+                    let radio_attrs = attributes!(button {
+                        r#type: "button",
+                        role: "radio",
+                        "data-slot": "radio-group-item",
+                        "data-state": if checked() { "checked" } else { "unchecked" },
+                        "data-disabled": if is_disabled { "" },
+                        aria_checked: checked(),
+                        disabled: is_disabled,
+                        class: class.clone(),
+                    });
+                    let merged = merge_attributes(vec![slot.attributes.clone(), radio_attrs, user_attrs.clone()]);
 
-            aria_checked: checked,
-            "data-slot": "radio-group-item",
-            "data-state": if checked() { "checked" } else { "unchecked" },
-            "data-disabled": (ctx.disabled)() || (props.disabled)(),
-            disabled: (ctx.disabled)() || (props.disabled)(),
+                    let click_value = click_value.clone();
+                    let focus_value = focus_value.clone();
 
-            onclick: move |_| {
-                let value = (props.value)().clone();
-                ctx.set_value(value);
-            },
+                    rsx! {
+                        button {
+                            onmounted: move |e| slot.on_mounted.call(e),
+                            onmousedown: {
+                                let click_value = click_value.clone();
+                                move |event: MouseEvent| {
+                                    if !is_disabled
+                                        && event.trigger_button() == Some(MouseButton::Primary)
+                                        && !event.modifiers().ctrl()
+                                    {
+                                        ctx.set_value.call(click_value.clone());
+                                    }
+                                    slot.on_mousedown.call(event);
+                                }
+                            },
+                            onkeydown: move |event: KeyboardEvent| {
+                                // Radios don't activate on Enter (WAI-ARIA)
+                                if event.key() == Key::Enter {
+                                    event.prevent_default();
+                                }
+                                slot.on_keydown.call(event);
+                            },
+                            onfocus: {
+                                let focus_value = focus_value.clone();
+                                move |event: FocusEvent| {
+                                    // Auto-check on focus via arrow keys (matching Radix behavior)
+                                    if !is_disabled && !checked() {
+                                        ctx.set_value.call(focus_value.clone());
+                                    }
+                                    slot.on_focus.call(event);
+                                }
+                            },
+                            ..merged,
+                            {children.clone()}
+                        }
 
-            onmounted,
-            onfocus: move |_| ctx.set_focus(Some((props.index)())),
-
-            onkeydown: move |event: Event<KeyboardData>| {
-                let key = event.key();
-                let horizontal = (ctx.horizontal)();
-                let mut prevent_default = true;
-                match key {
-                    Key::ArrowUp if !horizontal => ctx.focus_prev(),
-                    Key::ArrowDown if !horizontal => ctx.focus_next(),
-                    Key::ArrowLeft if horizontal => ctx.focus_prev(),
-                    Key::ArrowRight if horizontal => ctx.focus_next(),
-                    Key::Home => ctx.focus_start(),
-                    Key::End => ctx.focus_end(),
-                    _ => prevent_default = false,
-                };
-                if prevent_default {
-                    event.prevent_default();
+                        // Hidden input for form submission
+                        if ctx.name.is_some() {
+                            input {
+                                r#type: "radio",
+                                aria_hidden: true,
+                                tabindex: "-1",
+                                name: ctx.name.clone(),
+                                value: click_value.clone(),
+                                checked: checked(),
+                                disabled: is_disabled,
+                                required: ctx.required,
+                                style: "position: absolute; pointer-events: none; opacity: 0; margin: 0; transform: translateX(-100%);",
+                            }
+                        }
+                    }
                 }
             },
-            ..props.attributes,
-
-            {props.children}
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// RadioGroupIndicator
+// ---------------------------------------------------------------------------
+
+/// Props for [`RadioGroupIndicator`].
+#[allow(missing_docs)]
+#[derive(Props, Clone, PartialEq)]
+pub struct RadioGroupIndicatorProps {
+    /// When `true`, the indicator is always mounted regardless of checked state.
+    #[props(default)]
+    pub force_mount: bool,
+
+    #[props(default)]
+    pub class: Option<String>,
+
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    #[props(default)]
+    pub children: Element,
+}
+
+/// Visual indicator rendered inside a [`RadioGroupItem`] when checked.
+///
+/// Matches Radix's `RadioGroupIndicator`.
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::radio_group::*;
+/// rsx! {
+///     RadioGroup { default_value: "a".to_string(),
+///         RadioGroupItem { value: "a".to_string(),
+///             RadioGroupIndicator {}
+///             "Option A"
+///         }
+///     }
+/// };
+/// ```
+#[component]
+pub fn RadioGroupIndicator(props: RadioGroupIndicatorProps) -> Element {
+    let radio_ctx: RadioCtx = use_context();
+    let is_present = (radio_ctx.checked)() || props.force_mount;
+
+    rsx! {
+        span {
+            "data-slot": "radio-group-indicator",
+            "data-state": if (radio_ctx.checked)() { "checked" } else { "unchecked" },
+            "data-disabled": if radio_ctx.disabled { "" },
+            class: props.class,
+            ..props.attributes,
+
+            if is_present {
+                {props.children}
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Backward-compat aliases
+// ---------------------------------------------------------------------------
+
+/// Alias for [`RadioGroupItem`] (old name).
+pub use RadioGroupItem as RadioItem;

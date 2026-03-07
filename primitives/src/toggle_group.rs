@@ -1,333 +1,322 @@
-//! Defines the [`ToggleGroup`] component and its sub-components, which manage a group of toggle buttons with single or multiple selection.
+//! ToggleGroup primitive — matches `@radix-ui/react-toggle-group`.
+//!
+//! A group of toggle buttons where selection depends on the type:
+//! single (radio-like) or multiple (independent toggles).
 
-use crate::{
-    focus::{use_focus_controlled_item, use_focus_provider, FocusState},
-    toggle::{Toggle, ToggleSize, ToggleVariant},
-    use_controlled,
-};
+use crate::direction::{Direction, Orientation};
+use crate::merge_attributes;
+use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
+use crate::use_controlled;
 use dioxus::prelude::*;
-use std::collections::HashSet;
-use tailwind_fuse::*;
+use dioxus_attributes::attributes;
 
-// Todo: docs, test controlled version
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
 
-#[derive(Clone, Copy)]
+/// Whether the toggle group allows single or multiple selections.
+///
+/// Matches Radix's `type` prop.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum ToggleGroupType {
+    /// Only one item can be pressed at a time (radio-like).
+    #[default]
+    Single,
+    /// Multiple items can be pressed independently.
+    Multiple,
+}
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
+#[derive(Clone)]
 struct ToggleGroupCtx {
-    // State
-    disabled: ReadSignal<bool>,
-    pressed: Memo<HashSet<usize>>,
-    set_pressed: Callback<HashSet<usize>>,
-
-    allow_multiple_pressed: ReadSignal<bool>,
-
-    // Focus state
-    focus: FocusState,
-
-    horizontal: ReadSignal<bool>,
-    roving_loop: ReadSignal<bool>,
-
-    // Styling
-    variant: ToggleVariant,
-    size: ToggleSize,
+    type_: ToggleGroupType,
+    value: Memo<Vec<String>>,
+    on_item_activate: Callback<String>,
+    on_item_deactivate: Callback<String>,
+    disabled: bool,
 }
 
-impl ToggleGroupCtx {
-    fn orientation(&self) -> &'static str {
-        match (self.horizontal)() {
-            true => "horizontal",
-            false => "vertical",
-        }
-    }
+// ---------------------------------------------------------------------------
+// ToggleGroup (root)
+// ---------------------------------------------------------------------------
 
-    fn is_pressed(&self, id: usize) -> bool {
-        let pressed = (self.pressed)();
-        pressed.contains(&id)
-    }
-
-    fn set_pressed(&self, id: usize, pressed: bool) {
-        let mut new_pressed = (self.pressed)();
-        match pressed {
-            false => new_pressed.remove(&id),
-            true => {
-                if !(self.allow_multiple_pressed)() {
-                    new_pressed.clear();
-                }
-                new_pressed.insert(id)
-            }
-        };
-        self.set_pressed.call(new_pressed);
-    }
-
-    fn is_horizontal(&self) -> bool {
-        (self.horizontal)()
-    }
-
-    fn focus_next(&mut self) {
-        if !(self.roving_loop)() {
-            return;
-        }
-
-        self.focus.focus_next();
-    }
-
-    fn focus_prev(&mut self) {
-        if !(self.roving_loop)() {
-            return;
-        }
-
-        self.focus.focus_prev();
-    }
-
-    fn is_roving_loop(&self) -> bool {
-        (self.roving_loop)()
-    }
-}
-
-/// The props for the [`ToggleGroup`] component
+/// Props for [`ToggleGroup`].
+#[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
 pub struct ToggleGroupProps {
-    /// Visual variant applied to all toggle items in the group.
-    #[props(default = ToggleVariant::Default)]
-    pub variant: ToggleVariant,
-
-    /// Size applied to all toggle items in the group.
-    #[props(default = ToggleSize::Default)]
-    pub size: ToggleSize,
-
-    /// The default pressed items if the component is not controlled.
+    /// Whether this is a single or multiple selection group.
     #[props(default)]
-    pub default_pressed: HashSet<usize>,
+    pub type_: ToggleGroupType,
 
-    /// The currently pressed items. This can be used to drive the component when controlled.
-    pub pressed: ReadSignal<Option<HashSet<usize>>>,
-
-    /// Callback to handle changes in pressed state
+    /// Controlled value. Pass `None` for uncontrolled.
     #[props(default)]
-    pub on_pressed_change: Callback<HashSet<usize>>,
+    pub value: ReadSignal<Option<Vec<String>>>,
 
-    /// Whether the toggle group is disabled
+    /// Default value when uncontrolled.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub default_value: Vec<String>,
 
-    /// If multiple items can be pressed at the same time. If this is false, only one item can be pressed at a time (radio-style).
+    /// Callback when the value changes.
     #[props(default)]
-    pub allow_multiple_pressed: ReadSignal<bool>,
+    pub on_value_change: Callback<Vec<String>>,
 
-    /// Whether the toggle group is horizontal or vertical.
+    /// Whether the entire group is disabled.
     #[props(default)]
-    pub horizontal: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// Whether focus should loop around when reaching the end.
-    #[props(default = ReadSignal::new(Signal::new(true)))]
-    pub roving_loop: ReadSignal<bool>,
+    /// Whether RovingFocusGroup keyboard navigation is enabled.
+    #[props(default = true)]
+    pub roving_focus: bool,
 
-    /// Additional Tailwind classes to apply.
+    /// Layout orientation. Defaults to `Horizontal` (matching Radix).
+    #[props(default = Orientation::Horizontal)]
+    pub orientation: Orientation,
+
+    /// Text direction for RTL support.
+    #[props(default)]
+    pub dir: Direction,
+
+    /// Whether keyboard navigation loops. Defaults to `true`.
+    #[props(default = true)]
+    pub r#loop: bool,
+
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the toggle group element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the toggle group, which should include multiple [`ToggleItem`] components.
     pub children: Element,
 }
 
-/// # ToggleGroup
+/// A group of toggle buttons with single or multiple selection.
 ///
-/// The `ToggleGroup` component manages a group of toggle buttons. It supports both single (radio-style) and multiple selection modes with keyboard navigation.
+/// Matches Radix's `ToggleGroup`.
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::toggle_group::{ToggleGroup, ToggleItem};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         ToggleGroup { horizontal: true, allow_multiple_pressed: true,
-///             ToggleItem { index: 0usize, em { "B" } }
-///             ToggleItem { index: 1usize, i { "I" } }
-///             ToggleItem { index: 2usize, u { "U" } }
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::toggle_group::*;
+/// rsx! {
+///     ToggleGroup { type_: ToggleGroupType::Multiple,
+///         ToggleGroupItem { value: "bold", "B" }
+///         ToggleGroupItem { value: "italic", "I" }
+///         ToggleGroupItem { value: "underline", "U" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`ToggleGroup`] component defines the following data attributes you can use to control styling:
-/// - `data-orientation`: Indicates the orientation of the toggle group. Values are `horizontal` or `vertical`.
-/// - `data-allow-multiple-pressed`: Indicates if multiple items can be pressed at the same time. Values are `true` or `false`.
 #[component]
 pub fn ToggleGroup(props: ToggleGroupProps) -> Element {
-    let (pressed, set_pressed) = use_controlled(
-        props.pressed,
-        props.default_pressed,
-        props.on_pressed_change,
-    );
+    let (value, set_value) =
+        use_controlled(props.value, props.default_value, props.on_value_change);
 
-    let variant_attr = props.variant.as_data_attr();
-    let size_attr = props.size.as_data_attr();
+    let type_ = props.type_;
 
-    let class = tw_merge!(
-        "group/toggle-group flex w-fit items-center rounded-md data-[variant=outline]:shadow-xs",
-        props.class,
-    );
-
-    let focus = use_focus_provider(props.roving_loop);
-    let mut ctx = use_context_provider(|| ToggleGroupCtx {
-        pressed,
-        set_pressed,
-        allow_multiple_pressed: props.allow_multiple_pressed,
-        disabled: props.disabled,
-
-        focus,
-        horizontal: props.horizontal,
-        roving_loop: props.roving_loop,
-        variant: props.variant,
-        size: props.size,
+    let on_item_activate = use_callback(move |item_value: String| match type_ {
+        ToggleGroupType::Single => {
+            set_value.call(vec![item_value]);
+        }
+        ToggleGroupType::Multiple => {
+            let mut current = (value)();
+            current.push(item_value);
+            set_value.call(current);
+        }
     });
 
-    rsx! {
-        div {
-            onfocusout: move |_| ctx.focus.set_focus(None),
+    let on_item_deactivate = use_callback(move |item_value: String| match type_ {
+        ToggleGroupType::Single => {
+            set_value.call(vec![]);
+        }
+        ToggleGroupType::Multiple => {
+            let current = (value)();
+            let filtered: Vec<String> = current.into_iter().filter(|v| v != &item_value).collect();
+            set_value.call(filtered);
+        }
+    });
 
-            "data-slot": "toggle-group",
-            "data-variant": variant_attr,
-            "data-size": size_attr,
-            "data-orientation": ctx.orientation(),
-            "data-allow-multiple-pressed": ctx.allow_multiple_pressed,
-            class: class,
-            ..props.attributes,
+    use_context_provider(|| ToggleGroupCtx {
+        type_,
+        value,
+        on_item_activate,
+        on_item_deactivate,
+        disabled: props.disabled,
+    });
 
-            {props.children}
+    let class = props.class;
+    let user_attrs = props.attributes;
+    let children = props.children;
+    let orientation = props.orientation;
+    let disabled = props.disabled;
+
+    if props.roving_focus {
+        rsx! {
+            RovingFocusGroup {
+                orientation: Signal::new(Some(orientation)),
+                dir: Signal::new(props.dir),
+                r#loop: Signal::new(props.r#loop),
+                r#as: {
+                    let class = class.clone();
+                    let user_attrs = user_attrs.clone();
+                    let children = children.clone();
+                    move |roving_attrs: Vec<Attribute>| {
+                        let group_attrs = attributes!(div {
+                            role: "group",
+                            "data-slot": "toggle-group",
+                            "data-orientation": orientation.as_str(),
+                            "data-disabled": if disabled { "" },
+                            class: class.clone(),
+                        });
+                        let merged = merge_attributes(vec![roving_attrs, group_attrs, user_attrs.clone()]);
+
+                        rsx! {
+                            div { ..merged, {children.clone()} }
+                        }
+                    }
+                },
+            }
+        }
+    } else {
+        rsx! {
+            div {
+                role: "group",
+                "data-slot": "toggle-group",
+                "data-orientation": orientation.as_str(),
+                "data-disabled": if disabled { "" },
+                class: class,
+                ..user_attrs,
+                {children}
+            }
         }
     }
 }
 
-/// The props for the [`ToggleItem`] component
+// ---------------------------------------------------------------------------
+// ToggleGroupItem
+// ---------------------------------------------------------------------------
+
+/// Props for [`ToggleGroupItem`].
+#[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
-pub struct ToggleItemProps {
-    /// The index of the item within the [`ToggleGroup`]. This is used to order the items for keyboard navigation.
-    pub index: ReadSignal<usize>,
+pub struct ToggleGroupItemProps {
+    /// The value that identifies this item.
+    pub value: String,
 
-    /// Whether the toggle item is disabled.
+    /// Whether this item is disabled.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the toggle item element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the toggle item
     pub children: Element,
 }
 
-/// # ToggleItem
+/// An individual toggle button within a [`ToggleGroup`].
 ///
-/// An individual toggle button within a [`ToggleGroup`] component.
+/// Matches Radix's `ToggleGroupItem`. In single mode uses `role="radio"` +
+/// `aria-checked`; in multiple mode uses `aria-pressed`.
 ///
-/// This must be used inside a [`ToggleGroup`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::toggle_group::{ToggleGroup, ToggleItem};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         ToggleGroup { horizontal: true, allow_multiple_pressed: true,
-///             ToggleItem { index: 0usize, em { "B" } }
-///             ToggleItem { index: 1usize, i { "I" } }
-///             ToggleItem { index: 2usize, u { "U" } }
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::toggle_group::*;
+/// rsx! {
+///     ToggleGroup { type_: ToggleGroupType::Multiple,
+///         ToggleGroupItem { value: "bold", "B" }
+///         ToggleGroupItem { value: "italic", "I" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`ToggleItem`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the state of the toggle. Values are `on` or `off`.
-/// - `data-disabled`: Indicates if the toggle is disabled. Values are `true` or `false`.
-/// - `data-orientation`: Indicates the orientation of the toggle group. Values are `horizontal` or `vertical`.
 #[component]
-pub fn ToggleItem(props: ToggleItemProps) -> Element {
-    let mut ctx: ToggleGroupCtx = use_context();
+pub fn ToggleGroupItem(props: ToggleGroupItemProps) -> Element {
+    let ctx: ToggleGroupCtx = use_context();
+    let is_disabled = ctx.disabled || props.disabled;
 
-    // We need a kept-alive signal to control the toggle.
-    let mut pressed = use_signal(|| ctx.is_pressed(props.index.cloned()));
-    use_effect(move || {
-        let is_pressed = ctx.is_pressed(props.index.cloned());
-        pressed.set(is_pressed);
-    });
+    let item_value = props.value.clone();
+    let pressed = use_memo(move || (ctx.value)().contains(&item_value));
 
-    // Tab index for roving index
-    let tab_index = use_memo(move || {
-        if !ctx.is_roving_loop() {
-            return "0";
-        }
-
-        match ctx.focus.recent_focus_or_default() == props.index.cloned() {
-            true => "0",
-            false => "-1",
-        }
-    });
-
-    // Handle settings focus
-    let onmounted = use_focus_controlled_item(props.index);
-
-    let item_class = tw_merge!(
-        "shrink-0 rounded-none first:rounded-l-md last:rounded-r-md focus-within:relative focus-within:z-10 data-[variant=outline]:border-l-0 data-[variant=outline]:first:border-l",
-        props.class,
-    );
+    let class = props.class;
+    let user_attrs = props.attributes;
+    let children = props.children;
+    let click_value = props.value.clone();
 
     rsx! {
-        Toggle {
-            variant: ctx.variant,
-            size: ctx.size,
-            class: item_class,
+        RovingFocusGroupItem {
+            focusable: !is_disabled,
+            active: pressed(),
+            r#as: {
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                let children = children.clone();
+                let click_value = click_value.clone();
+                move |slot: RovingFocusSlotProps| {
+                    // Build ARIA attrs based on single vs. multiple mode
+                    let item_attrs = match ctx.type_ {
+                        ToggleGroupType::Single => attributes!(button {
+                            r#type: "button",
+                            role: "radio",
+                            "data-slot": "toggle-group-item",
+                            "data-state": if pressed() { "on" } else { "off" },
+                            "data-disabled": if is_disabled { "" },
+                            aria_checked: pressed(),
+                            disabled: is_disabled,
+                            class: class.clone(),
+                        }),
+                        ToggleGroupType::Multiple => attributes!(button {
+                            r#type: "button",
+                            "data-slot": "toggle-group-item",
+                            "data-state": if pressed() { "on" } else { "off" },
+                            "data-disabled": if is_disabled { "" },
+                            aria_pressed: pressed(),
+                            disabled: is_disabled,
+                            class: class.clone(),
+                        }),
+                    };
+                    let merged = merge_attributes(vec![slot.attributes.clone(), item_attrs, user_attrs.clone()]);
 
-            onmounted,
-            onfocus: move |_| ctx.focus.set_focus(Some(props.index.cloned())),
-            onkeydown: move |event: Event<KeyboardData>| {
-                let key = event.key();
-                let horizontal = ctx.is_horizontal();
-                let mut prevent_default = true;
+                    let click_value = click_value.clone();
 
-                match key {
-                    Key::ArrowUp if !horizontal => ctx.focus_prev(),
-                    Key::ArrowDown if !horizontal => ctx.focus_next(),
-                    Key::ArrowLeft if horizontal => ctx.focus_prev(),
-                    Key::ArrowRight if horizontal => ctx.focus_next(),
-                    Key::Home => ctx.focus.focus_first(),
-                    Key::End => ctx.focus.focus_last(),
-                    _ => prevent_default = false,
-                };
-
-                if prevent_default {
-                    event.prevent_default();
+                    rsx! {
+                        button {
+                            onmounted: move |e| slot.on_mounted.call(e),
+                            onmousedown: move |event: MouseEvent| {
+                                slot.on_mousedown.call(event);
+                            },
+                            onkeydown: move |event: KeyboardEvent| {
+                                slot.on_keydown.call(event);
+                            },
+                            onfocus: move |event: FocusEvent| {
+                                slot.on_focus.call(event);
+                            },
+                            onclick: {
+                                let click_value = click_value.clone();
+                                move |_| {
+                                    if !is_disabled {
+                                        if pressed() {
+                                            ctx.on_item_deactivate.call(click_value.clone());
+                                        } else {
+                                            ctx.on_item_activate.call(click_value.clone());
+                                        }
+                                    }
+                                }
+                            },
+                            ..merged,
+                            {children.clone()}
+                        }
+                    }
                 }
             },
-
-            tabindex: tab_index,
-            disabled: (ctx.disabled)() || (props.disabled)(),
-            "data-orientation": ctx.orientation(),
-
-            pressed: pressed(),
-            on_pressed_change: move |pressed| {
-                ctx.set_pressed(props.index.cloned(), pressed);
-            },
-
-            attributes: props.attributes.clone(),
-
-            {props.children}
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Backward-compat aliases
+// ---------------------------------------------------------------------------
+
+/// Alias for [`ToggleGroupItem`] (old name).
+pub use ToggleGroupItem as ToggleItem;

@@ -1,50 +1,55 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('test', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/?name=toggle_group&', { timeout: 20 * 60 * 1000 });
+test("test", async ({ page }) => {
+  await page.goto("http://127.0.0.1:8080/docs/components/toggle_group", { timeout: 20 * 60 * 1000 });
 
-  // Toggle group root
-  const group = page.locator('[data-slot="toggle-group"]');
+  // Scope to the preview container
+  const preview = page.locator('[data-slot="preview"]').first();
+  await expect(preview).toBeVisible();
+
+  // Toggle group root (the first demo is "multiple" mode)
+  const group = preview.locator('[data-slot="toggle-group"]');
   await expect(group).toBeVisible();
-  await expect(group).toHaveAttribute('data-slot', 'toggle-group');
-  await expect(group).toHaveAttribute('data-variant', 'default');
-  await expect(group).toHaveAttribute('data-size', 'default');
+  await expect(group).toHaveAttribute('role', 'group');
   await expect(group).toHaveAttribute('data-orientation', 'horizontal');
 
-  // Key Tailwind classes on group
-  const groupClass = await group.getAttribute('class');
-  expect(groupClass).toContain('flex');
-  expect(groupClass).toContain('items-center');
-  expect(groupClass).toContain('rounded-md');
-
-  // Toggle items (rendered as toggle buttons via Toggle primitive)
-  const items = group.locator('[data-slot="toggle"]');
+  // Toggle items
+  const items = group.locator('[data-slot="toggle-group-item"]');
   await expect(items).toHaveCount(3);
 
-  // Items inherit variant/size from group
-  const firstItem = items.first();
-  await expect(firstItem).toHaveAttribute('data-variant', 'default');
-  await expect(firstItem).toHaveAttribute('data-size', 'default');
+  const boldItem = items.nth(0);
+  const italicItem = items.nth(1);
+  const underlineItem = items.nth(2);
 
-  // Item Tailwind classes include group overrides
-  const itemClass = await firstItem.getAttribute('class');
-  expect(itemClass).toContain('shrink-0');
-  expect(itemClass).toContain('rounded-none');
-  expect(itemClass).toContain('inline-flex');
+  // Items start off
+  await expect(boldItem).toHaveAttribute('data-state', 'off');
+  await expect(italicItem).toHaveAttribute('data-state', 'off');
 
-  // Toggle behavior: items start off
-  await expect(firstItem).toHaveAttribute('data-state', 'off');
+  // Click toggles on (multiple mode — items toggle independently)
+  await boldItem.click();
+  await expect(boldItem).toHaveAttribute('data-state', 'on');
+  await expect(boldItem).toHaveAttribute('aria-pressed', 'true');
 
-  // Click toggles on
-  await firstItem.click();
-  await expect(firstItem).toHaveAttribute('data-state', 'on');
+  // Click another — both can be on
+  await italicItem.click();
+  await expect(italicItem).toHaveAttribute('data-state', 'on');
+  await expect(boldItem).toHaveAttribute('data-state', 'on');
+
+  // Click again toggles off
+  await boldItem.click();
+  await expect(boldItem).toHaveAttribute('data-state', 'off');
+  await expect(italicItem).toHaveAttribute('data-state', 'on');
 
   // Keyboard navigation: ArrowRight moves focus
-  await page.keyboard.press('ArrowRight');
-  const secondItem = items.nth(1);
-  await expect(secondItem).toBeFocused();
+  await italicItem.click();
+  await page.keyboard.press("ArrowRight");
+  await expect(underlineItem).toBeFocused();
 
-  // Space toggles second item
-  await page.keyboard.press('Space');
-  await expect(secondItem).toHaveAttribute('data-state', 'on');
+  // ArrowRight loops back
+  await page.keyboard.press("ArrowRight");
+  await expect(boldItem).toBeFocused();
+
+  // ArrowLeft goes back
+  await page.keyboard.press("ArrowLeft");
+  await expect(underlineItem).toBeFocused();
 });
