@@ -35,8 +35,10 @@ pub mod label;
 pub mod menubar;
 #[cfg(feature = "router")]
 pub mod navbar;
+pub mod number;
 pub mod popover;
 mod portal;
+pub mod primitive;
 pub mod progress;
 pub mod radio_group;
 pub mod scroll_area;
