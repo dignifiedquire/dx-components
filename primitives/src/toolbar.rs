@@ -1,360 +1,400 @@
-//! Defines the [`Toolbar`] component and its sub-components, which provide a container to group related buttons and controls with keyboard navigation.
+//! Toolbar primitive — matches `@radix-ui/react-toolbar`.
+//!
+//! A container for grouping a set of controls (buttons, toggle groups, etc.)
+//! with keyboard navigation via `RovingFocusGroup`.
 
+use crate::direction::{Direction, Orientation};
+use crate::merge_attributes;
+use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
+use crate::toggle_group::{ToggleGroup, ToggleGroupType};
 use dioxus::prelude::*;
-use std::rc::Rc;
-use tailwind_fuse::*;
+use dioxus_attributes::attributes;
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
 
 #[derive(Clone, Copy)]
 struct ToolbarCtx {
-    // State
-    disabled: ReadSignal<bool>,
-
-    // Focus management
-    focused_index: Signal<Option<usize>>,
-
-    // Orientation
-    horizontal: ReadSignal<bool>,
+    orientation: Orientation,
+    dir: Direction,
 }
 
-impl ToolbarCtx {
-    fn set_focus(&mut self, index: Option<usize>) {
-        self.focused_index.set(index);
-    }
+// ---------------------------------------------------------------------------
+// Toolbar (root)
+// ---------------------------------------------------------------------------
 
-    fn is_focused(&self, index: usize) -> bool {
-        (self.focused_index)() == Some(index)
-    }
-
-    fn orientation(&self) -> &'static str {
-        if (self.horizontal)() {
-            "horizontal"
-        } else {
-            "vertical"
-        }
-    }
-}
-
-/// The props for the [`Toolbar`] component
+/// Props for [`Toolbar`].
+#[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
 pub struct ToolbarProps {
-    /// Whether the toolbar is disabled
+    /// Layout orientation. Defaults to `Horizontal`.
+    #[props(default = Orientation::Horizontal)]
+    pub orientation: Orientation,
+
+    /// Text direction for RTL support.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub dir: Direction,
 
-    /// Whether the toolbar is horizontal (true) or vertical (false)
-    #[props(default = ReadSignal::new(Signal::new(true)))]
-    pub horizontal: ReadSignal<bool>,
+    /// Whether keyboard navigation loops. Defaults to `true`.
+    #[props(default = true)]
+    pub r#loop: bool,
 
-    /// ARIA label for the toolbar
-    #[props(default)]
-    pub aria_label: Option<String>,
-
-    /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes for the toolbar
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the toolbar, which should include multiple [`ToolbarButton`] components.
     pub children: Element,
 }
 
-/// # Toolbar
+/// A container for grouping controls with keyboard navigation.
 ///
-/// The `Toolbar` component creates an container for grouping related buttons and controls. It supports keyboard navigation with arrow keys between adjacent [`ToolbarButton`]s.
+/// Matches Radix's `Toolbar`. Delegates keyboard navigation to
+/// [`RovingFocusGroup`] via `r#as`.
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::toolbar::{Toolbar, ToolbarButton, ToolbarSeparator};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Toolbar { aria_label: "Text formatting",
-///             ToolbarButton {
-///                 index: 0usize,
-///                 on_click: move |_| tracing::info!("Bold clicked"),
-///                 "Bold"
-///             }
-///             ToolbarSeparator {}
-///             ToolbarButton {
-///                 index: 1usize,
-///                 on_click: move |_| tracing::info!("Italic clicked"),
-///                 "Italic"
-///             }
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::toolbar::*;
+/// rsx! {
+///     Toolbar { aria_label: "Formatting tools",
+///         ToolbarButton { "Bold" }
+///         ToolbarSeparator {}
+///         ToolbarButton { "Italic" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`Toolbar`] component defines the following data attributes you can use to control styling:
-/// - `data-orientation`: Indicates the orientation of the toolbar. Values are `horizontal` or `vertical`.
-/// - `data-disabled`: Indicates if the toolbar is disabled. Values are `true` or `false`.
 #[component]
 pub fn Toolbar(props: ToolbarProps) -> Element {
-    let mut ctx = use_context_provider(|| ToolbarCtx {
-        disabled: props.disabled,
-        focused_index: Signal::new(None),
-        horizontal: props.horizontal,
+    use_context_provider(|| ToolbarCtx {
+        orientation: props.orientation,
+        dir: props.dir,
     });
 
-    let class = tw_merge!(
-        "flex items-center gap-1 rounded-md border bg-background p-1",
-        props.class,
-    );
+    let class = props.class;
+    let user_attrs = props.attributes;
+    let children = props.children;
+    let orientation = props.orientation;
 
     rsx! {
-        div {
-            "data-slot": "toolbar",
-            class: class,
-            role: "toolbar",
-            "data-orientation": ctx.orientation(),
-            "data-disabled": (props.disabled)(),
-            aria_label: props.aria_label,
+        RovingFocusGroup {
+            orientation: Signal::new(Some(orientation)),
+            dir: Signal::new(props.dir),
+            r#loop: Signal::new(props.r#loop),
+            r#as: {
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                let children = children.clone();
+                move |roving_attrs: Vec<Attribute>| {
+                    let toolbar_attrs = attributes!(div {
+                        role: "toolbar",
+                        "data-slot": "toolbar",
+                        "data-orientation": orientation.as_str(),
+                        aria_orientation: orientation.as_str(),
+                        class: class.clone(),
+                    });
+                    let merged = merge_attributes(vec![roving_attrs, toolbar_attrs, user_attrs.clone()]);
 
-            onfocusout: move |_| ctx.set_focus(None),
-            ..props.attributes,
-
-            {props.children}
+                    rsx! {
+                        div { ..merged, {children.clone()} }
+                    }
+                }
+            },
         }
     }
 }
 
-/// The props for the [`ToolbarButton`] component
+// ---------------------------------------------------------------------------
+// ToolbarButton
+// ---------------------------------------------------------------------------
+
+/// Props for [`ToolbarButton`].
+#[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
 pub struct ToolbarButtonProps {
-    /// Index of the button in the toolbar. This is used to define the focus order for keyboard navigation.
-    pub index: ReadSignal<usize>,
-
-    /// Whether the button is disabled
+    /// Whether this button is disabled.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// Callback when the button is clicked
-    #[props(default)]
-    pub on_click: Callback<()>,
-
-    /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes for the button
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the button
     pub children: Element,
 }
 
-/// # ToolbarButton
+/// A focusable button within a [`Toolbar`].
 ///
-/// A button component within a [`Toolbar`] with focus controlled by the toolbar context for keyboard navigation.
+/// Matches Radix's `ToolbarButton`. Wraps `RovingFocusGroupItem` via `r#as`.
 ///
-/// This must be used inside a [`Toolbar`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::toolbar::{Toolbar, ToolbarButton, ToolbarSeparator};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Toolbar { aria_label: "Text formatting",
-///             ToolbarButton {
-///                 index: 0usize,
-///                 on_click: move |_| tracing::info!("Bold clicked"),
-///                 "Bold"
-///             }
-///             ToolbarSeparator {}
-///             ToolbarButton {
-///                 index: 1usize,
-///                 on_click: move |_| tracing::info!("Italic clicked"),
-///                 "Italic"
-///             }
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::toolbar::*;
+/// rsx! {
+///     Toolbar {
+///         ToolbarButton { "Bold" }
+///         ToolbarButton { "Italic" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`ToolbarButton`] component defines the following data attributes you can use to control styling:
-/// - `data-disabled`: Indicates if the button is disabled. Values are `true` or `false`.
 #[component]
 pub fn ToolbarButton(props: ToolbarButtonProps) -> Element {
-    let mut ctx: ToolbarCtx = use_context();
-
-    // Handle button ref for focus management
-    let mut button_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
-
-    // Check if this button is focused
-    let is_focused = use_memo(move || ctx.is_focused((props.index)()));
-
-    // Set focus when needed
-    use_effect(move || {
-        if is_focused() {
-            if let Some(md) = button_ref() {
-                spawn(async move {
-                    let _ = md.set_focus(true).await;
-                });
-            }
-        }
-    });
-
-    let class = tw_merge!(
-        "inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] outline-none hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        props.class,
-    );
+    let disabled = props.disabled;
+    let class = props.class;
+    let user_attrs = props.attributes;
+    let children = props.children;
 
     rsx! {
-        button {
-            "data-slot": "toolbar-button",
-            class: class,
-            type: "button",
-            tabindex: "0",
-            disabled: (ctx.disabled)() || (props.disabled)(),
-            "data-disabled": (ctx.disabled)() || (props.disabled)(),
+        RovingFocusGroupItem {
+            focusable: !disabled,
+            active: false,
+            r#as: {
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                let children = children.clone();
+                move |slot: RovingFocusSlotProps| {
+                    let btn_attrs = attributes!(button {
+                        r#type: "button",
+                        "data-slot": "toolbar-button",
+                        "data-disabled": if disabled { "" },
+                        disabled: disabled,
+                        class: class.clone(),
+                    });
+                    let merged = merge_attributes(vec![slot.attributes.clone(), btn_attrs, user_attrs.clone()]);
 
-            onmounted: move |data: Event<MountedData>| button_ref.set(Some(data.data())),
-            onfocus: move |_| ctx.set_focus(Some((props.index)())),
-
-            onclick: move |_| {
-                if !(ctx.disabled)() && !(props.disabled)() {
-                    props.on_click.call(());
-                }
-            },
-
-            onkeydown: move |event: Event<KeyboardData>| {
-                let key = event.key();
-                let horizontal = (ctx.horizontal)();
-                let mut prevent_default = true;
-                match key {
-                    Key::ArrowUp if !horizontal => {
-                        let index = (props.index)();
-                        if index > 0 {
-                            ctx.set_focus(Some(index - 1));
+                    rsx! {
+                        button {
+                            onmounted: move |e| slot.on_mounted.call(e),
+                            onmousedown: move |event: MouseEvent| {
+                                slot.on_mousedown.call(event);
+                            },
+                            onkeydown: move |event: KeyboardEvent| {
+                                slot.on_keydown.call(event);
+                            },
+                            onfocus: move |event: FocusEvent| {
+                                slot.on_focus.call(event);
+                            },
+                            ..merged,
+                            {children.clone()}
                         }
                     }
-                    Key::ArrowDown if !horizontal => {
-                        let index = (props.index)();
-                        ctx.set_focus(Some(index + 1));
-                    }
-                    Key::ArrowLeft if horizontal => {
-                        let index = (props.index)();
-                        if index > 0 {
-                            ctx.set_focus(Some(index - 1));
-                        }
-                    }
-                    Key::ArrowRight if horizontal => {
-                        let index = (props.index)();
-                        ctx.set_focus(Some(index + 1));
-                    }
-                    Key::Home => {
-                        ctx.set_focus(Some(0));
-                    }
-                    Key::End => {
-                        ctx.set_focus(Some(100));
-                    }
-                    _ => prevent_default = false,
-                };
-                if prevent_default {
-                    event.prevent_default();
                 }
             },
-
-            ..props.attributes,
-            {props.children}
         }
     }
 }
 
-/// The props for the [`ToolbarSeparator`] component
+// ---------------------------------------------------------------------------
+// ToolbarLink
+// ---------------------------------------------------------------------------
+
+/// Props for [`ToolbarLink`].
+#[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
-pub struct ToolbarSeparatorProps {
-    /// Whether the separator is horizontal (true) or vertical (false)
-    #[props(default)]
-    pub horizontal: Option<bool>,
-
-    /// If the separator is decorative and should not be classified
-    /// as a separator to the ARIA standard.
-    #[props(default = false)]
-    pub decorative: bool,
-
-    /// Additional Tailwind classes to apply.
+pub struct ToolbarLinkProps {
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes for the separator
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    pub children: Element,
+}
+
+/// A focusable link within a [`Toolbar`].
+///
+/// Matches Radix's `ToolbarLink`. Adds Space key activation (matching
+/// Radix's accessibility behavior for links in toolbars).
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::toolbar::*;
+/// rsx! {
+///     Toolbar {
+///         ToolbarLink { "Docs" }
+///     }
+/// };
+/// ```
+#[component]
+pub fn ToolbarLink(props: ToolbarLinkProps) -> Element {
+    let class = props.class;
+    let user_attrs = props.attributes;
+    let children = props.children;
+
+    rsx! {
+        RovingFocusGroupItem {
+            focusable: true,
+            active: false,
+            r#as: {
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                let children = children.clone();
+                move |slot: RovingFocusSlotProps| {
+                    let link_attrs = attributes!(a {
+                        "data-slot": "toolbar-link",
+                        class: class.clone(),
+                    });
+                    let merged = merge_attributes(vec![slot.attributes.clone(), link_attrs, user_attrs.clone()]);
+
+                    rsx! {
+                        a {
+                            onmounted: move |e| slot.on_mounted.call(e),
+                            onmousedown: move |event: MouseEvent| {
+                                slot.on_mousedown.call(event);
+                            },
+                            onkeydown: move |event: KeyboardEvent| {
+                                // Space key activates link (accessibility)
+                                if matches!(event.key(), Key::Character(ref c) if c == " ") {
+                                    // Triggering click via JS eval since we can't call .click() on element
+                                    event.prevent_default();
+                                }
+                                slot.on_keydown.call(event);
+                            },
+                            onfocus: move |event: FocusEvent| {
+                                slot.on_focus.call(event);
+                            },
+                            ..merged,
+                            {children.clone()}
+                        }
+                    }
+                }
+            },
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ToolbarSeparator
+// ---------------------------------------------------------------------------
+
+/// Props for [`ToolbarSeparator`].
+#[allow(missing_docs)]
+#[derive(Props, Clone, PartialEq)]
+pub struct ToolbarSeparatorProps {
+    /// Whether the separator is decorative (no ARIA role).
+    #[props(default)]
+    pub decorative: bool,
+
+    #[props(default)]
+    pub class: Option<String>,
+
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 }
 
-/// # ToolbarSeparator
+/// A separator within a [`Toolbar`].
 ///
-/// A separator within a [`Toolbar`] that helps divide different sections. The separator can be horizontal or vertical and can be marked as decorative.
+/// Matches Radix's `ToolbarSeparator`. Automatically inverts orientation
+/// from the toolbar (horizontal toolbar → vertical separator).
 ///
-/// This must be used inside a [`Toolbar`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::toolbar::{Toolbar, ToolbarButton, ToolbarSeparator};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Toolbar { aria_label: "Text formatting",
-///             ToolbarButton {
-///                 index: 0usize,
-///                 on_click: move |_| tracing::info!("Bold clicked"),
-///                 "Bold"
-///             }
-///             ToolbarSeparator {}
-///             ToolbarButton {
-///                 index: 1usize,
-///                 on_click: move |_| tracing::info!("Italic clicked"),
-///                 "Italic"
-///             }
-///         }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::toolbar::*;
+/// rsx! {
+///     Toolbar {
+///         ToolbarButton { "Bold" }
+///         ToolbarSeparator {}
+///         ToolbarButton { "Italic" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`ToolbarSeparator`] component defines the following data attributes you can use to control styling:
-/// - `data-orientation`: Indicates the orientation of the separator. Values are `horizontal` or `vertical`.
 #[component]
 pub fn ToolbarSeparator(props: ToolbarSeparatorProps) -> Element {
     let ctx: ToolbarCtx = use_context();
 
-    // If horizontal is explicitly set, use that, otherwise invert the toolbar orientation
-    let horizontal = props.horizontal.unwrap_or(!(ctx.horizontal)());
-
-    let orientation = match horizontal {
-        true => "horizontal",
-        false => "vertical",
+    // Separator orientation is inverted from toolbar orientation
+    let sep_orientation = match ctx.orientation {
+        Orientation::Horizontal => Orientation::Vertical,
+        Orientation::Vertical => Orientation::Horizontal,
     };
-
-    let class = tw_merge!(
-        "shrink-0 bg-border data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px",
-        props.class,
-    );
 
     rsx! {
         div {
             "data-slot": "toolbar-separator",
-            class: class,
-            role: if !props.decorative { "separator" } else { "none" },
-            aria_orientation: if !props.decorative { orientation },
-            "data-orientation": orientation,
+            "data-orientation": sep_orientation.as_str(),
+            role: if !props.decorative { "separator" },
+            aria_orientation: if !props.decorative { sep_orientation.as_str() },
+            class: props.class,
             ..props.attributes,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ToolbarToggleGroup
+// ---------------------------------------------------------------------------
+
+/// Props for [`ToolbarToggleGroup`].
+#[allow(missing_docs)]
+#[derive(Props, Clone, PartialEq)]
+pub struct ToolbarToggleGroupProps {
+    /// Whether this is a single or multiple selection group.
+    #[props(default)]
+    pub type_: ToggleGroupType,
+
+    /// Controlled value. Pass `None` for uncontrolled.
+    #[props(default)]
+    pub value: ReadSignal<Option<Vec<String>>>,
+
+    /// Default value when uncontrolled.
+    #[props(default)]
+    pub default_value: Vec<String>,
+
+    /// Callback when the value changes.
+    #[props(default)]
+    pub on_value_change: Callback<Vec<String>>,
+
+    /// Whether the entire group is disabled.
+    #[props(default)]
+    pub disabled: bool,
+
+    #[props(default)]
+    pub class: Option<String>,
+
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    pub children: Element,
+}
+
+/// A toggle group embedded within a [`Toolbar`].
+///
+/// Matches Radix's `ToolbarToggleGroup`. Wraps [`ToggleGroup`] with
+/// `roving_focus: false` since the Toolbar already manages keyboard navigation.
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::toolbar::*;
+/// # use dioxus_primitives::toggle_group::ToggleGroupItem;
+/// rsx! {
+///     Toolbar {
+///         ToolbarToggleGroup { type_: dioxus_primitives::toggle_group::ToggleGroupType::Single,
+///             ToggleGroupItem { value: "bold", "B" }
+///             ToggleGroupItem { value: "italic", "I" }
+///         }
+///     }
+/// };
+/// ```
+#[component]
+pub fn ToolbarToggleGroup(props: ToolbarToggleGroupProps) -> Element {
+    let ctx: ToolbarCtx = use_context();
+
+    rsx! {
+        ToggleGroup {
+            type_: props.type_,
+            value: props.value,
+            default_value: props.default_value,
+            on_value_change: props.on_value_change,
+            disabled: props.disabled,
+            roving_focus: false,
+            orientation: ctx.orientation,
+            dir: ctx.dir,
+            class: props.class,
+            attributes: props.attributes,
+            {props.children}
         }
     }
 }

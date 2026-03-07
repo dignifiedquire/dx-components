@@ -37,6 +37,7 @@ struct ToggleGroupCtx {
     on_item_activate: Callback<String>,
     on_item_deactivate: Callback<String>,
     disabled: bool,
+    roving_focus: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +143,7 @@ pub fn ToggleGroup(props: ToggleGroupProps) -> Element {
         on_item_activate,
         on_item_deactivate,
         disabled: props.disabled,
+        roving_focus: props.roving_focus,
     });
 
     let class = props.class;
@@ -244,72 +246,91 @@ pub fn ToggleGroupItem(props: ToggleGroupItemProps) -> Element {
     let children = props.children;
     let click_value = props.value.clone();
 
-    rsx! {
-        RovingFocusGroupItem {
-            focusable: !is_disabled,
-            active: pressed(),
-            r#as: {
-                let class = class.clone();
-                let user_attrs = user_attrs.clone();
-                let children = children.clone();
-                let click_value = click_value.clone();
-                move |slot: RovingFocusSlotProps| {
-                    // Build ARIA attrs based on single vs. multiple mode
-                    let item_attrs = match ctx.type_ {
-                        ToggleGroupType::Single => attributes!(button {
-                            r#type: "button",
-                            role: "radio",
-                            "data-slot": "toggle-group-item",
-                            "data-state": if pressed() { "on" } else { "off" },
-                            "data-disabled": if is_disabled { "" },
-                            aria_checked: pressed(),
-                            disabled: is_disabled,
-                            class: class.clone(),
-                        }),
-                        ToggleGroupType::Multiple => attributes!(button {
-                            r#type: "button",
-                            "data-slot": "toggle-group-item",
-                            "data-state": if pressed() { "on" } else { "off" },
-                            "data-disabled": if is_disabled { "" },
-                            aria_pressed: pressed(),
-                            disabled: is_disabled,
-                            class: class.clone(),
-                        }),
-                    };
-                    let merged = merge_attributes(vec![slot.attributes.clone(), item_attrs, user_attrs.clone()]);
+    // Build ARIA attrs based on single vs. multiple mode
+    let build_item_attrs = {
+        let class = class.clone();
+        move || match ctx.type_ {
+            ToggleGroupType::Single => attributes!(button {
+                r#type: "button",
+                role: "radio",
+                "data-slot": "toggle-group-item",
+                "data-state": if pressed() { "on" } else { "off" },
+                "data-disabled": if is_disabled { "" },
+                aria_checked: pressed(),
+                disabled: is_disabled,
+                class: class.clone(),
+            }),
+            ToggleGroupType::Multiple => attributes!(button {
+                r#type: "button",
+                "data-slot": "toggle-group-item",
+                "data-state": if pressed() { "on" } else { "off" },
+                "data-disabled": if is_disabled { "" },
+                aria_pressed: pressed(),
+                disabled: is_disabled,
+                class: class.clone(),
+            }),
+        }
+    };
 
-                    let click_value = click_value.clone();
+    let on_click = use_callback({
+        let click_value = click_value.clone();
+        move |_: Event<MouseData>| {
+            if !is_disabled {
+                if pressed() {
+                    ctx.on_item_deactivate.call(click_value.clone());
+                } else {
+                    ctx.on_item_activate.call(click_value.clone());
+                }
+            }
+        }
+    });
 
-                    rsx! {
-                        button {
-                            onmounted: move |e| slot.on_mounted.call(e),
-                            onmousedown: move |event: MouseEvent| {
-                                slot.on_mousedown.call(event);
-                            },
-                            onkeydown: move |event: KeyboardEvent| {
-                                slot.on_keydown.call(event);
-                            },
-                            onfocus: move |event: FocusEvent| {
-                                slot.on_focus.call(event);
-                            },
-                            onclick: {
-                                let click_value = click_value.clone();
-                                move |_| {
-                                    if !is_disabled {
-                                        if pressed() {
-                                            ctx.on_item_deactivate.call(click_value.clone());
-                                        } else {
-                                            ctx.on_item_activate.call(click_value.clone());
-                                        }
-                                    }
-                                }
-                            },
-                            ..merged,
-                            {children.clone()}
+    if ctx.roving_focus {
+        // With RovingFocusGroup — compose event handlers
+        rsx! {
+            RovingFocusGroupItem {
+                focusable: !is_disabled,
+                active: pressed(),
+                r#as: {
+                    let user_attrs = user_attrs.clone();
+                    let children = children.clone();
+                    let build_item_attrs = build_item_attrs.clone();
+                    move |slot: RovingFocusSlotProps| {
+                        let item_attrs = build_item_attrs();
+                        let merged = merge_attributes(vec![slot.attributes.clone(), item_attrs, user_attrs.clone()]);
+
+                        rsx! {
+                            button {
+                                onmounted: move |e| slot.on_mounted.call(e),
+                                onmousedown: move |event: MouseEvent| {
+                                    slot.on_mousedown.call(event);
+                                },
+                                onkeydown: move |event: KeyboardEvent| {
+                                    slot.on_keydown.call(event);
+                                },
+                                onfocus: move |event: FocusEvent| {
+                                    slot.on_focus.call(event);
+                                },
+                                onclick: on_click,
+                                ..merged,
+                                {children.clone()}
+                            }
                         }
                     }
-                }
-            },
+                },
+            }
+        }
+    } else {
+        // Without RovingFocusGroup — plain button (e.g., inside Toolbar)
+        let item_attrs = build_item_attrs();
+        let merged = merge_attributes(vec![item_attrs, user_attrs]);
+
+        rsx! {
+            button {
+                onclick: on_click,
+                ..merged,
+                {children}
+            }
         }
     }
 }

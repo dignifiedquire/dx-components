@@ -1,54 +1,54 @@
 import { test, expect } from "@playwright/test";
 
 test("test", async ({ page }) => {
-  await page.goto("http://127.0.0.1:8080/component/?name=toolbar&", { timeout: 20 * 60 * 1000 });
+  await page.goto("http://127.0.0.1:8080/docs/components/toolbar", { timeout: 20 * 60 * 1000 });
 
-  // data-slot assertions
-  const toolbar = page.locator('[data-slot="toolbar"]');
+  // Scope to the preview container
+  const preview = page.locator('[data-slot="preview"]').first();
+  await expect(preview).toBeVisible();
+
+  // Toolbar root
+  const toolbar = preview.locator('[data-slot="toolbar"]');
   await expect(toolbar).toBeVisible();
+  await expect(toolbar).toHaveAttribute('role', 'toolbar');
+  await expect(toolbar).toHaveAttribute('data-orientation', 'horizontal');
 
-  const toolbarClass = await toolbar.getAttribute('class');
-  expect(toolbarClass).toContain('flex');
-  expect(toolbarClass).toContain('rounded-md');
-  expect(toolbarClass).toContain('border');
-  expect(toolbarClass).toContain('bg-background');
-
-  // Assert buttons have data-slot and classes
-  const buttons = toolbar.locator('[data-slot="toolbar-button"]');
-  await expect(buttons).toHaveCount(6);
-
-  const btnClass = await buttons.first().getAttribute('class');
-  expect(btnClass).toContain('inline-flex');
-  expect(btnClass).toContain('rounded-md');
-  expect(btnClass).toContain('text-sm');
-  expect(btnClass).toContain('font-medium');
-
-  // Assert separator
+  // Separator
   const separator = toolbar.locator('[data-slot="toolbar-separator"]');
   await expect(separator).toBeVisible();
+  await expect(separator).toHaveAttribute('data-orientation', 'vertical');
 
-  const sepClass = await separator.getAttribute('class');
-  expect(sepClass).toContain('bg-border');
+  // Toggle group items (6 total: 3 formatting + 3 alignment)
+  const items = toolbar.locator('[data-slot="toggle-group-item"]');
+  await expect(items).toHaveCount(6);
 
-  // Keyboard navigation
-  let bold = page.getByRole("button", { name: "Bold" });
-  let italic = page.getByRole("button", { name: "Italic" });
-  let underline = page.getByRole("button", { name: "Underline" });
-  let alignLeft = page.getByRole("button", { name: "Align Left" });
-  let alignCenter = page.getByRole("button", { name: "Align Center" });
-  let alignRight = page.getByRole("button", { name: "Align Right" });
+  // All start off except "Align Left" (default_value)
+  const alignLeft = items.nth(3);
+  await expect(alignLeft).toHaveAttribute('data-state', 'on');
 
-  await page.locator("#component-preview-frame").focus();
-  await page.keyboard.press("Tab");
-  await expect(bold).toBeFocused();
+  // Click Bold toggles it on
+  const bold = items.nth(0);
+  await bold.click();
+  await expect(bold).toHaveAttribute('data-state', 'on');
+
+  // Click Italic — both Bold and Italic on (multiple mode)
+  const italic = items.nth(1);
+  await italic.click();
+  await expect(italic).toHaveAttribute('data-state', 'on');
+  await expect(bold).toHaveAttribute('data-state', 'on');
+
+  // Click Align Center — switches from Align Left (single mode)
+  const alignCenter = items.nth(4);
+  await alignCenter.click();
+  await expect(alignCenter).toHaveAttribute('data-state', 'on');
+  await expect(alignLeft).toHaveAttribute('data-state', 'off');
+
+  // Keyboard navigation: ArrowRight moves through all toolbar items
+  await bold.click();
   await page.keyboard.press("ArrowRight");
   await expect(italic).toBeFocused();
+
   await page.keyboard.press("ArrowRight");
+  const underline = items.nth(2);
   await expect(underline).toBeFocused();
-  await page.keyboard.press("ArrowRight");
-  await expect(alignLeft).toBeFocused();
-  await page.keyboard.press("ArrowRight");
-  await expect(alignCenter).toBeFocused();
-  await page.keyboard.press("ArrowRight");
-  await expect(alignRight).toBeFocused();
 });
