@@ -27,8 +27,14 @@ pub(crate) fn ComponentBlockDemo(name: String, variant: String) -> Element {
     rsx! {
         document::Link {
             rel: "stylesheet",
+            href: asset!("/assets/tailwind.css"),
+        }
+        document::Link {
+            rel: "stylesheet",
             href: asset!("/assets/dx-components-theme.css"),
         }
-        div { style: "min-height: 100vh;", Comp {} }
+        div { style: "min-height: 100vh;",
+            Comp {}
+        }
     }
 }

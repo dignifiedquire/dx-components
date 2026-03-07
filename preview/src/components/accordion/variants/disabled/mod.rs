@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 pub fn Demo() -> Element {
     rsx! {
         Accordion { class: "w-full", disabled: true,
-            AccordionItem { value: "item-1", index: 0,
+            AccordionItem { value: "item-1",
                 AccordionTrigger { "Product Information" }
                 AccordionContent { class: "flex flex-col gap-4 text-balance",
                     p {
@@ -15,7 +15,7 @@ pub fn Demo() -> Element {
                     }
                 }
             }
-            AccordionItem { value: "item-2", index: 1,
+            AccordionItem { value: "item-2",
                 AccordionTrigger { "Shipping Details" }
                 AccordionContent { class: "flex flex-col gap-4 text-balance",
                     p {

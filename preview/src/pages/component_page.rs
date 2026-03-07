@@ -139,7 +139,7 @@ fn ComponentPreview(
         ComponentType::Normal => rsx! {
             div {
                 "data-slot": "preview",
-                class: "relative flex h-72 w-full items-center justify-center p-10",
+                class: "relative flex min-h-72 w-full items-center justify-center p-6 md:p-10",
                 Comp {}
             }
         },

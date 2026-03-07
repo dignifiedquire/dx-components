@@ -6,8 +6,8 @@ use dioxus::prelude::*;
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        Accordion { class: "w-full",
-            AccordionItem { value: "item-1", index: 0, default_open: true,
+        Accordion { class: "w-full", default_value: vec!["item-1".to_string()], collapsible: true,
+            AccordionItem { value: "item-1",
                 AccordionTrigger { "Product Information" }
                 AccordionContent { class: "flex flex-col gap-4 text-balance",
                     p {
@@ -18,7 +18,7 @@ pub fn Demo() -> Element {
                     }
                 }
             }
-            AccordionItem { value: "item-2", index: 1,
+            AccordionItem { value: "item-2",
                 AccordionTrigger { "Shipping Details" }
                 AccordionContent { class: "flex flex-col gap-4 text-balance",
                     p {
@@ -29,7 +29,7 @@ pub fn Demo() -> Element {
                     }
                 }
             }
-            AccordionItem { value: "item-3", index: 2,
+            AccordionItem { value: "item-3",
                 AccordionTrigger { "Return Policy" }
                 AccordionContent { class: "flex flex-col gap-4 text-balance",
                     p {

@@ -26,7 +26,7 @@ fn root_no_baked_classes() {
     fn App() -> Element {
         rsx! {
             Accordion {
-                AccordionItem { value: "one", index: 0,
+                AccordionItem { value: "one",
                     AccordionTrigger { "Trigger" }
                     AccordionContent { "Content" }
                 }
@@ -51,11 +51,11 @@ fn item_classes() {
     fn App() -> Element {
         rsx! {
             Accordion {
-                AccordionItem { value: "one", index: 0,
+                AccordionItem { value: "one",
                     AccordionTrigger { "Trigger One" }
                     AccordionContent { "Content One" }
                 }
-                AccordionItem { value: "two", index: 1,
+                AccordionItem { value: "two",
                     AccordionTrigger { "Trigger Two" }
                     AccordionContent { "Content Two" }
                 }
@@ -78,7 +78,7 @@ fn trigger_classes() {
     fn App() -> Element {
         rsx! {
             Accordion {
-                AccordionItem { value: "one", index: 0,
+                AccordionItem { value: "one",
                     AccordionTrigger { "Trigger" }
                     AccordionContent { "Content" }
                 }
@@ -111,7 +111,7 @@ fn trigger_chevron() {
     fn App() -> Element {
         rsx! {
             Accordion {
-                AccordionItem { value: "one", index: 0,
+                AccordionItem { value: "one",
                     AccordionTrigger { "Trigger" }
                     AccordionContent { "Content" }
                 }
@@ -129,8 +129,8 @@ fn trigger_chevron() {
         "chevron should have exact shadcn classes"
     );
 
-    // Chevron path
-    assert!(html.contains(r#"d="m6 9 6 6 6-6""#), "should have chevron down path");
+    // Chevron path (tabler renders as absolute commands)
+    assert!(html.contains(r#"d="M6 9l6 6l6 -6""#), "should have chevron down path");
 }
 
 // ---------------------------------------------------------------------------
@@ -141,8 +141,8 @@ fn trigger_chevron() {
 fn content_outer_classes() {
     fn App() -> Element {
         rsx! {
-            Accordion {
-                AccordionItem { value: "one", index: 0, default_open: true,
+            Accordion { default_value: vec!["one".to_string()],
+                AccordionItem { value: "one",
                     AccordionTrigger { "Trigger" }
                     AccordionContent { "Content" }
                 }
@@ -168,8 +168,8 @@ fn content_outer_classes() {
 fn content_inner_classes() {
     fn App() -> Element {
         rsx! {
-            Accordion {
-                AccordionItem { value: "one", index: 0, default_open: true,
+            Accordion { default_value: vec!["one".to_string()],
+                AccordionItem { value: "one",
                     AccordionTrigger { "Trigger" }
                     AccordionContent { "Content" }
                 }
@@ -191,8 +191,8 @@ fn content_inner_classes() {
 fn content_consumer_class_on_inner() {
     fn App() -> Element {
         rsx! {
-            Accordion {
-                AccordionItem { value: "one", index: 0, default_open: true,
+            Accordion { default_value: vec!["one".to_string()],
+                AccordionItem { value: "one",
                     AccordionTrigger { "Trigger" }
                     AccordionContent { class: "flex flex-col gap-4",
                         "Content"
@@ -226,20 +226,20 @@ fn content_consumer_class_on_inner() {
 fn full_snapshot() {
     fn App() -> Element {
         rsx! {
-            Accordion { class: "w-full",
-                AccordionItem { value: "item-1", index: 0, default_open: true,
+            Accordion { class: "w-full", default_value: vec!["item-1".to_string()],
+                AccordionItem { value: "item-1",
                     AccordionTrigger { "Product Information" }
                     AccordionContent { class: "flex flex-col gap-4",
                         p { "Description text." }
                     }
                 }
-                AccordionItem { value: "item-2", index: 1,
+                AccordionItem { value: "item-2",
                     AccordionTrigger { "Shipping Details" }
                     AccordionContent { class: "flex flex-col gap-4",
                         p { "Shipping text." }
                     }
                 }
-                AccordionItem { value: "item-3", index: 2,
+                AccordionItem { value: "item-3",
                     AccordionTrigger { "Return Policy" }
                     AccordionContent { class: "flex flex-col gap-4",
                         p { "Return text." }
@@ -259,7 +259,7 @@ fn full_snapshot() {
     assert_eq!(html.matches("border-b last:border-b-0").count(), 3, "should have 3 items");
 
     // 3 triggers with chevrons
-    assert_eq!(html.matches(r#"d="m6 9 6 6 6-6""#).count(), 3, "should have 3 chevrons");
+    assert_eq!(html.matches(r#"d="M6 9l6 6l6 -6""#).count(), 3, "should have 3 chevrons");
 
     // 1 open, 2 closed
     assert!(html.contains("Product Information"));

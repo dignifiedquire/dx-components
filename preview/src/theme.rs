@@ -4,40 +4,27 @@ const COOKIE_NAME: &str = "dx_theme";
 const CHANNEL_NAME: &str = "dx-theme";
 
 pub fn theme_seed() {
+    // The initial cookie → data-theme application is done in index.html via an
+    // inline <script> so it runs before any rendering (prevents theme flash).
+    // This function only sets up the BroadcastChannel listener for cross-tab sync.
     _ = document::eval(&format!(
         r#"
         (function () {{
           if (window.__dx_theme_seeded) return;
           window.__dx_theme_seeded = true;
 
-          const COOKIE_NAME = '{COOKIE_NAME}';
           const CHANNEL_NAME = '{CHANNEL_NAME}';
-
-          function getCookie(name) {{
-            const prefix = name + '=';
-            const parts = document.cookie.split(';');
-            for (let p of parts) {{
-              p = p.trim();
-              if (p.startsWith(prefix)) return decodeURIComponent(p.slice(prefix.length));
-            }}
-            return null;
-          }}
-
-          function apply(theme) {{
-            if (theme === 'dark' || theme === 'light') {{
-              document.documentElement.setAttribute('data-theme', theme);
-            }} else {{
-              document.documentElement.removeAttribute('data-theme');
-            }}
-          }}
-
-          apply(getCookie(COOKIE_NAME));
 
           try {{
             const ch = new BroadcastChannel(CHANNEL_NAME);
             ch.addEventListener('message', (event) => {{
               const data = event.data;
-              apply(data && data.theme);
+              const theme = data && data.theme;
+              if (theme === 'dark' || theme === 'light') {{
+                document.documentElement.setAttribute('data-theme', theme);
+              }} else {{
+                document.documentElement.removeAttribute('data-theme');
+              }}
             }});
             window.__dx_theme_channel = ch;
           }} catch (_) {{}}

@@ -6,7 +6,7 @@ members = ["primitives", "components", "preview", "test-harness", "dioxus-attrib
 dioxus-primitives = { path = "primitives" }
 dioxus-components = { path = "components" }
 
-dioxus = "0.7.0"
+dioxus = "0.7.3"
 tailwind_fuse = { version = "0.3.2", features = ["variant"] }
 tracing = { version = "0.1", features = ["std"] }
 

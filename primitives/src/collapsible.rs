@@ -1,6 +1,9 @@
 //! Defines the [`Collapsible`] component and its sub-components.
 
-use crate::{merge_attributes, use_controlled, use_id_or, use_presence, use_unique_id};
+use crate::{
+    merge_attributes, use_collapsible_content_dimensions, use_controlled, use_id_or, use_presence,
+    use_unique_id,
+};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 use tailwind_fuse::*;
@@ -114,6 +117,12 @@ pub struct CollapsibleContentProps {
     #[props(default)]
     pub class: Option<String>,
 
+    /// Additional inline styles, merged with computed CSS variable styles.
+    ///
+    /// Used by AccordionContent to alias `--radix-accordion-content-height/width`.
+    #[props(default)]
+    pub style: Option<String>,
+
     /// Additional attributes for the collapsible content element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -123,7 +132,10 @@ pub struct CollapsibleContentProps {
 
 /// # CollapsibleContent
 ///
-/// The collapsible content that shows/hides. Matches the Radix UI CollapsibleContent primitive.
+/// The collapsible content that shows/hides. Matches Radix UI's `CollapsibleContentImpl`.
+///
+/// The outer div is always mounted in the DOM (matching Radix's render-prop `forceMount`
+/// behavior in `Presence`). Visibility is controlled via the `hidden` attribute.
 ///
 /// Sets `--radix-collapsible-content-height` and `--radix-collapsible-content-width` CSS variables
 /// on the element for use in animations.
@@ -138,64 +150,37 @@ pub fn CollapsibleContent(props: CollapsibleContentProps) -> Element {
     let id = use_id_or(ctx.aria_controls_id, props.id);
     let open = ctx.open;
 
-    let mut presence = use_presence(open);
+    let mut presence = use_presence(open, id);
+    let dims = use_collapsible_content_dimensions(id, open);
 
-    // Measured dimensions (set via inner wrapper measurement).
-    let mut content_height = use_signal(|| None::<f64>);
-    let mut content_width = use_signal(|| None::<f64>);
+    let style = dims.style(props.style.as_deref());
 
-    // CSS variable inline style (matching Radix's --radix-collapsible-content-height/width).
-    let style = match (content_height(), content_width()) {
-        (Some(h), Some(w)) => {
-            format!(
-                "--radix-collapsible-content-height: {h}px; --radix-collapsible-content-width: {w}px;"
-            )
-        }
-        (Some(h), None) => format!("--radix-collapsible-content-height: {h}px;"),
-        (None, Some(w)) => format!("--radix-collapsible-content-width: {w}px;"),
-        _ => String::new(),
-    };
-
-    // Matches Radix: isOpen = context.open || isPresent
+    // Radix: isOpen = context.open || isPresent
     let is_open = open() || presence.is_present();
     let force = (ctx.keep_mounted)();
-
     let class = tw_merge!(props.class);
 
+    // Outer div is always rendered (matches Radix's Presence render-prop forceMount).
+    // Visibility controlled by `hidden` attribute.
     rsx! {
-        if force || presence.is_present() {
-            div {
-                id: id,
-                "data-slot": "collapsible-content",
-                "data-state": presence.data_state(),
-                "data-disabled": ctx.disabled,
-                class: class,
-                style: "{style}",
-                hidden: !is_open,
+        div {
+            id: id,
+            "data-slot": "collapsible-content",
+            "data-state": presence.data_state(),
+            "data-disabled": ctx.disabled,
+            class: class,
+            style: "{style}",
+            hidden: !is_open,
 
-                onanimationend: move |_| {
-                    presence.on_animation_end();
-                },
+            onanimationend: move |_| {
+                presence.on_animation_end();
+            },
 
-                ..props.attributes,
+            ..props.attributes,
 
-                // Inner wrapper for async height measurement.
-                // We measure this div (which has natural height) while the outer div
-                // may be constrained by animations.
-                if is_open || force {
-                    div {
-                        onmounted: move |evt| {
-                            let data = evt.data();
-                            spawn(async move {
-                                if let Ok(rect) = data.get_client_rect().await {
-                                    content_height.set(Some(rect.size.height));
-                                    content_width.set(Some(rect.size.width));
-                                }
-                            });
-                        },
-                        {props.children}
-                    }
-                }
+            // Radix: {isOpen && children} — children rendered directly, no wrapper div.
+            if is_open || force {
+                {props.children}
             }
         }
     }

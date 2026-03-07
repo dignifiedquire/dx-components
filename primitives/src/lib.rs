@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![warn(missing_docs)]
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -15,6 +15,7 @@ pub use dioxus_attributes;
 
 pub mod accordion;
 pub mod alert_dialog;
+mod collection;
 pub mod aspect_ratio;
 pub mod avatar;
 pub mod button;
@@ -228,19 +229,51 @@ fn use_animated_open(
     move || show_in_dom() || animating()
 }
 
-/// Presence state machine matching Radix's Presence component.
-/// Manages mount/unmount lifecycle with animation awareness.
+// ---------------------------------------------------------------------------
+// Presence state machine — matches Radix's useStateMachine + usePresence
+// (radix-ui-primitives/packages/react/presence/src/presence.tsx)
+// ---------------------------------------------------------------------------
+
+/// Presence state machine states.
+///
+/// Transition table (matches Radix's `useStateMachine`):
+/// ```text
+/// Mounted          + AnimationOut → UnmountSuspended
+/// Mounted          + Unmount      → Unmounted
+/// UnmountSuspended + Mount        → Mounted
+/// UnmountSuspended + AnimationEnd → Unmounted
+/// Unmounted        + Mount        → Mounted
+/// ```
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum PresenceState {
-    /// Element is visible in the DOM.
     Mounted,
-    /// Close animation is in progress, element still in DOM.
     UnmountSuspended,
-    /// Element removed from DOM.
     Unmounted,
 }
 
-/// Returned by [`use_presence`]. Provides state and callbacks for animation-aware mount/unmount.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum PresenceEvent {
+    Mount,
+    Unmount,
+    AnimationOut,
+    AnimationEnd,
+}
+
+/// State transition function matching Radix's `useStateMachine` reducer.
+fn presence_transition(state: PresenceState, event: PresenceEvent) -> PresenceState {
+    match (state, event) {
+        (PresenceState::Mounted, PresenceEvent::Unmount) => PresenceState::Unmounted,
+        (PresenceState::Mounted, PresenceEvent::AnimationOut) => PresenceState::UnmountSuspended,
+        (PresenceState::UnmountSuspended, PresenceEvent::Mount) => PresenceState::Mounted,
+        (PresenceState::UnmountSuspended, PresenceEvent::AnimationEnd) => {
+            PresenceState::Unmounted
+        }
+        (PresenceState::Unmounted, PresenceEvent::Mount) => PresenceState::Mounted,
+        _ => state,
+    }
+}
+
+/// Returned by [`use_presence`]. Animation-aware mount/unmount lifecycle.
 #[derive(Clone, Copy)]
 pub(crate) struct UsePresence {
     state: Signal<PresenceState>,
@@ -248,13 +281,13 @@ pub(crate) struct UsePresence {
 }
 
 impl UsePresence {
-    /// Whether the element should be present in the DOM
-    /// (true during open state and during close animation).
+    /// Whether the element should be present in the DOM.
+    /// True when mounted or when exit animation is in progress (unmount-suspended).
     pub fn is_present(&self) -> bool {
         !matches!(*self.state.read(), PresenceState::Unmounted)
     }
 
-    /// Returns `"open"` or `"closed"` matching Radix's `data-state` attribute values.
+    /// Returns `"open"` or `"closed"` for the `data-state` attribute.
     pub fn data_state(&self) -> &'static str {
         if (self.open)() {
             "open"
@@ -264,37 +297,255 @@ impl UsePresence {
     }
 
     /// Must be called from the element's `onanimationend` handler.
-    /// Transitions `UnmountSuspended` → `Unmounted` when the close animation finishes.
+    /// Transitions `UnmountSuspended` → `Unmounted` when exit animation finishes.
     pub fn on_animation_end(&mut self) {
-        if *self.state.peek() == PresenceState::UnmountSuspended {
-            self.state.set(PresenceState::Unmounted);
+        self.send(PresenceEvent::AnimationEnd);
+    }
+
+    fn send(&mut self, event: PresenceEvent) {
+        let current = *self.state.peek();
+        let next = presence_transition(current, event);
+        if next != current {
+            self.state.set(next);
         }
     }
 }
 
-/// Animation-aware presence hook matching Radix's `Presence` component.
+/// Animation-aware presence hook matching Radix's `usePresence`.
 ///
-/// Unlike `use_animated_open` (which uses eval), this uses the native `onanimationend`
-/// DOM event for detecting animation completion.
+/// Uses a state machine with events (`Mount`, `Unmount`, `AnimationOut`, `AnimationEnd`)
+/// matching Radix's transitions. When `open` changes to `false`, checks via JS eval
+/// whether a CSS animation exists on the element (by `id`). If an exit animation is
+/// detected, stays in `UnmountSuspended` until [`UsePresence::on_animation_end`] is
+/// called. If no animation exists, transitions directly to `Unmounted`.
 ///
-/// The component using this hook must wire `onanimationend` to [`UsePresence::on_animation_end`].
-pub(crate) fn use_presence(open: Memo<bool>) -> UsePresence {
-    let initial = if open() {
+/// The component must:
+/// 1. Set the element's `id` to match the `id` parameter
+/// 2. Call [`UsePresence::on_animation_end`] from `onanimationend`
+pub(crate) fn use_presence(open: Memo<bool>, id: Memo<String>) -> UsePresence {
+    let initial_state = if *open.peek() {
         PresenceState::Mounted
     } else {
         PresenceState::Unmounted
     };
-    let mut state = use_signal(|| initial);
+    let mut state = use_signal(|| initial_state);
 
+    // Generation counter to prevent stale async callbacks from applying.
+    let mut gen = use_signal(|| 0u64);
+
+    // Radix: useLayoutEffect([present, send])
+    // Reacts to open changes with animation-aware state transitions.
     use_effect(move || {
-        if open() {
-            state.set(PresenceState::Mounted);
-        } else if *state.peek() == PresenceState::Mounted {
+        let is_open = open();
+        let current = *state.peek();
+        let my_gen = *gen.peek() + 1;
+        gen.set(my_gen);
+
+        if is_open {
+            // Opening → Mount
+            let next = presence_transition(current, PresenceEvent::Mount);
+            if next != current {
+                state.set(next);
+            }
+        } else if current == PresenceState::Mounted {
+            // Closing → optimistically AnimationOut (assume animation exists)
             state.set(PresenceState::UnmountSuspended);
+
+            // Radix: reads getComputedStyle(node).animationName to detect exit animation.
+            // Dioxus adaptation: async check after one frame for CSS rules to apply.
+            let id_val = id();
+            spawn(async move {
+                // Wait one frame for CSS to reflect new data-state
+                let mut raf =
+                    document::eval("requestAnimationFrame(() => dioxus.send(true))");
+                let _ = raf.recv::<bool>().await;
+
+                if *gen.peek() != my_gen {
+                    return;
+                }
+
+                // Check computed animation-name (matches Radix's getAnimationName)
+                let js = format!(
+                    "var e=document.getElementById('{id_val}');\
+                     if(e){{var s=getComputedStyle(e);\
+                     dioxus.send(s.animationName!=='none'&&s.display!=='none')}}\
+                     else{{dioxus.send(false)}}"
+                );
+                let mut eval = document::eval(&js);
+                if let Ok(has_anim) = eval.recv::<bool>().await {
+                    if *gen.peek() != my_gen {
+                        return;
+                    }
+                    if !has_anim
+                        && *state.peek() == PresenceState::UnmountSuspended
+                    {
+                        // No exit animation → immediate unmount
+                        // (Radix: send('UNMOUNT') instead of send('ANIMATION_OUT'))
+                        state.set(PresenceState::Unmounted);
+                    }
+                }
+            });
         }
     });
 
     UsePresence { state, open }
+}
+
+// ---------------------------------------------------------------------------
+// Collapsible content dimensions — matches Radix's CollapsibleContentImpl
+// (radix-ui-primitives/packages/react/collapsible/src/collapsible.tsx)
+// ---------------------------------------------------------------------------
+
+/// Returned by [`use_collapsible_content_dimensions`].
+/// Manages dimension measurement, CSS variables, and mount animation suppression.
+pub(crate) struct UseCollapsibleDimensions {
+    height: Signal<Option<f64>>,
+    width: Signal<Option<f64>>,
+    /// Non-reactive ref matching Radix's `isMountAnimationPreventedRef`.
+    /// Cleared via rAF + direct DOM manipulation (not via re-render).
+    suppress_mount_anim: Rc<Cell<bool>>,
+}
+
+impl UseCollapsibleDimensions {
+    /// Compute the inline style string.
+    ///
+    /// Includes `--radix-collapsible-content-height/width` CSS custom properties
+    /// and `animation-name: none` during initial mount suppression.
+    /// Optionally appends `extra` style (e.g., accordion CSS variable aliases).
+    pub fn style(&self, extra: Option<&str>) -> String {
+        let mut parts = Vec::new();
+        if let Some(h) = *self.height.read() {
+            parts.push(format!("--radix-collapsible-content-height: {h}px"));
+        }
+        if let Some(w) = *self.width.read() {
+            parts.push(format!("--radix-collapsible-content-width: {w}px"));
+        }
+        if self.suppress_mount_anim.get() {
+            parts.push("animation-name: none".to_string());
+        }
+        if let Some(s) = extra {
+            if !s.is_empty() {
+                parts.push(s.to_string());
+            }
+        }
+        parts.join("; ")
+    }
+}
+
+/// Dimension measurement hook for collapsible content, matching Radix's
+/// `CollapsibleContentImpl` inline logic.
+///
+/// Handles:
+/// - **Mount animation prevention** (`isMountAnimationPreventedRef`): prevents the
+///   open animation on initial page render via inline `animation-name: none`,
+///   cleared after one frame via rAF + direct DOM manipulation (matching Radix's
+///   imperative style management in `useLayoutEffect`).
+/// - **Dimension measurement**: measures element height/width using `scrollHeight`/
+///   `scrollWidth` and sets `--radix-collapsible-content-height/width` CSS custom
+///   properties directly on the DOM node.
+///
+/// The component must set the element's `id` to match the `id` parameter.
+pub(crate) fn use_collapsible_content_dimensions(
+    id: Memo<String>,
+    open: Memo<bool>,
+) -> UseCollapsibleDimensions {
+    let mut content_height = use_signal(|| None::<f64>);
+    let mut content_width = use_signal(|| None::<f64>);
+
+    // Radix: isMountAnimationPreventedRef = React.useRef(isOpen)
+    // Non-reactive ref — cleared via rAF + direct DOM manipulation, not re-render.
+    // This matches Radix which uses a ref (not state) for this flag.
+    let suppress_mount_anim = use_hook(|| Rc::new(Cell::new(*open.peek())));
+
+    // Generation counter for stale async measurement protection.
+    let mut measurement_gen = use_signal(|| 0u64);
+
+    // Clear mount animation suppression after first frame (matches Radix rAF).
+    // Uses direct DOM manipulation to remove `animation-name: none` from the
+    // element's inline style, since this is a non-reactive ref (like Radix's
+    // useRef) and changing it doesn't trigger a Dioxus re-render.
+    {
+        let suppress = suppress_mount_anim.clone();
+        use_effect(move || {
+            if suppress.get() {
+                let id_val = id();
+                let suppress = suppress.clone();
+                spawn(async move {
+                    let mut raf =
+                        document::eval("requestAnimationFrame(() => dioxus.send(true))");
+                    let _ = raf.recv::<bool>().await;
+                    if suppress.get() {
+                        suppress.set(false);
+                        // Directly remove animation-name from DOM element's inline style.
+                        // Matches Radix's imperative style restore in useLayoutEffect.
+                        let js = format!(
+                            "var e=document.getElementById('{id_val}');\
+                             if(e)e.style.removeProperty('animation-name')"
+                        );
+                        _ = document::eval(&js);
+                    }
+                });
+            }
+        });
+    }
+
+    // Measurement effect — runs when open/id changes.
+    // Uses scrollHeight/scrollWidth which return the full content dimensions
+    // even while a CSS animation is in progress (they measure the content,
+    // not the rendered box). This avoids touching animationName which would
+    // cancel the running CSS animation (unlike Radix's useLayoutEffect which
+    // runs synchronously before paint).
+    {
+        let suppress = suppress_mount_anim.clone();
+        let is_first_run = use_hook(|| Rc::new(Cell::new(true)));
+        use_effect(move || {
+            let _open = open(); // Subscribe to open changes
+            let id_val = id();
+
+            // On 2nd+ run (state change after mount), clear suppress flag.
+            // This handles the edge case where the user interacts before rAF fires.
+            if is_first_run.get() {
+                is_first_run.set(false);
+            } else {
+                suppress.set(false);
+            }
+
+            let gen = *measurement_gen.peek() + 1;
+            measurement_gen.set(gen);
+
+            spawn(async move {
+                let js = format!(
+                    "var e=document.getElementById('{id_val}');\
+                     if(e){{\
+                       var h=e.scrollHeight,w=e.scrollWidth;\
+                       if(h>0)e.style.setProperty('--radix-collapsible-content-height',h+'px');\
+                       if(w>0)e.style.setProperty('--radix-collapsible-content-width',w+'px');\
+                       dioxus.send([h,w])\
+                     }}else{{dioxus.send([0.0,0.0])}}"
+                );
+                let mut eval = document::eval(&js);
+                if let Ok(dims) = eval.recv::<Vec<f64>>().await {
+                    if *measurement_gen.peek() != gen {
+                        return;
+                    }
+                    if dims.len() == 2 {
+                        if dims[0] > 0.0 {
+                            content_height.set(Some(dims[0]));
+                        }
+                        if dims[1] > 0.0 {
+                            content_width.set(Some(dims[1]));
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    UseCollapsibleDimensions {
+        height: content_height,
+        width: content_width,
+        suppress_mount_anim,
+    }
 }
 
 /// The side where the content will be displayed relative to the trigger

@@ -20,33 +20,33 @@ async function gotoAndWait(page: import("@playwright/test").Page, url: string) {
 test.describe("single accordion", () => {
   test("renders all items", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const items = page.locator('[data-slot="collapsible"]');
+    const items = page.locator('[data-slot="accordion-item"]');
     await expect(items).toHaveCount(3);
   });
 
   test("first item is default open", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const items = page.locator('[data-slot="collapsible"]');
+    const items = page.locator('[data-slot="accordion-item"]');
     await expect(items.first()).toHaveAttribute("data-state", "open");
-    const content = items.first().locator('[data-slot="collapsible-content"]');
+    const content = items.first().locator('[data-slot="accordion-content"]');
     await expect(content).toBeVisible();
   });
 
   test("click trigger shows content", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
     await triggers.nth(1).click();
 
-    const items = page.locator('[data-slot="collapsible"]');
+    const items = page.locator('[data-slot="accordion-item"]');
     await expect(items.nth(1)).toHaveAttribute("data-state", "open");
-    const content = items.nth(1).locator('[data-slot="collapsible-content"]');
+    const content = items.nth(1).locator('[data-slot="accordion-content"]');
     await expect(content).toBeVisible();
   });
 
   test("click hides previous in single mode", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const items = page.locator('[data-slot="collapsible"]');
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const items = page.locator('[data-slot="accordion-item"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
 
     // First item starts open
     await expect(items.first()).toHaveAttribute("data-state", "open");
@@ -61,8 +61,8 @@ test.describe("single accordion", () => {
 
   test("click open trigger again collapses it", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const items = page.locator('[data-slot="collapsible"]');
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const items = page.locator('[data-slot="accordion-item"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
 
     // First item starts open
     await expect(items.first()).toHaveAttribute("data-state", "open");
@@ -76,7 +76,7 @@ test.describe("single accordion", () => {
 
   test("ArrowDown moves focus to next trigger", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
     await triggers.first().focus();
     await page.keyboard.press("ArrowDown");
     await expect(triggers.nth(1)).toBeFocused();
@@ -84,7 +84,7 @@ test.describe("single accordion", () => {
 
   test("ArrowDown wraps to first trigger", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
     await triggers.nth(2).focus();
     await page.keyboard.press("ArrowDown");
     await expect(triggers.first()).toBeFocused();
@@ -92,7 +92,7 @@ test.describe("single accordion", () => {
 
   test("ArrowUp moves focus to previous trigger", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
     await triggers.nth(2).focus();
     await page.keyboard.press("ArrowUp");
     await expect(triggers.nth(1)).toBeFocused();
@@ -100,7 +100,7 @@ test.describe("single accordion", () => {
 
   test("ArrowUp wraps to last trigger", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
     await triggers.first().focus();
     await page.keyboard.press("ArrowUp");
     await expect(triggers.nth(2)).toBeFocused();
@@ -108,7 +108,7 @@ test.describe("single accordion", () => {
 
   test("Home focuses first trigger", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
     await triggers.nth(1).focus();
     await page.keyboard.press("Home");
     await expect(triggers.first()).toBeFocused();
@@ -116,7 +116,7 @@ test.describe("single accordion", () => {
 
   test("End focuses last trigger", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
     await triggers.first().focus();
     await page.keyboard.press("End");
     await expect(triggers.nth(2)).toBeFocused();
@@ -138,7 +138,7 @@ test.describe("single accordion", () => {
 test.describe("multiple accordion", () => {
   test("items 1 and 2 are default open", async ({ page }) => {
     await gotoAndWait(page, MULTIPLE);
-    const items = page.locator('[data-slot="collapsible"]');
+    const items = page.locator('[data-slot="accordion-item"]');
     await expect(items.nth(0)).toHaveAttribute("data-state", "open");
     await expect(items.nth(1)).toHaveAttribute("data-state", "open");
     await expect(items.nth(2)).toHaveAttribute("data-state", "closed");
@@ -146,8 +146,8 @@ test.describe("multiple accordion", () => {
 
   test("click opens additional item without closing others", async ({ page }) => {
     await gotoAndWait(page, MULTIPLE);
-    const items = page.locator('[data-slot="collapsible"]');
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const items = page.locator('[data-slot="accordion-item"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
 
     // Click third trigger
     await triggers.nth(2).click();
@@ -160,8 +160,8 @@ test.describe("multiple accordion", () => {
 
   test("click open trigger closes only that item", async ({ page }) => {
     await gotoAndWait(page, MULTIPLE);
-    const items = page.locator('[data-slot="collapsible"]');
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const items = page.locator('[data-slot="accordion-item"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
 
     // Close first item
     await triggers.nth(0).click();
@@ -173,7 +173,7 @@ test.describe("multiple accordion", () => {
 
   test("keyboard navigation works", async ({ page }) => {
     await gotoAndWait(page, MULTIPLE);
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
     await triggers.first().focus();
     await page.keyboard.press("ArrowDown");
     await expect(triggers.nth(1)).toBeFocused();
@@ -195,7 +195,7 @@ test.describe("multiple accordion", () => {
 test.describe("disabled accordion", () => {
   test("triggers are disabled", async ({ page }) => {
     await gotoAndWait(page, DISABLED);
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
     const count = await triggers.count();
     for (let i = 0; i < count; i++) {
       await expect(triggers.nth(i)).toBeDisabled();
@@ -204,8 +204,8 @@ test.describe("disabled accordion", () => {
 
   test("click does nothing when disabled", async ({ page }) => {
     await gotoAndWait(page, DISABLED);
-    const triggers = page.locator('[data-slot="collapsible-trigger"]');
-    const items = page.locator('[data-slot="collapsible"]');
+    const triggers = page.locator('[data-slot="accordion-trigger"]');
+    const items = page.locator('[data-slot="accordion-item"]');
 
     // Try clicking first trigger
     await triggers.first().click({ force: true });
@@ -233,7 +233,7 @@ test.describe("disabled accordion", () => {
 test.describe("styled classes", () => {
   test("item has correct classes", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const item = page.locator('[data-slot="collapsible"]').first();
+    const item = page.locator('[data-slot="accordion-item"]').first();
     const cls = await item.getAttribute("class");
     expect(cls).toContain("border-b");
     expect(cls).toContain("last:border-b-0");
@@ -241,7 +241,7 @@ test.describe("styled classes", () => {
 
   test("trigger has shadcn classes", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const trigger = page.locator('[data-slot="collapsible-trigger"]').first();
+    const trigger = page.locator('[data-slot="accordion-trigger"]').first();
     const cls = await trigger.getAttribute("class");
     expect(cls).toContain("flex");
     expect(cls).toContain("flex-1");
@@ -270,7 +270,7 @@ test.describe("styled classes", () => {
 
   test("chevron SVG present with correct classes", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const trigger = page.locator('[data-slot="collapsible-trigger"]').first();
+    const trigger = page.locator('[data-slot="accordion-trigger"]').first();
     const svg = trigger.locator("svg");
     await expect(svg).toBeVisible();
     const cls = await svg.getAttribute("class");
@@ -284,13 +284,13 @@ test.describe("styled classes", () => {
 
     // Chevron path
     const path = svg.locator("path");
-    await expect(path).toHaveAttribute("d", "m6 9 6 6 6-6");
+    await expect(path).toHaveAttribute("d", "M6 9l6 6l6 -6");
   });
 
   test("content has animation classes when open", async ({ page }) => {
     await gotoAndWait(page, MAIN);
     // First item is default open
-    const content = page.locator('[data-slot="collapsible-content"]').first();
+    const content = page.locator('[data-slot="accordion-content"]').first();
     const cls = await content.getAttribute("class");
     expect(cls).toContain("overflow-hidden");
     expect(cls).toContain("text-sm");
@@ -298,9 +298,9 @@ test.describe("styled classes", () => {
 
   test("content inner div has padding classes", async ({ page }) => {
     await gotoAndWait(page, MAIN);
-    const content = page.locator('[data-slot="collapsible-content"]').first();
-    // Inner wrapper div (first child of measurement div)
-    const innerDiv = content.locator("div > div").first();
+    const content = page.locator('[data-slot="accordion-content"]').first();
+    // Inner styled div is a direct child of the content element
+    const innerDiv = content.locator(":scope > div").first();
     const cls = await innerDiv.getAttribute("class");
     expect(cls).toContain("pt-0");
     expect(cls).toContain("pb-4");

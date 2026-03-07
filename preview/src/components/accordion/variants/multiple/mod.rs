@@ -1,13 +1,13 @@
 use crate::components::accordion::component::{
-    Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+    Accordion, AccordionContent, AccordionItem, AccordionTrigger, AccordionType,
 };
 use dioxus::prelude::*;
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        Accordion { class: "w-full", allow_multiple_open: true,
-            AccordionItem { value: "item-1", index: 0, default_open: true,
+        Accordion { class: "w-full", r#type: AccordionType::Multiple, default_value: vec!["item-1".to_string(), "item-2".to_string()],
+            AccordionItem { value: "item-1",
                 AccordionTrigger { "Product Information" }
                 AccordionContent { class: "flex flex-col gap-4 text-balance",
                     p {
@@ -15,7 +15,7 @@ pub fn Demo() -> Element {
                     }
                 }
             }
-            AccordionItem { value: "item-2", index: 1, default_open: true,
+            AccordionItem { value: "item-2",
                 AccordionTrigger { "Shipping Details" }
                 AccordionContent { class: "flex flex-col gap-4 text-balance",
                     p {
@@ -23,7 +23,7 @@ pub fn Demo() -> Element {
                     }
                 }
             }
-            AccordionItem { value: "item-3", index: 2,
+            AccordionItem { value: "item-3",
                 AccordionTrigger { "Return Policy" }
                 AccordionContent { class: "flex flex-col gap-4 text-balance",
                     p {

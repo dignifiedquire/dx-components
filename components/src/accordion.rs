@@ -6,6 +6,8 @@
 
 use dioxus::prelude::*;
 use dioxus_primitives::accordion as primitives;
+use dx_icons_tabler::IconChevronDown;
+pub use dioxus_primitives::accordion::{AccordionType, Direction, Orientation};
 use tailwind_fuse::*;
 
 // ---------------------------------------------------------------------------
@@ -15,21 +17,37 @@ use tailwind_fuse::*;
 /// The props for the styled [`Accordion`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct AccordionProps {
-    /// Whether multiple accordion items are allowed to be open at once.
+    /// The type of accordion — single or multiple.
     #[props(default)]
-    pub allow_multiple_open: ReadSignal<bool>,
+    pub r#type: AccordionType,
+
+    /// The controlled value of the accordion — a list of open item values.
+    #[props(default)]
+    pub value: ReadSignal<Option<Vec<String>>>,
+
+    /// The default open item values when uncontrolled.
+    #[props(default)]
+    pub default_value: Vec<String>,
+
+    /// Callback fired when the open items change.
+    #[props(default)]
+    pub on_value_change: Callback<Vec<String>>,
+
+    /// Whether the open item can be collapsed in single mode.
+    #[props(default)]
+    pub collapsible: ReadSignal<bool>,
 
     /// Set whether the accordion is disabled.
     #[props(default)]
     pub disabled: ReadSignal<bool>,
 
-    /// Whether the accordion can be fully collapsed. Defaults to true.
-    #[props(default = ReadSignal::new(Signal::new(true)))]
-    pub collapsible: ReadSignal<bool>,
-
-    /// Whether the accordion is horizontal.
+    /// The text direction. Affects horizontal keyboard navigation.
     #[props(default)]
-    pub horizontal: ReadSignal<bool>,
+    pub dir: ReadSignal<Direction>,
+
+    /// The orientation of the accordion.
+    #[props(default)]
+    pub orientation: ReadSignal<Orientation>,
 
     /// Additional Tailwind classes to apply.
     #[props(default)]
@@ -51,10 +69,14 @@ pub struct AccordionProps {
 pub fn Accordion(props: AccordionProps) -> Element {
     rsx! {
         primitives::Accordion {
-            allow_multiple_open: props.allow_multiple_open,
-            disabled: props.disabled,
+            r#type: props.r#type,
+            value: props.value,
+            default_value: props.default_value,
+            on_value_change: props.on_value_change,
             collapsible: props.collapsible,
-            horizontal: props.horizontal,
+            disabled: props.disabled,
+            dir: props.dir,
+            orientation: props.orientation,
             class: props.class,
             attributes: props.attributes,
             {props.children}
@@ -76,12 +98,9 @@ pub struct AccordionItemProps {
     #[props(default)]
     pub disabled: ReadSignal<bool>,
 
-    /// Whether this accordion item should be opened by default.
+    /// Keep content mounted when closed (maps to Radix's `forceMount`).
     #[props(default)]
-    pub default_open: bool,
-
-    /// The index of the accordion item within the [`Accordion`].
-    pub index: usize,
+    pub keep_mounted: ReadSignal<bool>,
 
     /// Additional Tailwind classes to apply.
     #[props(default)]
@@ -104,8 +123,7 @@ pub fn AccordionItem(props: AccordionItemProps) -> Element {
         primitives::AccordionItem {
             value: props.value,
             disabled: props.disabled,
-            default_open: props.default_open,
-            index: props.index,
+            keep_mounted: props.keep_mounted,
             class: class,
             attributes: props.attributes,
             {props.children}
@@ -147,24 +165,12 @@ pub fn AccordionTrigger(props: AccordionTriggerProps) -> Element {
         primitives::AccordionHeader { class: "flex",
             primitives::AccordionTrigger {
                 class: class,
+                "data-slot": "accordion-trigger",
                 attributes: props.attributes,
 
                 {props.children}
 
-                // Inline chevron SVG matching shadcn's ChevronDownIcon.
-                svg {
-                    xmlns: "http://www.w3.org/2000/svg",
-                    width: "24",
-                    height: "24",
-                    view_box: "0 0 24 24",
-                    fill: "none",
-                    stroke: "currentColor",
-                    stroke_width: "2",
-                    stroke_linecap: "round",
-                    stroke_linejoin: "round",
-                    class: "pointer-events-none size-4 shrink-0 translate-y-0.5 text-muted-foreground transition-transform duration-200",
-                    path { d: "m6 9 6 6 6-6" }
-                }
+                IconChevronDown { class: "pointer-events-none size-4 shrink-0 translate-y-0.5 text-muted-foreground transition-transform duration-200" }
             }
         }
     }
@@ -201,6 +207,7 @@ pub fn AccordionContent(props: AccordionContentProps) -> Element {
     rsx! {
         primitives::AccordionContent {
             class: "overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
+            "data-slot": "accordion-content",
             attributes: props.attributes,
 
             div { class: inner_class,

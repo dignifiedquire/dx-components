@@ -32,19 +32,19 @@ fn all_closed() {
     fn App() -> Element {
         rsx! {
             Accordion {
-                AccordionItem { value: "one", index: 0,
+                AccordionItem { value: "one",
                     AccordionHeader { class: "flex",
                         AccordionTrigger { "Trigger One" }
                     }
                     AccordionContent { "Content One" }
                 }
-                AccordionItem { value: "two", index: 1,
+                AccordionItem { value: "two",
                     AccordionHeader { class: "flex",
                         AccordionTrigger { "Trigger Two" }
                     }
                     AccordionContent { "Content Two" }
                 }
-                AccordionItem { value: "three", index: 2,
+                AccordionItem { value: "three",
                     AccordionHeader { class: "flex",
                         AccordionTrigger { "Trigger Three" }
                     }
@@ -61,11 +61,19 @@ fn all_closed() {
     // Accordion root
     assert!(html.contains(r#"data-slot="accordion""#));
     assert!(html.contains("data-disabled=false"));
+    assert!(html.contains(r#"data-orientation="vertical""#));
+
+    // All items have data-slot="accordion-item"
+    assert_eq!(
+        html.matches(r#"data-slot="accordion-item""#).count(),
+        3,
+        "all 3 items should have data-slot=accordion-item"
+    );
 
     // All three items are closed — data-state="closed" on collapsible wrappers
     let closed_count = html.matches(r#"data-state="closed""#).count();
-    // Each item has: collapsible root + header + trigger = 3 per item = 9 total
-    assert!(closed_count >= 9, "expected at least 9 data-state=closed, got {closed_count}");
+    // Each item has: collapsible root + header + trigger + content = 4 per item = 12 total
+    assert!(closed_count >= 12, "expected at least 12 data-state=closed, got {closed_count}");
 
     // No open state anywhere
     assert!(!html.contains(r#"data-state="open""#));
@@ -74,11 +82,17 @@ fn all_closed() {
     let expanded_false_count = html.matches("aria-expanded=false").count();
     assert_eq!(expanded_false_count, 3, "all 3 triggers should have aria-expanded=false");
 
-    // No content in DOM (presence=Unmounted when initially closed)
+    // Content text not in DOM (inner wrapper only renders when is_open)
     assert!(!html.contains("Content One"));
     assert!(!html.contains("Content Two"));
     assert!(!html.contains("Content Three"));
-    assert!(!html.contains(r#"data-slot="collapsible-content""#));
+
+    // Content outer divs are always in DOM (matching Radix's always-mounted pattern),
+    // but hidden via the `hidden` attribute.
+    let content_count = html.matches(r#"data-slot="collapsible-content""#).count();
+    assert_eq!(content_count, 3, "all 3 content divs should be in DOM");
+    let hidden_count = html.matches("hidden=true").count();
+    assert!(hidden_count >= 3, "all 3 content divs should be hidden, got {hidden_count}");
 
     // All triggers are buttons
     let button_count = html.matches(r#"type="button""#).count();
@@ -88,6 +102,16 @@ fn all_closed() {
     let h3_count = html.matches("<h3").count();
     assert_eq!(h3_count, 3);
     assert_eq!(html.matches(r#"data-slot="accordion-header""#).count(), 3);
+
+    // data-orientation on headers and triggers
+    assert!(html.contains(r#"data-orientation="vertical""#));
+
+    // Triggers have data-radix-collection-item attribute
+    assert_eq!(
+        html.matches("data-radix-collection-item").count(),
+        3,
+        "all 3 triggers should have data-radix-collection-item"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -98,20 +122,20 @@ fn all_closed() {
 fn one_default_open() {
     fn App() -> Element {
         rsx! {
-            Accordion {
-                AccordionItem { value: "one", index: 0, default_open: true,
+            Accordion { default_value: vec!["one".to_string()], collapsible: true,
+                AccordionItem { value: "one",
                     AccordionHeader { class: "flex",
                         AccordionTrigger { "Trigger One" }
                     }
                     AccordionContent { "Content One" }
                 }
-                AccordionItem { value: "two", index: 1,
+                AccordionItem { value: "two",
                     AccordionHeader { class: "flex",
                         AccordionTrigger { "Trigger Two" }
                     }
                     AccordionContent { "Content Two" }
                 }
-                AccordionItem { value: "three", index: 2,
+                AccordionItem { value: "three",
                     AccordionHeader { class: "flex",
                         AccordionTrigger { "Trigger Three" }
                     }
@@ -165,13 +189,13 @@ fn disabled() {
     fn App() -> Element {
         rsx! {
             Accordion { disabled: true,
-                AccordionItem { value: "one", index: 0,
+                AccordionItem { value: "one",
                     AccordionHeader { class: "flex",
                         AccordionTrigger { "Trigger One" }
                     }
                     AccordionContent { "Content One" }
                 }
-                AccordionItem { value: "two", index: 1,
+                AccordionItem { value: "two",
                     AccordionHeader { class: "flex",
                         AccordionTrigger { "Trigger Two" }
                     }
@@ -205,7 +229,7 @@ fn header_is_h3() {
     fn App() -> Element {
         rsx! {
             Accordion {
-                AccordionItem { value: "one", index: 0,
+                AccordionItem { value: "one",
                     AccordionHeader {
                         AccordionTrigger { "Trigger" }
                     }
@@ -220,6 +244,7 @@ fn header_is_h3() {
     assert!(html.contains("<h3"));
     assert!(html.contains(r#"data-slot="accordion-header""#));
     assert!(html.contains(r#"data-state="closed""#));
+    assert!(html.contains(r#"data-orientation="vertical""#));
 }
 
 // ---------------------------------------------------------------------------
@@ -230,8 +255,8 @@ fn header_is_h3() {
 fn content_css_vars() {
     fn App() -> Element {
         rsx! {
-            Accordion {
-                AccordionItem { value: "one", index: 0, default_open: true,
+            Accordion { default_value: vec!["one".to_string()],
+                AccordionItem { value: "one",
                     AccordionHeader {
                         AccordionTrigger { "Trigger" }
                     }
