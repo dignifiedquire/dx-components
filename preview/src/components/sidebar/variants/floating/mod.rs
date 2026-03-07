@@ -4,7 +4,7 @@ use crate::components::collapsible::{Collapsible, CollapsibleContent, Collapsibl
 use crate::components::dropdown_menu::{
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 };
-use crate::components::separator::Separator;
+use crate::components::separator::{Orientation, Separator};
 use crate::components::sidebar::{
     Sidebar, SidebarCollapsible, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
     SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge,
@@ -184,7 +184,7 @@ pub fn Demo() -> Element {
                 header { style: "display:flex; align-items:center; justify-content:space-between; height:3.5rem; flex-shrink:0; padding:0 1rem; border-bottom:1px solid var(--sidebar-border); background:var(--primary-color-1);",
                     div { style: "display: flex; align-items: center; gap: 0.75rem;",
                         SidebarTrigger {}
-                        Separator { height: "1rem", horizontal: false }
+                        Separator { height: "1rem", orientation: Orientation::Vertical }
                         span { "Sidebar Setting" }
                     }
                 }

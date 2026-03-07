@@ -3,7 +3,6 @@ use dioxus_primitives::avatar::{Avatar, AvatarFallback, AvatarImage};
 
 #[component]
 pub fn Demo() -> Element {
-    let mut avatar_state = use_signal(|| "No state yet".to_string());
     rsx! {
         div {
             display: "flex",
@@ -14,9 +13,6 @@ pub fn Demo() -> Element {
             div { class: "avatar-item",
                 p { class: "avatar-label", "Basic Usage" }
                 Avatar {
-                    on_state_change: move |state| {
-                        avatar_state.set(format!("Avatar 1: {state:?}"));
-                    },
                     aria_label: "Basic avatar",
                     AvatarImage {
                         src: "https://avatars.githubusercontent.com/u/66571940?s=96&v=4",
@@ -29,9 +25,6 @@ pub fn Demo() -> Element {
                 p { class: "avatar-label", "Rounded" }
                 Avatar {
                     class: "rounded-lg",
-                    on_state_change: move |state| {
-                        avatar_state.set(format!("Avatar 2: {state:?}"));
-                    },
                     aria_label: "Basic avatar",
                     AvatarImage {
                         src: "https://avatars.githubusercontent.com/u/66571940?s=96&v=4",
@@ -44,9 +37,6 @@ pub fn Demo() -> Element {
                 p { class: "avatar-label", "Error State" }
                 Avatar {
                     class: "size-10",
-                    on_state_change: move |state| {
-                        avatar_state.set(format!("Avatar 3: {state:?}"));
-                    },
                     aria_label: "Error avatar",
                     AvatarImage {
                         src: "https://invalid-url.example/image.jpg",
@@ -59,9 +49,6 @@ pub fn Demo() -> Element {
                 p { class: "avatar-label", "Large Size" }
                 Avatar {
                     class: "size-12",
-                    on_state_change: move |state| {
-                        avatar_state.set(format!("Avatar 4: {state:?}"));
-                    },
                     aria_label: "Large avatar",
                     AvatarImage {
                         src: asset!("/assets/dioxus-logo.png", ImageAssetOptions::new().with_avif()),

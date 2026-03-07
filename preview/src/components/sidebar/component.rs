@@ -7,6 +7,7 @@ use crate::components::tooltip::{Tooltip, TooltipContent, TooltipTrigger};
 use dioxus::core::use_drop;
 use dioxus::prelude::*;
 use dioxus_primitives::dioxus_attributes::attributes;
+use dioxus_primitives::direction::Orientation;
 use dioxus_primitives::merge_attributes;
 use dioxus_primitives::use_controlled;
 
@@ -481,7 +482,7 @@ pub fn SidebarFooter(
 
 #[component]
 pub fn SidebarSeparator(
-    #[props(default = true)] horizontal: bool,
+    #[props(default)] orientation: Orientation,
     #[props(default = true)] decorative: bool,
     #[props(extends = GlobalAttributes)] attributes: Vec<Attribute>,
 ) -> Element {
@@ -493,7 +494,7 @@ pub fn SidebarSeparator(
     let merged = merge_attributes(vec![base, attributes]);
 
     rsx! {
-        Separator { horizontal, decorative, attributes: merged }
+        Separator { orientation, decorative, attributes: merged }
     }
 }
 

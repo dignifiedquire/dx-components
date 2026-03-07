@@ -7,7 +7,6 @@ pub fn Demo() -> Element {
         "One thing"
         Separator {
             style: "margin: 15px 0; width: 50%;",
-            horizontal: true,
             decorative: true,
         }
         "Another thing"
