@@ -3,7 +3,7 @@ use crate::components::separator::Separator;
 use crate::components::sheet::{
     Sheet, SheetContent, SheetDescription, SheetHeader, SheetSide, SheetTitle,
 };
-use crate::components::tooltip::{Tooltip, TooltipContent, TooltipTrigger};
+use crate::components::tooltip::{TooltipContent, TooltipRoot, TooltipTrigger};
 use dioxus::core::use_drop;
 use dioxus::prelude::*;
 use dioxus_primitives::dioxus_attributes::attributes;
@@ -682,10 +682,10 @@ pub fn SidebarMenuButton(
     let sidebar_side = ctx.side;
 
     rsx! {
-        Tooltip {
+        TooltipRoot {
             disabled: hidden,
             TooltipTrigger {
-                as: move |tooltip_attrs: Vec<Attribute>| {
+                r#as: move |tooltip_attrs: Vec<Attribute>| {
                     let final_attrs = merge_attributes(vec![tooltip_attrs, merged.clone()]);
                     let children = children.clone();
                     if let Some(dynamic) = &r#as {

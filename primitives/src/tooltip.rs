@@ -1,198 +1,147 @@
-//! Defines the [`Tooltip`] component and its sub-components, which provide contextual information when hovering or focusing on elements.
+//! Tooltip primitive — matches Radix UI Tooltip structure.
+//!
+//! - [`TooltipRoot`] (aliased as [`Tooltip`]): No DOM, pure context provider
+//! - [`TooltipTrigger`]: Button element that shows/hides tooltip on hover/focus
+//! - [`TooltipContent`]: The tooltip content, rendered with `role="tooltip"`
 
-use crate::{
-    merge_attributes, use_animated_open, use_controlled, use_id_or, use_unique_id, ContentAlign,
-    ContentSide,
-};
+use crate::{merge_attributes, use_animated_open, use_controlled, use_unique_id};
+use crate::{ContentAlign, ContentSide};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
-use tailwind_fuse::*;
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
 
 #[derive(Clone, Copy)]
-struct TooltipCtx {
-    // State
-    open: Memo<bool>,
-    set_open: Callback<bool>,
-    disabled: ReadSignal<bool>,
-
-    // ARIA attributes
-    tooltip_id: Signal<String>,
+pub(crate) struct TooltipCtx {
+    pub(crate) open: Memo<bool>,
+    pub(crate) set_open: Callback<bool>,
+    pub(crate) disabled: bool,
+    pub(crate) content_id: Signal<String>,
 }
 
-/// The props for the [`Tooltip`] component
+// ---------------------------------------------------------------------------
+// TooltipRoot (no DOM — pure context provider)
+// ---------------------------------------------------------------------------
+
+/// Props for [`TooltipRoot`].
 #[derive(Props, Clone, PartialEq)]
-pub struct TooltipProps {
-    /// Whether the tooltip is open
+pub struct TooltipRootProps {
+    /// Controlled open state.
+    #[props(default)]
     pub open: ReadSignal<Option<bool>>,
 
-    /// Default open state when uncontrolled
+    /// Default open state when uncontrolled.
     #[props(default)]
     pub default_open: bool,
 
-    /// Callback when open state changes
+    /// Callback when open state changes.
     #[props(default)]
     pub on_open_change: Callback<bool>,
 
-    /// Whether the tooltip is disabled
+    /// Whether the tooltip is disabled (prevents open on hover/focus).
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-
-    /// Additional attributes for the tooltip
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// The children of the tooltip component, which should include a [`TooltipTrigger`] and a [`TooltipContent`].
+    /// Children (should include [`TooltipTrigger`] and [`TooltipContent`]).
     pub children: Element,
 }
 
-/// # Tooltip
-///
-/// The `Tooltip` component provides contextual information when users hover or focus on an
-/// element. It consists of a [`TooltipTrigger`] that activates the tooltip and a [`TooltipContent`]
-/// that displays the message.
+/// No-DOM context provider for a tooltip.
 ///
 /// ## Example
 ///
 /// ```rust
 /// use dioxus::prelude::*;
-/// use dioxus_primitives::{tooltip::{Tooltip, TooltipContent, TooltipTrigger}, ContentSide};
+/// use dioxus_primitives::tooltip::{TooltipRoot, TooltipTrigger, TooltipContent};
 ///
 /// #[component]
 /// fn Demo() -> Element {
 ///     rsx! {
-///         Tooltip {
-///             TooltipTrigger {
-///                 "Rich content"
-///             }
-///             TooltipContent {
-///                 side: ContentSide::Left,
-///                 style: "width: 200px;",
-///                 h4 { style: "margin-top: 0; margin-bottom: 8px;", "Tooltip title" }
-///                 p { style: "margin: 0;", "This tooltip contains rich HTML content with styling." }
-///             }
+///         TooltipRoot {
+///             TooltipTrigger { "Hover me" }
+///             TooltipContent { "Tooltip text" }
 ///         }
 ///     }
 /// }
 /// ```
-///
-/// ## Styling
-///
-/// The [`Tooltip`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the current state of the tooltip. Values are `open` or `closed`.
-/// - `data-disabled`: Indicates if the tooltip is disabled. Values are `true` or `false`.
 #[component]
-pub fn Tooltip(props: TooltipProps) -> Element {
+pub fn TooltipRoot(props: TooltipRootProps) -> Element {
+    let content_id = use_unique_id();
     let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
-    let tooltip_id = use_unique_id();
 
-    let _ctx = use_context_provider(|| TooltipCtx {
+    use_context_provider(|| TooltipCtx {
         open,
         set_open,
         disabled: props.disabled,
-        tooltip_id,
+        content_id,
     });
 
-    let class = tw_merge!(props.class);
-
-    rsx! {
-        div {
-            "data-slot": "tooltip",
-            "data-state": if open() { "open" } else { "closed" },
-            "data-disabled": (props.disabled)(),
-            class: class,
-            ..props.attributes,
-            {props.children}
-        }
-    }
+    rsx! { {props.children} }
 }
 
-/// The props for the [`TooltipTrigger`] component
+/// Backward-compatible alias for [`TooltipRoot`].
+#[component]
+pub fn Tooltip(props: TooltipRootProps) -> Element {
+    TooltipRoot(props)
+}
+
+// ---------------------------------------------------------------------------
+// TooltipTrigger
+// ---------------------------------------------------------------------------
+
+/// Props for [`TooltipTrigger`].
 #[derive(Props, Clone, PartialEq)]
 pub struct TooltipTriggerProps {
-    /// Optional ID for the trigger element
+    /// Optional ID for the trigger element.
     #[props(default)]
     pub id: Option<String>,
 
-    /// Render the trigger element as a custom component/element.
+    /// Render the trigger as a custom element (asChild pattern).
     #[props(default)]
     pub r#as: Option<Callback<Vec<Attribute>, Element>>,
 
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-
-    /// Additional attributes for the trigger element
+    /// Additional attributes for the trigger element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the trigger element
+    /// Children of the trigger.
     pub children: Element,
 }
 
-/// # TooltipTrigger
+/// The trigger element. Renders as a `<button>` by default.
 ///
-/// The trigger element for the [`Tooltip`] component. When users hover over or focus on this element, the tooltip content will be displayed.
-///
-/// This must be used inside a [`Tooltip`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::{tooltip::{Tooltip, TooltipContent, TooltipTrigger}, ContentSide};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Tooltip {
-///             TooltipTrigger {
-///                 "Rich content"
-///             }
-///             TooltipContent {
-///                 side: ContentSide::Left,
-///                 style: "width: 200px;",
-///                 h4 { style: "margin-top: 0; margin-bottom: 8px;", "Tooltip title" }
-///                 p { style: "margin: 0;", "This tooltip contains rich HTML content with styling." }
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// Shows the tooltip on hover/focus, hides on leave/blur/escape.
+/// `aria-describedby` is set only when the tooltip is open (matching Radix).
 #[component]
 pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
     let ctx: TooltipCtx = use_context();
 
-    // Handle mouse events
-    let handle_mouse_enter = move |_: Event<MouseData>| {
-        if !(ctx.disabled)() {
+    let handle_pointer_enter = move |_: Event<PointerData>| {
+        if !ctx.disabled {
             ctx.set_open.call(true);
         }
     };
 
-    let handle_mouse_leave = move |_: Event<MouseData>| {
-        if !(ctx.disabled)() {
+    let handle_pointer_leave = move |_: Event<PointerData>| {
+        if !ctx.disabled {
             ctx.set_open.call(false);
         }
     };
 
-    // Handle focus events
     let handle_focus = move |_: Event<FocusData>| {
-        if !(ctx.disabled)() {
+        if !ctx.disabled {
             ctx.set_open.call(true);
         }
     };
 
     let handle_blur = move |_: Event<FocusData>| {
-        if !(ctx.disabled)() {
+        if !ctx.disabled {
             ctx.set_open.call(false);
         }
     };
 
-    // Handle keyboard events
     let handle_keydown = move |event: Event<KeyboardData>| {
         if event.key() == Key::Escape && (ctx.open)() {
             event.prevent_default();
@@ -200,16 +149,20 @@ pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
         }
     };
 
-    let class = tw_merge!(props.class);
+    let is_open = (ctx.open)();
+    let described_by = if is_open {
+        Some(ctx.content_id.cloned())
+    } else {
+        None
+    };
 
-    let base = attributes!(div {
+    let base = attributes!(button {
         id: props.id.clone(),
-        tabindex: "0",
         "data-slot": "tooltip-trigger",
-        class: class,
-        "aria-describedby": ctx.tooltip_id.cloned(),
-        onmouseenter: handle_mouse_enter,
-        onmouseleave: handle_mouse_leave,
+        "data-state": if is_open { "open" } else { "closed" },
+        "aria-describedby": described_by,
+        onpointerenter: handle_pointer_enter,
+        onpointerleave: handle_pointer_leave,
         onfocus: handle_focus,
         onblur: handle_blur,
         onkeydown: handle_keydown,
@@ -220,98 +173,44 @@ pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
         dynamic.call(merged)
     } else {
         rsx! {
-            div {
-                ..merged,
-                {props.children}
-            }
+            button { ..merged, {props.children} }
         }
     }
 }
 
-/// The props for the [`TooltipContent`] component
+// ---------------------------------------------------------------------------
+// TooltipContent
+// ---------------------------------------------------------------------------
+
+/// Props for [`TooltipContent`].
 #[derive(Props, Clone, PartialEq)]
 pub struct TooltipContentProps {
-    /// Optional ID for the tooltip content
-    #[props(default)]
-    pub id: ReadSignal<Option<String>>,
-
-    /// Side of the trigger to place the tooltip
+    /// Side of the trigger to place the tooltip (default: Top).
     #[props(default = ContentSide::Top)]
     pub side: ContentSide,
 
-    /// Alignment of the tooltip relative to the trigger
+    /// Alignment relative to the trigger (default: Center).
     #[props(default = ContentAlign::Center)]
     pub align: ContentAlign,
 
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-
-    /// Additional attributes for the tooltip content element
+    /// Additional attributes for the tooltip content element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the tooltip content
+    /// Children of the tooltip content.
     pub children: Element,
 }
 
-/// # TooltipContent
+/// The tooltip content. Only rendered when the tooltip is open.
 ///
-/// The content component for the [`Tooltip`] that displays the actual tooltip message. The content will only be
-/// rendered when the tooltip is open (as controlled by the [`TooltipTrigger`] component).
-///
-/// This must be used inside a [`Tooltip`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::{tooltip::{Tooltip, TooltipContent, TooltipTrigger}, ContentSide};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Tooltip {
-///             TooltipTrigger {
-///                 "Rich content"
-///             }
-///             TooltipContent {
-///                 side: ContentSide::Left,
-///                 style: "width: 200px;",
-///                 h4 { style: "margin-top: 0; margin-bottom: 8px;", "Tooltip title" }
-///                 p { style: "margin: 0;", "This tooltip contains rich HTML content with styling." }
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
-/// ## Styling
-///
-/// The [`TooltipContent`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the current state of the tooltip. Values are `open` or `closed`.
-/// - `data-side`: Indicates which side of the trigger the tooltip is positioned. Values are `top`, `right`, `bottom`, or `left`.
-/// - `data-align`: Indicates the alignment of the tooltip. Values are `start`, `center`, or `end`.
+/// Has `role="tooltip"`, `data-state`, `data-side`, `data-align`.
 #[component]
 pub fn TooltipContent(props: TooltipContentProps) -> Element {
-    let mut ctx: TooltipCtx = use_context();
+    let ctx: TooltipCtx = use_context();
+    let id = ctx.content_id;
 
-    let unique_id = use_unique_id();
-    let id = use_id_or(unique_id, props.id);
-
-    use_effect(move || {
-        ctx.tooltip_id.set(id());
-    });
-
-    // Only render if the tooltip is open
     let render = use_animated_open(id, ctx.open);
 
-    let class = tw_merge!(
-        "z-50 w-fit rounded-md bg-foreground px-3 py-1.5 text-xs text-balance text-background animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        props.class,
-    );
-
-    // Create the tooltip content
     rsx! {
         if render() {
             div {
@@ -321,7 +220,6 @@ pub fn TooltipContent(props: TooltipContentProps) -> Element {
                 "data-state": if ctx.open.cloned() { "open" } else { "closed" },
                 "data-side": props.side.as_str(),
                 "data-align": props.align.as_str(),
-                class: class,
                 ..props.attributes,
                 {props.children}
             }
