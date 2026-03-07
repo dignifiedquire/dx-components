@@ -1,19 +1,18 @@
 use dioxus::prelude::*;
-use dioxus_primitives::button::{Button, ButtonVariant};
 use dioxus_primitives::label::Label;
-use dioxus_primitives::popover::{PopoverContent, PopoverRoot, PopoverTrigger};
+use dioxus_primitives::popover::*;
 
 #[component]
 pub fn Demo() -> Element {
-    let mut open = use_signal(|| false);
-
     rsx! {
-        PopoverRoot { open: open(), on_open_change: move |v| open.set(v),
+        PopoverRoot {
             PopoverTrigger {
-                Button { variant: ButtonVariant::Outline, "Open popover" }
+                class: "inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground",
+                "Open popover"
             }
             PopoverContent {
-                div { class: "grid gap-4 p-4",
+                class: "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden",
+                div { class: "grid gap-4",
                     div { class: "grid gap-2",
                         h4 { class: "font-medium leading-none", "Dimensions" }
                         p { class: "text-sm text-muted-foreground", "Set the dimensions for the layer." }

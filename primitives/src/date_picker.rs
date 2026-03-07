@@ -330,24 +330,9 @@ pub fn DateRangePicker(props: DateRangePickerProps) -> Element {
 #[allow(unpredictable_function_pointer_comparisons)]
 #[derive(Props, Clone, PartialEq)]
 pub struct DatePickerPopoverProps {
-    /// Whether the popover is a modal and should capture focus.
-    #[props(default = ReadSignal::new(Signal::new(true)))]
-    pub is_modal: ReadSignal<bool>,
-
-    /// The controlled open state of the popover.
-    pub open: ReadSignal<Option<bool>>,
-
-    /// The default open state when uncontrolled.
-    #[props(default)]
-    pub default_open: bool,
-
-    /// Callback fired when the open state changes.
-    #[props(default)]
-    pub on_open_change: Callback<bool>,
-
-    /// Additional attributes to apply to the popover root element.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
+    /// Whether the popover is modal (traps focus). Defaults to `true`.
+    #[props(default = true)]
+    pub modal: bool,
 
     /// The children of the popover root component.
     pub children: Element,
@@ -404,9 +389,9 @@ pub fn DatePickerPopover(props: DatePickerPopoverProps) -> Element {
 
     rsx! {
         PopoverRoot {
+            modal: props.modal,
             open: open(),
             on_open_change: move |v| open.set(v),
-            attributes: props.attributes,
             {props.children}
         }
     }
