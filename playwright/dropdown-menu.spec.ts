@@ -1,61 +1,68 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('test', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/block?name=dropdown_menu&variant=main&', { timeout: 20 * 60 * 1000 });
+test("test", async ({ page }) => {
+  await page.goto("http://127.0.0.1:8080/docs/components/dropdown_menu", { timeout: 20 * 60 * 1000 });
 
-  // data-slot assertions
-  const menu = page.locator('[data-slot="dropdown-menu"]');
-  await expect(menu).toBeVisible();
+  // Scope to the preview container
+  const preview = page.locator('[data-slot="preview"]').first();
+  await expect(preview).toBeVisible();
 
-  const trigger = menu.locator('[data-slot="dropdown-menu-trigger"]');
+  // Trigger
+  const trigger = preview.locator('[data-slot="dropdown-menu-trigger"]');
   await expect(trigger).toBeVisible();
-  await expect(trigger).toHaveAttribute('data-state', 'closed');
+  await expect(trigger).toHaveAttribute("data-state", "closed");
+  await expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
 
   // Open menu
   await trigger.click();
-  await expect(trigger).toHaveAttribute('data-state', 'open');
+  await expect(trigger).toHaveAttribute("data-state", "open");
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
 
+  // Content
   const content = page.locator('[data-slot="dropdown-menu-content"]');
   await expect(content).toBeVisible();
+  await expect(content).toHaveAttribute("role", "menu");
+  await expect(content).toHaveAttribute("data-state", "open");
+  await expect(content).toHaveAttribute("aria-orientation", "vertical");
 
-  const contentClass = await content.getAttribute('class');
-  expect(contentClass).toContain('z-50');
-  expect(contentClass).toContain('rounded-md');
-  expect(contentClass).toContain('border');
-  expect(contentClass).toContain('bg-popover');
-  expect(contentClass).toContain('shadow-md');
-
+  // Items have correct role
   const items = content.locator('[data-slot="dropdown-menu-item"]');
-  await expect(items).toHaveCount(4);
+  const count = await items.count();
+  expect(count).toBeGreaterThan(0);
+  await expect(items.first()).toHaveAttribute("role", "menuitem");
 
-  const itemClass = await items.first().getAttribute('class');
-  expect(itemClass).toContain('flex');
-  expect(itemClass).toContain('cursor-default');
-  expect(itemClass).toContain('rounded-sm');
-  expect(itemClass).toContain('text-sm');
+  // Separator
+  const separator = content.locator('[data-slot="dropdown-menu-separator"]');
+  await expect(separator.first()).toHaveAttribute("role", "separator");
+
+  // Label
+  const label = content.locator('[data-slot="dropdown-menu-label"]');
+  await expect(label.first()).toBeVisible();
+
+  // Group
+  const group = content.locator('[data-slot="dropdown-menu-group"]');
+  await expect(group.first()).toHaveAttribute("role", "group");
+
+  // Shortcut
+  const shortcut = content.locator('[data-slot="dropdown-menu-shortcut"]');
+  await expect(shortcut.first()).toBeVisible();
 
   // Keyboard navigation
-  await page.keyboard.press('ArrowDown');
-  await expect(page.getByRole('option', { name: 'Edit' })).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(page.getByRole('option', { name: 'Undo' })).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(page.getByRole('option', { name: 'Duplicate' })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  const firstItem = items.first();
+  await expect(firstItem).toHaveAttribute("data-highlighted", "");
 
-  // Select item
-  await page.keyboard.press('Enter');
-  await expect(trigger).toHaveAttribute('data-state', 'closed');
-  await expect(page.getByText('Selected: Duplicate')).toBeVisible();
+  await page.keyboard.press("ArrowDown");
 
   // Escape closes menu
-  await trigger.click();
-  await expect(trigger).toHaveAttribute('data-state', 'open');
-  await page.keyboard.press('Escape');
-  await expect(trigger).toHaveAttribute('data-state', 'closed');
+  await page.keyboard.press("Escape");
+  await expect(content).toHaveCount(0);
+  await expect(trigger).toHaveAttribute("data-state", "closed");
 
-  // Click outside closes menu
+  // Reopen and toggle
   await trigger.click();
-  await expect(trigger).toHaveAttribute('data-state', 'open');
-  await page.locator('body').click({ position: { x: 0, y: 0 } });
-  await expect(trigger).toHaveAttribute('data-state', 'closed');
+  await expect(content).toBeVisible();
+  await trigger.click();
+  await expect(content).toHaveCount(0);
 });

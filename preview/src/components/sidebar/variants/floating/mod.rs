@@ -227,8 +227,7 @@ fn TeamSwitcher(teams: &'static [Team]) -> Element {
                         for (idx , team) in teams.iter().enumerate() {
                             DropdownMenuItem {
                                 index: idx,
-                                value: idx,
-                                on_select: move |v: usize| active_team.set(v),
+                                on_select: move |_| active_team.set(idx),
                                 Icon {}
                                 {team.name}
                                 span { style: "margin-left:auto; font-size:0.75rem; opacity:0.7;",
@@ -239,8 +238,7 @@ fn TeamSwitcher(teams: &'static [Team]) -> Element {
                         Separator { decorative: true }
                         DropdownMenuItem {
                             index: teams.len(),
-                            value: 999usize,
-                            on_select: move |_: usize| {},
+                            on_select: move |_| {},
                             Icon {}
                             div { style: "opacity:0.7; font-weight:500;", "Add team" }
                         }
@@ -320,23 +318,20 @@ fn NavProjects(projects: &'static [Project]) -> Element {
                             DropdownMenuContent {
                                 DropdownMenuItem {
                                     index: 0usize,
-                                    value: "view".to_string(),
-                                    on_select: move |_: String| {},
+                                    on_select: move |_| {},
                                     Icon {}
                                     span { "View Project" }
                                 }
                                 DropdownMenuItem {
                                     index: 1usize,
-                                    value: "share".to_string(),
-                                    on_select: move |_: String| {},
+                                    on_select: move |_| {},
                                     Icon {}
                                     span { "Share Project" }
                                 }
                                 Separator { decorative: true }
                                 DropdownMenuItem {
                                     index: 2usize,
-                                    value: "delete".to_string(),
-                                    on_select: move |_: String| {},
+                                    on_select: move |_| {},
                                     Icon {}
                                     span { "Delete Project" }
                                 }
@@ -398,38 +393,33 @@ fn NavUser() -> Element {
                         Separator { decorative: true }
                         DropdownMenuItem {
                             index: 0usize,
-                            value: "upgrade".to_string(),
-                            on_select: move |_: String| {},
+                            on_select: move |_| {},
                             Icon {}
                             "Upgrade to Pro"
                         }
                         Separator { decorative: true }
                         DropdownMenuItem {
                             index: 1usize,
-                            value: "account".to_string(),
-                            on_select: move |_: String| {},
+                            on_select: move |_| {},
                             Icon {}
                             "Account"
                         }
                         DropdownMenuItem {
                             index: 2usize,
-                            value: "billing".to_string(),
-                            on_select: move |_: String| {},
+                            on_select: move |_| {},
                             Icon {}
                             "Billing"
                         }
                         DropdownMenuItem {
                             index: 3usize,
-                            value: "notifications".to_string(),
-                            on_select: move |_: String| {},
+                            on_select: move |_| {},
                             Icon {}
                             "Notifications"
                         }
                         Separator { decorative: true }
                         DropdownMenuItem {
                             index: 4usize,
-                            value: "logout".to_string(),
-                            on_select: move |_: String| {},
+                            on_select: move |_| {},
                             Icon {}
                             "Log out"
                         }

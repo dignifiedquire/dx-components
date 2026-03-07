@@ -1,122 +1,106 @@
-//! Defines the [`DropdownMenu`] component and its subcomponents.
+//! DropdownMenu primitive — matches Radix UI DropdownMenu structure.
+//!
+//! - [`DropdownMenuRoot`] (aliased as [`DropdownMenu`]): No DOM, pure context provider
+//! - [`DropdownMenuTrigger`]: Button that toggles the menu
+//! - [`DropdownMenuContent`]: Menu container with `role="menu"`
+//! - [`DropdownMenuItem`]: Individual item with `role="menuitem"`
+//! - [`DropdownMenuSeparator`]: Visual separator with `role="separator"`
+//! - [`DropdownMenuLabel`]: Non-interactive label
+//! - [`DropdownMenuGroup`]: Grouping element with `role="group"`
+//! - [`DropdownMenuShortcut`]: Keyboard shortcut hint
 
 use std::rc::Rc;
 
 use crate::{
     focus::{use_focus_controlled_item, use_focus_provider, FocusState},
-    merge_attributes, use_animated_open, use_controlled, use_id_or, use_unique_id,
+    merge_attributes, use_animated_open, use_controlled, use_unique_id,
 };
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
-use tailwind_fuse::*;
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
 
 #[derive(Clone, Copy)]
-struct DropdownMenuContext {
-    // State
+struct DropdownMenuCtx {
     open: Memo<bool>,
     set_open: Callback<bool>,
-    disabled: ReadSignal<bool>,
-
-    // Focus state
+    disabled: bool,
     focus: FocusState,
-
-    // Unique ID for the trigger button
     trigger_id: Signal<String>,
+    content_id: Signal<String>,
 }
 
-/// The props for the [`DropdownMenu`] component
+// ---------------------------------------------------------------------------
+// DropdownMenuRoot (no DOM — pure context provider)
+// ---------------------------------------------------------------------------
+
+/// Props for [`DropdownMenuRoot`].
 #[derive(Props, Clone, PartialEq)]
-pub struct DropdownMenuProps {
-    /// Whether the dropdown menu is open. If not provided, the component will be uncontrolled and use `default_open`.
+pub struct DropdownMenuRootProps {
+    /// Controlled open state.
+    #[props(default)]
     pub open: ReadSignal<Option<bool>>,
 
-    /// Default open state if the component is not controlled.
+    /// Default open state when uncontrolled.
     #[props(default)]
     pub default_open: bool,
 
-    /// Callback when the open state changes. This is called when the dropdown menu is opened or closed.
+    /// Callback when open state changes.
     #[props(default)]
     pub on_open_change: Callback<bool>,
 
-    /// Whether the dropdown menu is disabled. If true, the menu will not open and items will not be selectable.
+    /// Whether the dropdown menu is disabled.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// Whether focus should loop around when reaching the end.
+    /// Whether focus should loop when reaching the end.
     #[props(default = ReadSignal::new(Signal::new(true)))]
     pub roving_loop: ReadSignal<bool>,
 
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-
-    /// Additional attributes to apply to the dropdown menu element.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// The children of the dropdown menu, which should include a [`DropdownMenuTrigger`] and a [`DropdownMenuContent`].
+    /// Children (should include [`DropdownMenuTrigger`] and [`DropdownMenuContent`]).
     pub children: Element,
 }
 
-/// # DropdownMenu
-///
-/// The `DropdownMenu` component is a container for a [`DropdownMenuContent`] component activated by a [`DropdownMenuTrigger`] component.
+/// No-DOM context provider for a dropdown menu.
 ///
 /// ## Example
+///
 /// ```rust
 /// use dioxus::prelude::*;
-/// use dioxus_primitives::dropdown_menu::{
-///     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-/// };
+/// use dioxus_primitives::dropdown_menu::{DropdownMenuRoot, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem};
+///
 /// #[component]
 /// fn Demo() -> Element {
 ///     rsx! {
-///         DropdownMenu { default_open: false,
-///             DropdownMenuTrigger { "Open Menu" }
+///         DropdownMenuRoot {
+///             DropdownMenuTrigger { "Open" }
 ///             DropdownMenuContent {
-///                 DropdownMenuItem::<String> {
-///                     value: "edit".to_string(),
-///                     index: 0usize,
-///                     on_select: move |value| {
-///                         tracing::info!("Selected: {}", value);
-///                     },
-///                     "Edit"
-///                 }
-///                 DropdownMenuItem::<String> {
-///                     value: "undo".to_string(),
-///                     index: 1usize,
-///                     disabled: true,
-///                     on_select: move |value| {
-///                         tracing::info!("Selected: {}", value);
-///                     },
-///                     "Undo"
-///                 }
+///                 DropdownMenuItem { index: 0usize, "Edit" }
+///                 DropdownMenuItem { index: 1usize, "Delete" }
 ///             }
 ///         }
 ///     }
 /// }
 /// ```
-///
-/// ## Styling
-///
-/// The [`DropdownMenu`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the current state of the dropdown menu. values are `open` or `closed`.
-/// - `data-disabled`: Indicates if the dropdown menu is disabled. values are `true` or `false`.
 #[component]
-pub fn DropdownMenu(props: DropdownMenuProps) -> Element {
+pub fn DropdownMenuRoot(props: DropdownMenuRootProps) -> Element {
     let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
-
-    let disabled = props.disabled;
     let trigger_id = use_unique_id();
+    let content_id = use_unique_id();
     let focus = use_focus_provider(props.roving_loop);
-    let mut ctx = use_context_provider(|| DropdownMenuContext {
+
+    let ctx = use_context_provider(|| DropdownMenuCtx {
         open,
         set_open,
-        disabled,
+        disabled: props.disabled,
         focus,
         trigger_id,
+        content_id,
     });
 
+    // Sync focus state with open state
     use_effect(move || {
         let focused = focus.any_focused();
         if *ctx.open.peek() != focused {
@@ -124,148 +108,83 @@ pub fn DropdownMenu(props: DropdownMenuProps) -> Element {
         }
     });
 
-    // Handle escape key to close the menu
-    let handle_keydown = move |event: Event<KeyboardData>| {
-        if disabled() {
-            return;
-        }
-        match event.key() {
-            Key::Enter => {
-                let new_open = !(ctx.open)();
-                ctx.set_open.call(new_open);
-            }
-            Key::Escape => ctx.set_open.call(false),
-            Key::ArrowDown => {
-                ctx.focus.focus_next();
-            }
-            Key::ArrowUp => {
-                if open() {
-                    ctx.focus.focus_prev();
-                }
-            }
-            Key::Home => ctx.focus.focus_first(),
-            Key::End => ctx.focus.focus_last(),
-            _ => return,
-        }
-        event.prevent_default();
-    };
-
-    let class = tw_merge!(props.class);
-
-    rsx! {
-        div {
-            "data-slot": "dropdown-menu",
-            class: class,
-            "data-state": if open() { "open" } else { "closed" },
-            "data-disabled": (props.disabled)(),
-            onkeydown: handle_keydown,
-            ..props.attributes,
-            {props.children}
-        }
-    }
+    rsx! { {props.children} }
 }
 
-/// The props for the [`DropdownMenuTrigger`] component
+/// Backward-compatible alias for [`DropdownMenuRoot`].
+#[component]
+pub fn DropdownMenu(props: DropdownMenuRootProps) -> Element {
+    DropdownMenuRoot(props)
+}
+
+// ---------------------------------------------------------------------------
+// DropdownMenuTrigger
+// ---------------------------------------------------------------------------
+
+/// Props for [`DropdownMenuTrigger`].
 #[derive(Props, Clone, PartialEq)]
 pub struct DropdownMenuTriggerProps {
-    /// Render the trigger element as a custom component/element.
+    /// Render the trigger as a custom element (asChild pattern).
     #[props(default)]
     pub r#as: Option<Callback<Vec<Attribute>, Element>>,
 
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-
-    /// Additional attributes to apply to the trigger element.
+    /// Additional attributes for the trigger element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the trigger
+
+    /// Children of the trigger.
     pub children: Element,
 }
 
-/// # DropdownMenuTrigger
-///
-/// The trigger button for the parent [`DropdownMenu`]. This button toggles the visibility of the [`DropdownMenuContent`].
-///
-/// This must be used inside a [`DropdownMenu`] component.
-///
-/// ## Example
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::dropdown_menu::{
-///     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-/// };
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         DropdownMenu { default_open: false,
-///             DropdownMenuTrigger { "Open Menu" }
-///             DropdownMenuContent {
-///                 DropdownMenuItem::<String> {
-///                     value: "edit".to_string(),
-///                     index: 0usize,
-///                     on_select: move |value| {
-///                         tracing::info!("Selected: {}", value);
-///                     },
-///                     "Edit"
-///                 }
-///                 DropdownMenuItem::<String> {
-///                     value: "undo".to_string(),
-///                     index: 1usize,
-///                     disabled: true,
-///                     on_select: move |value| {
-///                         tracing::info!("Selected: {}", value);
-///                     },
-///                     "Undo"
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
-/// ## Styling
-///
-/// The [`DropdownMenuTrigger`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the current state of the dropdown menu. values are `open` or `closed`.
-/// - `data-disabled`: Indicates if the dropdown menu is disabled. values are `true` or `false`.
+/// The trigger button. Renders as `<button>` with `aria-haspopup="menu"`.
 #[component]
 pub fn DropdownMenuTrigger(props: DropdownMenuTriggerProps) -> Element {
-    let mut ctx: DropdownMenuContext = use_context();
+    let mut ctx: DropdownMenuCtx = use_context();
     let mut element = use_signal(|| None::<Rc<MountedData>>);
 
-    let open = ctx.open;
-    let disabled = ctx.disabled;
-    let data_state = if open() { "open" } else { "closed" };
+    let is_open = (ctx.open)();
 
-    let class = tw_merge!(props.class);
     let base = attributes!(button {
         id: ctx.trigger_id,
         r#type: "button",
         "data-slot": "dropdown-menu-trigger",
-        class: class,
-        "data-state": data_state,
-        "data-disabled": disabled,
-        disabled: disabled,
-        aria_expanded: open,
-        aria_haspopup: "listbox",
+        "data-state": if is_open { "open" } else { "closed" },
+        "data-disabled": if ctx.disabled { "true" } else { "" },
+        disabled: ctx.disabled,
+        aria_expanded: is_open,
+        aria_haspopup: "menu",
+        aria_controls: if is_open { Some(ctx.content_id.cloned()) } else { None },
         onmounted: move |e: MountedEvent| {
             element.set(Some(e.data()));
         },
         onclick: move |_| {
-            if disabled() {
+            if ctx.disabled {
                 return;
             }
-
-            let new_open = !open();
+            let new_open = !is_open;
             ctx.set_open.call(new_open);
-
-            // Focus the element on click. Safari does not do this automatically.
-            // https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/button#clicking_and_focus
             if let Some(data) = element() {
                 spawn(async move {
                     _ = data.set_focus(true).await;
                 });
+            }
+        },
+        onkeydown: move |event: Event<KeyboardData>| {
+            if ctx.disabled {
+                return;
+            }
+            match event.key() {
+                key if key == Key::Enter || key == Key::Character(" ".to_string()) => {
+                    event.prevent_default();
+                    let new_open = !(ctx.open)();
+                    ctx.set_open.call(new_open);
+                }
+                Key::ArrowDown => {
+                    ctx.set_open.call(true);
+                    ctx.focus.focus_first();
+                    event.prevent_default();
+                }
+                _ => {}
             }
         },
         onblur: move |_| {
@@ -280,101 +199,69 @@ pub fn DropdownMenuTrigger(props: DropdownMenuTriggerProps) -> Element {
         dynamic.call(merged)
     } else {
         rsx! {
-            button {
-                ..merged,
-                {props.children}
-            }
+            button { ..merged, {props.children} }
         }
     }
 }
 
-/// The props for the [`DropdownMenuContent`] component
+// ---------------------------------------------------------------------------
+// DropdownMenuContent
+// ---------------------------------------------------------------------------
+
+/// Props for [`DropdownMenuContent`].
 #[derive(Props, Clone, PartialEq)]
 pub struct DropdownMenuContentProps {
-    /// The ID of the dropdown menu content element. If not provided, a unique ID will be generated.
-    pub id: ReadSignal<Option<String>>,
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-    /// Additional attributes to apply to the dropdown menu content element.
+    /// Additional attributes for the content element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the dropdown menu content, which should include one or more [`DropdownMenuItem`] components.
+
+    /// Children (should include [`DropdownMenuItem`] components).
     pub children: Element,
 }
 
-/// # DropdownMenuTrigger
-///
-/// The contents of a [`DropdownMenu`]. The component will only be rendered when the parent [`DropdownMenu`] is open (as control by the [`DropdownMenuTrigger`]).
-///
-/// This must be used inside a [`DropdownMenu`] component.
-///
-/// ## Example
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::dropdown_menu::{
-///     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-/// };
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         DropdownMenu { default_open: false,
-///             DropdownMenuTrigger { "Open Menu" }
-///             DropdownMenuContent {
-///                 DropdownMenuItem::<String> {
-///                     value: "edit".to_string(),
-///                     index: 0usize,
-///                     on_select: move |value| {
-///                         tracing::info!("Selected: {}", value);
-///                     },
-///                     "Edit"
-///                 }
-///                 DropdownMenuItem::<String> {
-///                     value: "undo".to_string(),
-///                     index: 1usize,
-///                     disabled: true,
-///                     on_select: move |value| {
-///                         tracing::info!("Selected: {}", value);
-///                     },
-///                     "Undo"
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
-/// ## Styling
-///
-/// The [`DropdownMenuContent`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the current state of the dropdown menu. values are `open` or `closed`.
+/// The menu content container. Has `role="menu"`.
 #[component]
 pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
-    let ctx: DropdownMenuContext = use_context();
+    let mut ctx: DropdownMenuCtx = use_context();
+    let id = ctx.content_id;
 
-    let unique_id = use_unique_id();
-    let id = use_id_or(unique_id, props.id);
     let render = use_animated_open(id, ctx.open);
-
-    let class = tw_merge!(
-        "z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-        props.class,
-    );
 
     rsx! {
         if render() {
             div {
                 id,
+                role: "menu",
                 "data-slot": "dropdown-menu-content",
-                class: class,
-                role: "listbox",
-                aria_labelledby: "{ctx.trigger_id}",
                 "data-state": if (ctx.open)() { "open" } else { "closed" },
+                aria_orientation: "vertical",
+                aria_labelledby: ctx.trigger_id.cloned(),
+                onkeydown: move |event: Event<KeyboardData>| {
+                    match event.key() {
+                        Key::Escape => {
+                            ctx.set_open.call(false);
+                            event.prevent_default();
+                        }
+                        Key::ArrowDown => {
+                            ctx.focus.focus_next();
+                            event.prevent_default();
+                        }
+                        Key::ArrowUp => {
+                            ctx.focus.focus_prev();
+                            event.prevent_default();
+                        }
+                        Key::Home => {
+                            ctx.focus.focus_first();
+                            event.prevent_default();
+                        }
+                        Key::End => {
+                            ctx.focus.focus_last();
+                            event.prevent_default();
+                        }
+                        _ => {}
+                    }
+                },
                 onpointerdown: move |event| {
-                    // The user is starting a click inside the dropdown menu.
-                    // Prevent the blur event from occurring during pointerdown,
-                    // to keep the dropdown menu open until pointerup happens,
-                    // thus enabling onclick/onselect events to fire.
                     event.prevent_default();
                     event.stop_propagation();
                 },
@@ -385,130 +272,180 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
     }
 }
 
-/// The props for the [`DropdownMenuItem`] component
+// ---------------------------------------------------------------------------
+// DropdownMenuItem
+// ---------------------------------------------------------------------------
+
+/// Props for [`DropdownMenuItem`].
 #[derive(Props, Clone, PartialEq)]
-pub struct DropdownMenuItemProps<T: Clone + PartialEq + 'static> {
-    /// The value of the item, which will be passed to the `on_select` callback when clicked.
-    pub value: ReadSignal<T>,
-    /// The index of the item within the [`DropdownMenuContent`]. This is used to order the items for keyboard navigation.
+pub struct DropdownMenuItemProps {
+    /// The index of the item for keyboard navigation.
     pub index: ReadSignal<usize>,
 
-    /// Whether the item is disabled. If true, the item will not be clickable and will not respond to keyboard events.
-    /// Defaults to false.
+    /// Whether the item is disabled.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// The callback function that will be called when the item is selected. The value of the item will be passed as an argument.
+    /// Called when the item is selected (click or Enter/Space).
     #[props(default)]
-    pub on_select: Callback<T>,
+    pub on_select: EventHandler<()>,
 
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-
-    /// Additional attributes to apply to the item element.
+    /// Additional attributes for the item element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the item, which will be rendered inside the item element.
+
+    /// Children of the item.
     pub children: Element,
 }
 
-/// # DropdownMenuTrigger
-///
-/// An item within a [`DropdownMenuContent`]. This component represents an individual selectable item in the dropdown menu.
-///
-/// This must be used inside a [`DropdownMenu`] component.
-///
-/// ## Example
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::dropdown_menu::{
-///     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-/// };
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         DropdownMenu { default_open: false,
-///             DropdownMenuTrigger { "Open Menu" }
-///             DropdownMenuContent {
-///                 DropdownMenuItem::<String> {
-///                     value: "edit".to_string(),
-///                     index: 0usize,
-///                     on_select: move |value| {
-///                         tracing::info!("Selected: {}", value);
-///                     },
-///                     "Edit"
-///                 }
-///                 DropdownMenuItem::<String> {
-///                     value: "undo".to_string(),
-///                     index: 1usize,
-///                     disabled: true,
-///                     on_select: move |value| {
-///                         tracing::info!("Selected: {}", value);
-///                     },
-///                     "Undo"
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
-/// ## Styling
-///
-/// The [`DropdownMenuItem`] component defines the following data attributes you can use to control styling:
-/// - `data-disabled`: Indicates whether the item is disabled. Values are `true` or `false`.
+/// A menu item. Has `role="menuitem"`.
 #[component]
-pub fn DropdownMenuItem<T: Clone + PartialEq + 'static>(
-    props: DropdownMenuItemProps<T>,
-) -> Element {
-    let mut ctx: DropdownMenuContext = use_context();
+pub fn DropdownMenuItem(props: DropdownMenuItemProps) -> Element {
+    let mut ctx: DropdownMenuCtx = use_context();
 
-    let disabled = move || (ctx.disabled)() || (props.disabled)();
+    let item_disabled = props.disabled || ctx.disabled;
     let focused = move || ctx.focus.is_focused((props.index)());
-
     let onmounted = use_focus_controlled_item(props.index);
-
-    let class = tw_merge!(
-        "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        props.class,
-    );
 
     rsx! {
         div {
+            role: "menuitem",
             "data-slot": "dropdown-menu-item",
-            class: class,
-            role: "option",
-            "data-disabled": disabled(),
+            "data-disabled": if item_disabled { "true" } else { "" },
+            "data-highlighted": if focused() { "" } else { None::<&str> },
+            aria_disabled: if item_disabled { Some("true") } else { None },
             tabindex: if focused() { "0" } else { "-1" },
-
+            onmounted,
             onclick: move |e: Event<MouseData>| {
                 e.stop_propagation();
-                if !disabled() {
-                    props.on_select.call((props.value)());
+                if !item_disabled {
+                    props.on_select.call(());
                     ctx.set_open.call(false);
                 }
             },
-
             onkeydown: move |event: Event<KeyboardData>| {
-                if event.key() == Key::Enter || event.key() == Key::Character(" ".to_string()) {
-                    if !disabled() {
-                        props.on_select.call((props.value)());
+                let key = event.key();
+                if key == Key::Enter || key == Key::Character(" ".to_string()) {
+                    if !item_disabled {
+                        props.on_select.call(());
                         ctx.set_open.call(false);
                     }
                     event.prevent_default();
                     event.stop_propagation();
                 }
             },
-
-            onmounted,
-
             onblur: move |_| {
                 if focused() {
                     ctx.focus.blur();
                 }
             },
+            ..props.attributes,
+            {props.children}
+        }
+    }
+}
 
+// ---------------------------------------------------------------------------
+// DropdownMenuSeparator
+// ---------------------------------------------------------------------------
+
+/// Props for [`DropdownMenuSeparator`].
+#[derive(Props, Clone, PartialEq)]
+pub struct DropdownMenuSeparatorProps {
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+}
+
+/// A visual separator between menu items. Has `role="separator"`.
+#[component]
+pub fn DropdownMenuSeparator(props: DropdownMenuSeparatorProps) -> Element {
+    rsx! {
+        div {
+            role: "separator",
+            "data-slot": "dropdown-menu-separator",
+            aria_orientation: "horizontal",
+            ..props.attributes,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DropdownMenuLabel
+// ---------------------------------------------------------------------------
+
+/// Props for [`DropdownMenuLabel`].
+#[derive(Props, Clone, PartialEq)]
+pub struct DropdownMenuLabelProps {
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// Children.
+    pub children: Element,
+}
+
+/// A non-interactive label within the menu.
+#[component]
+pub fn DropdownMenuLabel(props: DropdownMenuLabelProps) -> Element {
+    rsx! {
+        div {
+            "data-slot": "dropdown-menu-label",
+            ..props.attributes,
+            {props.children}
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DropdownMenuGroup
+// ---------------------------------------------------------------------------
+
+/// Props for [`DropdownMenuGroup`].
+#[derive(Props, Clone, PartialEq)]
+pub struct DropdownMenuGroupProps {
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// Children.
+    pub children: Element,
+}
+
+/// A grouping element for menu items. Has `role="group"`.
+#[component]
+pub fn DropdownMenuGroup(props: DropdownMenuGroupProps) -> Element {
+    rsx! {
+        div {
+            role: "group",
+            "data-slot": "dropdown-menu-group",
+            ..props.attributes,
+            {props.children}
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DropdownMenuShortcut
+// ---------------------------------------------------------------------------
+
+/// Props for [`DropdownMenuShortcut`].
+#[derive(Props, Clone, PartialEq)]
+pub struct DropdownMenuShortcutProps {
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// Children (the shortcut text).
+    pub children: Element,
+}
+
+/// A keyboard shortcut hint displayed alongside a menu item.
+#[component]
+pub fn DropdownMenuShortcut(props: DropdownMenuShortcutProps) -> Element {
+    rsx! {
+        span {
+            "data-slot": "dropdown-menu-shortcut",
             ..props.attributes,
             {props.children}
         }

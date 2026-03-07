@@ -1,42 +1,56 @@
 use dioxus::prelude::*;
 use dioxus_primitives::dropdown_menu::{
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+    DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel,
+    DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
 };
-use strum::IntoEnumIterator;
-
-#[derive(Clone, Copy, strum::Display, strum::EnumIter, PartialEq)]
-enum Operation {
-    Edit,
-    Undo,
-    Duplicate,
-    Delete,
-}
 
 #[component]
 pub fn Demo() -> Element {
-    let mut selected_operation = use_signal(|| None);
-
-    let operations = Operation::iter().enumerate().map(|(i, o)| {
-        rsx! {
-            DropdownMenuItem::<Operation> {
-                value: o,
-                index: i,
-                disabled: matches!(o, Operation::Undo),
-                on_select: move |value| {
-                    selected_operation.set(Some(value));
-                },
-                {o.to_string()}
-            }
-        }
-    });
-
     rsx! {
-        DropdownMenu { default_open: false,
-            DropdownMenuTrigger { "Open Menu" }
-            DropdownMenuContent { {operations} }
-        }
-        if let Some(op) = selected_operation() {
-            "Selected: {op}"
+        DropdownMenuRoot {
+            DropdownMenuTrigger { "Open" }
+            DropdownMenuContent {
+                DropdownMenuLabel { "My Account" }
+                DropdownMenuSeparator {}
+                DropdownMenuGroup {
+                    DropdownMenuItem {
+                        index: 0usize,
+                        "Profile"
+                        DropdownMenuShortcut { "⇧⌘P" }
+                    }
+                    DropdownMenuItem {
+                        index: 1usize,
+                        "Billing"
+                        DropdownMenuShortcut { "⌘B" }
+                    }
+                    DropdownMenuItem {
+                        index: 2usize,
+                        "Settings"
+                        DropdownMenuShortcut { "⌘S" }
+                    }
+                    DropdownMenuItem {
+                        index: 3usize,
+                        "Keyboard shortcuts"
+                        DropdownMenuShortcut { "⌘K" }
+                    }
+                }
+                DropdownMenuSeparator {}
+                DropdownMenuGroup {
+                    DropdownMenuItem { index: 4usize, "Team" }
+                    DropdownMenuItem {
+                        index: 5usize,
+                        disabled: true,
+                        "New Team"
+                        DropdownMenuShortcut { "⌘+T" }
+                    }
+                }
+                DropdownMenuSeparator {}
+                DropdownMenuItem {
+                    index: 6usize,
+                    "Log out"
+                    DropdownMenuShortcut { "⇧⌘Q" }
+                }
+            }
         }
     }
 }
