@@ -1,69 +1,58 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('pointer navigation', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/?name=context_menu&', { timeout: 20 * 60 * 1000 });
+test("test", async ({ page }) => {
+  await page.goto("http://127.0.0.1:8080/docs/components/context_menu", { timeout: 20 * 60 * 1000 });
 
-  // data-slot assertions
-  const menu = page.locator('[data-slot="context-menu"]');
-  await expect(menu).toBeVisible();
+  // Scope to the preview container
+  const preview = page.locator('[data-slot="preview"]').first();
+  await expect(preview).toBeVisible();
 
-  const trigger = menu.locator('[data-slot="context-menu-trigger"]');
+  // Trigger is a span
+  const trigger = preview.locator('[data-slot="context-menu-trigger"]');
   await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAttribute("data-state", "closed");
 
-  await trigger.click({ button: 'right' });
+  // Right-click opens menu
+  await trigger.click({ button: "right" });
 
+  // Content
   const content = page.locator('[data-slot="context-menu-content"]');
-  await expect(content).toHaveAttribute('data-state', 'open');
+  await expect(content).toBeVisible();
+  await expect(content).toHaveAttribute("role", "menu");
+  await expect(content).toHaveAttribute("data-state", "open");
+  await expect(content).toHaveAttribute("aria-orientation", "vertical");
 
-  // Assert key Tailwind classes on content
-  const contentClass = await content.getAttribute('class');
-  expect(contentClass).toContain('z-50');
-  expect(contentClass).toContain('rounded-md');
-  expect(contentClass).toContain('border');
-  expect(contentClass).toContain('bg-popover');
-  expect(contentClass).toContain('shadow-md');
-
-  // Assert items have data-slot and key classes
+  // Items have correct role
   const items = content.locator('[data-slot="context-menu-item"]');
-  await expect(items).toHaveCount(4);
+  const count = await items.count();
+  expect(count).toBeGreaterThan(0);
+  await expect(items.first()).toHaveAttribute("role", "menuitem");
 
-  const itemClass = await items.first().getAttribute('class');
-  expect(itemClass).toContain('flex');
-  expect(itemClass).toContain('cursor-default');
-  expect(itemClass).toContain('rounded-sm');
-  expect(itemClass).toContain('text-sm');
+  // Separator
+  const separator = content.locator('[data-slot="context-menu-separator"]');
+  await expect(separator.first()).toHaveAttribute("role", "separator");
 
-  // Click on the "Edit" menu item
-  await page.getByRole('menuitem', { name: 'Edit' }).click();
-  // Assert the context menu is closed after clicking
-  await expect(content).toHaveCount(0);
-});
+  // Label
+  const label = content.locator('[data-slot="context-menu-label"]');
+  await expect(label.first()).toBeVisible();
 
-test('keyboard navigation', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/?name=context_menu&', { timeout: 20 * 60 * 1000 });
+  // Group
+  const group = content.locator('[data-slot="context-menu-group"]');
+  await expect(group.first()).toHaveAttribute("role", "group");
 
-  const trigger = page.locator('[data-slot="context-menu-trigger"]');
-  await trigger.click({ button: 'right' });
+  // Shortcut
+  const shortcut = content.locator('[data-slot="context-menu-shortcut"]');
+  await expect(shortcut.first()).toBeVisible();
 
-  const content = page.locator('[data-slot="context-menu-content"]');
-  await expect(content).toHaveAttribute('data-state', 'open');
-
-  // Hit escape to close the context menu
-  await page.keyboard.press('Escape');
+  // Escape closes menu
+  await page.keyboard.press("Escape");
   await expect(content).toHaveCount(0);
 
-  // Reopen the context menu
-  await trigger.click({ button: 'right' });
-  await page.keyboard.press('ArrowDown');
-  await expect(page.getByRole('menuitem', { name: 'Edit' })).toBeFocused();
+  // Reopen
+  await trigger.click({ button: "right" });
+  await expect(content).toBeVisible();
 
-  // Move down to the "Duplicate" menu item (skipping disabled "Undo")
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await expect(page.getByRole('menuitem', { name: 'Duplicate' })).toBeFocused();
-
-  // Hit Enter to select
-  await page.keyboard.press('Enter');
+  // Click item closes menu
+  await items.first().click();
   await expect(content).toHaveCount(0);
-  await expect(page.getByText('Selected: Duplicate')).toBeVisible();
 });

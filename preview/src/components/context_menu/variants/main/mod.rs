@@ -1,51 +1,40 @@
 use dioxus::prelude::*;
-use dioxus_primitives::context_menu::*;
+use dioxus_primitives::context_menu::{
+    ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuRoot,
+    ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger,
+};
+
 #[component]
 pub fn Demo() -> Element {
-    let mut selected_item = use_signal(|| None);
-
     rsx! {
-        ContextMenu {
-            ContextMenuTrigger { "right click here" }
+        ContextMenuRoot {
+            ContextMenuTrigger { "Right click here" }
             ContextMenuContent {
-                ContextMenuItem {
-                    value: "edit".to_string(),
-                    index: 0usize,
-                    on_select: move |value| {
-                        selected_item.set(Some(value));
-                    },
-                    "Edit"
+                ContextMenuGroup {
+                    ContextMenuLabel { "Actions" }
+                    ContextMenuItem {
+                        index: 0usize,
+                        "Back"
+                        ContextMenuShortcut { "⌘[" }
+                    }
+                    ContextMenuItem {
+                        index: 1usize,
+                        disabled: true,
+                        "Forward"
+                        ContextMenuShortcut { "⌘]" }
+                    }
+                    ContextMenuItem {
+                        index: 2usize,
+                        "Reload"
+                        ContextMenuShortcut { "⌘R" }
+                    }
                 }
-                ContextMenuItem {
-                    value: "undo".to_string(),
-                    index: 1usize,
-                    disabled: true,
-                    on_select: move |value| {
-                        selected_item.set(Some(value));
-                    },
-                    "Undo"
-                }
-                ContextMenuItem {
-                    value: "duplicate".to_string(),
-                    index: 2usize,
-                    on_select: move |value| {
-                        selected_item.set(Some(value));
-                    },
-                    "Duplicate"
-                }
-                ContextMenuItem {
-                    value: "delete".to_string(),
-                    index: 3usize,
-                    on_select: move |value| {
-                        selected_item.set(Some(value));
-                    },
-                    "Delete"
-                }
+                ContextMenuSeparator {}
+                ContextMenuItem { index: 3usize, "More Tools" }
+                ContextMenuSeparator {}
+                ContextMenuItem { index: 4usize, "Show Bookmarks Bar" }
+                ContextMenuItem { index: 5usize, "Show Full URLs" }
             }
-        }
-
-        if let Some(item) = selected_item() {
-            "Selected: {item}"
         }
     }
 }
