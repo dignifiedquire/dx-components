@@ -1,5 +1,5 @@
+use super::super::component::{Slider, SliderRange, SliderThumb, SliderTrack, SliderValue};
 use dioxus::prelude::*;
-use dioxus_primitives::slider::{Slider, SliderRange, SliderThumb, SliderTrack, SliderValue};
 
 #[component]
 pub fn Demo() -> Element {

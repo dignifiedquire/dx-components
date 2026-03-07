@@ -9,7 +9,6 @@ use dioxus::html::geometry::Pixels;
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use std::rc::Rc;
-use tailwind_fuse::*;
 
 /// The value of the slider. Currently this can only be a single value, but support for ranges is planned.
 #[derive(Debug, Clone, PartialEq)]
@@ -106,7 +105,7 @@ pub struct SliderProps {
 
     /// Whether the slider is disabled
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
     /// Orientation of the slider
     #[props(default = true)]
@@ -122,10 +121,6 @@ pub struct SliderProps {
 
     /// The label for the slider (for accessibility)
     pub label: ReadSignal<Option<String>>,
-
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
 
     /// Additional attributes for the slider
     #[props(extends = GlobalAttributes)]
@@ -164,7 +159,7 @@ pub struct SliderProps {
 /// ## Styling
 ///
 /// The [`Slider`] component defines the following data attributes you can use to control styling:
-/// - `data-disabled`: Indicates if the slider is disabled. Values are `true` or `false`.
+/// - `data-disabled`: Present when the slider is disabled (attribute present with empty value or absent).
 /// - `data-orientation`: Indicates the orientation of the slider. Values are `horizontal` or `vertical`.
 #[component]
 pub fn Slider(props: SliderProps) -> Element {
@@ -182,23 +177,20 @@ pub fn Slider(props: SliderProps) -> Element {
 
     let mut dragging = use_signal(|| false);
 
+    let is_disabled = props.disabled;
+
     let ctx = use_context_provider(|| SliderContext {
         value,
         set_value,
         min: props.min,
         max: props.max,
         step: props.step,
-        disabled: props.disabled,
+        disabled: is_disabled,
         horizontal: props.horizontal,
         inverted: props.inverted,
         dragging: dragging.into(),
         label: props.label,
     });
-
-    let class = tw_merge!(
-        "relative flex w-full touch-none items-center select-none data-[disabled=true]:opacity-50 data-[orientation=horizontal]:flex-row data-[orientation=vertical]:flex-col",
-        props.class,
-    );
 
     let mut rect = use_signal(|| None);
     let mut div_element: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
@@ -254,12 +246,11 @@ pub fn Slider(props: SliderProps) -> Element {
     });
 
     rsx! {
-        div {
-            role: "group",
+        span {
             "data-slot": "slider",
-            "data-disabled": props.disabled,
+            "data-disabled": if is_disabled { "" } else { None::<&str> },
             "data-orientation": orientation,
-            class: class,
+            aria_disabled: if is_disabled { Some("true") } else { None },
 
             onmounted: move |evt| async move {
                 // Get the bounding rect of the slider
@@ -278,7 +269,7 @@ pub fn Slider(props: SliderProps) -> Element {
                 }
             },
             onpointerdown: move |evt| {
-                if (ctx.disabled)() {
+                if ctx.disabled {
                     return;
                 }
 
@@ -340,10 +331,6 @@ pub fn Slider(props: SliderProps) -> Element {
 /// The props for the [`SliderTrack`] component
 #[derive(Props, Clone, PartialEq)]
 pub struct SliderTrackProps {
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-
     /// Additional attributes to apply to the track element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -383,7 +370,7 @@ pub struct SliderTrackProps {
 /// ## Styling
 ///
 /// The [`SliderTrack`] component defines the following data attributes you can use to control styling:
-/// - `data-disabled`: Indicates if the slider is disabled. Values are `true` or `false`.
+/// - `data-disabled`: Present when the slider is disabled.
 /// - `data-orientation`: Indicates the orientation of the slider. Values are `horizontal` or `vertical`.
 #[component]
 pub fn SliderTrack(props: SliderTrackProps) -> Element {
@@ -394,17 +381,11 @@ pub fn SliderTrack(props: SliderTrackProps) -> Element {
         "vertical"
     };
 
-    let class = tw_merge!(
-        "relative grow overflow-hidden rounded-full bg-muted data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-1.5 data-[orientation=vertical]:h-full",
-        props.class,
-    );
-
     rsx! {
-        div {
+        span {
             "data-slot": "slider-track",
-            "data-disabled": ctx.disabled,
+            "data-disabled": if ctx.disabled { "" } else { None::<&str> },
             "data-orientation": orientation,
-            class: class,
             ..props.attributes,
             {props.children}
         }
@@ -414,10 +395,6 @@ pub fn SliderTrack(props: SliderTrackProps) -> Element {
 /// The props for the [`SliderRange`] component
 #[derive(Props, Clone, PartialEq)]
 pub struct SliderRangeProps {
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-
     /// Additional attributes to apply to the range element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -455,7 +432,7 @@ pub struct SliderRangeProps {
 /// ## Styling
 ///
 /// The [`SliderRange`] component defines the following data attributes you can use to control styling:
-/// - `data-disabled`: Indicates if the slider is disabled. Values are `true` or `false`.
+/// - `data-disabled`: Present when the slider is disabled.
 /// - `data-orientation`: Indicates the orientation of the slider. Values are `horizontal` or `vertical`.
 ///
 /// It automatically has the percentage based size and position styles applied based on the current slider value.
@@ -467,11 +444,6 @@ pub fn SliderRange(props: SliderRangeProps) -> Element {
     } else {
         "vertical"
     };
-
-    let class = tw_merge!(
-        "absolute bg-primary data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full",
-        props.class,
-    );
 
     let style = use_memo(move || {
         let (start, end) = match (ctx.value)() {
@@ -489,11 +461,10 @@ pub fn SliderRange(props: SliderRangeProps) -> Element {
     });
 
     rsx! {
-        div {
+        span {
             "data-slot": "slider-range",
-            "data-disabled": ctx.disabled,
+            "data-disabled": if ctx.disabled { "" } else { None::<&str> },
             "data-orientation": orientation,
-            class: class,
             style,
             ..props.attributes,
             {props.children}
@@ -507,10 +478,6 @@ pub struct SliderThumbProps {
     /// Which thumb this is in a range slider
     #[props(default)]
     pub index: Option<usize>,
-
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
 
     /// Additional attributes to apply to the thumb element
     #[props(extends = GlobalAttributes)]
@@ -551,7 +518,7 @@ pub struct SliderThumbProps {
 /// ## Styling
 ///
 /// The [`SliderThumb`] component defines the following data attributes you can use to control styling:
-/// - `data-disabled`: Indicates if the slider is disabled. Values are `true` or `false`.
+/// - `data-disabled`: Present when the slider is disabled.
 /// - `data-orientation`: Indicates the orientation of the slider. Values are `horizontal` or `vertical`.
 /// - `data-dragging`: Indicates if the thumb is currently being dragged. Values are `true` or `false`.
 ///
@@ -576,22 +543,16 @@ pub fn SliderThumb(props: SliderThumbProps) -> Element {
         format!("bottom: {percent}%")
     };
 
-    let class = tw_merge!(
-        "block size-4 shrink-0 rounded-full border border-primary bg-background shadow-sm ring-ring/50 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50",
-        props.class,
-    );
-
-    let mut button_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+    let mut thumb_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
 
     use_effect(move || {
-        let button_ref = button_ref();
-        if let Some(button) = button_ref {
-            // Focus the button while dragging
-            let disabled = ctx.disabled.cloned();
+        let thumb_ref = thumb_ref();
+        if let Some(thumb) = thumb_ref {
+            // Focus the thumb while dragging
             let dragging = ctx.dragging.cloned();
-            if !disabled && dragging {
+            if !ctx.disabled && dragging {
                 spawn(async move {
-                    _ = button.set_focus(true).await;
+                    _ = thumb.set_focus(true).await;
                 });
             }
         }
@@ -600,35 +561,34 @@ pub fn SliderThumb(props: SliderThumbProps) -> Element {
     let aria_label = ctx.label;
 
     rsx! {
-        button {
-            type: "button",
+        span {
             role: "slider",
             aria_valuemin: (ctx.min)(),
             aria_valuemax: (ctx.max)(),
             aria_valuenow: value,
             aria_orientation: orientation,
+            aria_disabled: if ctx.disabled { Some("true") } else { None },
             aria_label,
             "data-slot": "slider-thumb",
-            "data-disabled": ctx.disabled,
+            "data-disabled": if ctx.disabled { "" } else { None::<&str> },
             "data-orientation": orientation,
             "data-dragging": ctx.dragging,
-            class: class,
             style,
-            tabindex: 0,
+            tabindex: if ctx.disabled { None::<&str> } else { Some("0") },
             onmounted: move |evt| {
                 // Store the mounted data for focus management
-                button_ref.set(Some(evt.data()));
+                thumb_ref.set(Some(evt.data()));
             },
             onmousedown: move |evt| {
-                // Don't focus the button. The dragging state will handle focus
+                // Don't focus the thumb. The dragging state will handle focus
                 evt.prevent_default();
             },
             ontouchstart: move |evt| {
-                // Don't focus the button. The dragging state will handle focus
+                // Don't focus the thumb. The dragging state will handle focus
                 evt.prevent_default();
             },
             onkeydown: move |evt| async move {
-                if (ctx.disabled)() {
+                if ctx.disabled {
                     return;
                 }
 
@@ -667,7 +627,7 @@ struct SliderContext {
     min: ReadSignal<f64>,
     max: ReadSignal<f64>,
     step: ReadSignal<f64>,
-    disabled: ReadSignal<bool>,
+    disabled: bool,
     horizontal: bool,
     inverted: bool,
     dragging: ReadSignal<bool>,

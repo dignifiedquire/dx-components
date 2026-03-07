@@ -1,6 +1,6 @@
+use super::super::component::*;
 use dioxus::prelude::*;
 use dioxus_primitives::label::Label;
-use dioxus_primitives::slider::*;
 use dioxus_primitives::switch::{Switch, SwitchThumb};
 
 #[component]
