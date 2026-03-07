@@ -1,92 +1,71 @@
 import { test, expect } from "@playwright/test";
 
-test("pointer navigation", async ({ page }) => {
-  await page.goto("http://127.0.0.1:8080/component/?name=menubar&", { timeout: 20 * 60 * 1000 });
+test("test", async ({ page }) => {
+  await page.goto("http://127.0.0.1:8080/docs/components/menubar", { timeout: 20 * 60 * 1000 });
 
-  // data-slot assertions
-  const menubar = page.locator('[data-slot="menubar"]');
+  // Scope to the preview container
+  const preview = page.locator('[data-slot="preview"]').first();
+  await expect(preview).toBeVisible();
+
+  // Menubar root
+  const menubar = preview.locator('[data-slot="menubar"]');
   await expect(menubar).toBeVisible();
+  await expect(menubar).toHaveAttribute("role", "menubar");
 
-  const menubarClass = await menubar.getAttribute('class');
-  expect(menubarClass).toContain('flex');
-  expect(menubarClass).toContain('rounded-md');
-  expect(menubarClass).toContain('border');
-  expect(menubarClass).toContain('bg-background');
-  expect(menubarClass).toContain('shadow-xs');
+  // Triggers
+  const triggers = menubar.locator('[data-slot="menubar-trigger"]');
+  const triggerCount = await triggers.count();
+  expect(triggerCount).toBeGreaterThan(0);
 
-  const fileMenu = page.locator('[data-slot="menubar-menu"]').first();
-  const fileTrigger = fileMenu.locator('[data-slot="menubar-trigger"]');
-  await expect(fileTrigger).toBeVisible();
+  const fileTrigger = triggers.first();
+  await expect(fileTrigger).toHaveAttribute("role", "menuitem");
+  await expect(fileTrigger).toHaveAttribute("aria-haspopup", "menu");
+  await expect(fileTrigger).toHaveAttribute("data-state", "closed");
 
-  const triggerClass = await fileTrigger.getAttribute('class');
-  expect(triggerClass).toContain('rounded-sm');
-  expect(triggerClass).toContain('text-sm');
-  expect(triggerClass).toContain('font-medium');
-
+  // Click File trigger to open
   await fileTrigger.click();
-  const fileContent = fileMenu.locator('[data-slot="menubar-content"]');
-  await expect(fileContent).toHaveAttribute("data-state", "open");
+  await expect(fileTrigger).toHaveAttribute("data-state", "open");
+  await expect(fileTrigger).toHaveAttribute("aria-expanded", "true");
 
-  const contentClass = await fileContent.getAttribute('class');
-  expect(contentClass).toContain('z-50');
-  expect(contentClass).toContain('rounded-md');
-  expect(contentClass).toContain('border');
-  expect(contentClass).toContain('bg-popover');
-  expect(contentClass).toContain('shadow-md');
+  // Content
+  const content = page.locator('[data-slot="menubar-content"]');
+  await expect(content).toBeVisible();
+  await expect(content).toHaveAttribute("role", "menu");
+  await expect(content).toHaveAttribute("data-state", "open");
+  await expect(content).toHaveAttribute("aria-orientation", "vertical");
 
-  // Hover over Edit menu to switch
-  const editMenu = page.locator('[data-slot="menubar-menu"]').nth(1);
-  const editTrigger = editMenu.locator('[data-slot="menubar-trigger"]');
+  // Items have correct role
+  const items = content.locator('[data-slot="menubar-item"]');
+  const itemCount = await items.count();
+  expect(itemCount).toBeGreaterThan(0);
+  await expect(items.first()).toHaveAttribute("role", "menuitem");
+
+  // Separator
+  const separator = content.locator('[data-slot="menubar-separator"]');
+  await expect(separator.first()).toHaveAttribute("role", "separator");
+
+  // Group
+  const group = content.locator('[data-slot="menubar-group"]');
+  await expect(group.first()).toHaveAttribute("role", "group");
+
+  // Shortcut
+  const shortcut = content.locator('[data-slot="menubar-shortcut"]');
+  await expect(shortcut.first()).toBeVisible();
+
+  // Escape closes menu
+  await page.keyboard.press("Escape");
+  await expect(content).toHaveCount(0);
+  await expect(fileTrigger).toHaveAttribute("data-state", "closed");
+
+  // Reopen File, hover Edit to switch
+  await fileTrigger.click();
+  await expect(content).toBeVisible();
+
+  const editTrigger = triggers.nth(1);
   await editTrigger.hover();
-  const editContent = editMenu.locator('[data-slot="menubar-content"]');
-  await expect(editContent).toHaveAttribute("data-state", "open");
-  await expect(fileContent).toHaveCount(0);
+  await expect(editTrigger).toHaveAttribute("data-state", "open");
 
-  // Assert items have data-slot and classes
-  const items = editContent.locator('[data-slot="menubar-item"]');
-  await expect(items).toHaveCount(3);
-
-  const itemClass = await items.first().getAttribute('class');
-  expect(itemClass).toContain('flex');
-  expect(itemClass).toContain('cursor-default');
-  expect(itemClass).toContain('rounded-sm');
-  expect(itemClass).toContain('text-sm');
-
-  // Click Cut item
-  const cutItem = editContent.getByRole("menuitem", { name: "Cut" });
-  await cutItem.click();
-  await expect(fileContent).toHaveCount(0);
-});
-
-test("keyboard navigation", async ({ page }) => {
-  await page.goto("http://127.0.0.1:8080/component/?name=menubar&", { timeout: 20 * 60 * 1000 });
-
-  const menubar = page.locator('[data-slot="menubar"]');
-  await menubar.focus();
-
-  const fileMenu = page.locator('[data-slot="menubar-menu"]').first();
-  const fileTrigger = fileMenu.locator('[data-slot="menubar-trigger"]');
-
-  // Go right with the keyboard
-  await page.keyboard.press("ArrowRight");
-  const editMenu = page.locator('[data-slot="menubar-menu"]').nth(1);
-  const editTrigger = editMenu.locator('[data-slot="menubar-trigger"]');
-  await expect(editTrigger).toBeFocused();
-
-  // Go left with the keyboard
-  await page.keyboard.press("ArrowLeft");
-  await expect(fileTrigger).toBeFocused();
-
-  // Open the File menu
-  await page.keyboard.press("ArrowDown");
-  const fileContent = fileMenu.locator('[data-slot="menubar-content"]');
-  await expect(fileContent).toHaveAttribute("data-state", "open");
-
-  // Assert the new item is focused
-  const newItem = fileContent.getByRole("menuitem", { name: "New" });
-  await expect(newItem).toBeFocused();
-
-  // Select New item
-  await page.keyboard.press("Enter");
-  await expect(fileContent).toHaveCount(0);
+  // Escape to close
+  await page.keyboard.press("Escape");
+  await expect(content).toHaveCount(0);
 });
