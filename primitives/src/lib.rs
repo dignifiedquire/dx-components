@@ -16,6 +16,8 @@ pub use dioxus_attributes;
 
 pub mod accordion;
 pub mod alert_dialog;
+pub mod announce;
+pub mod arrow;
 pub mod aspect_ratio;
 pub mod avatar;
 pub mod button;
@@ -30,6 +32,7 @@ pub mod direction;
 pub mod drag_and_drop_list;
 pub mod dropdown_menu;
 mod focus;
+pub mod focus_guards;
 pub mod hover_card;
 pub mod icon;
 pub mod label;
@@ -54,6 +57,7 @@ pub mod toggle;
 pub mod toggle_group;
 pub mod toolbar;
 pub mod tooltip;
+pub mod visually_hidden;
 
 pub(crate) const FOCUS_TRAP_JS: Asset = asset!("/src/js/focus-trap.js");
 
