@@ -1,485 +1,451 @@
-//! Defines the [`Tabs`] component and its sub-components.
+//! Tabs primitive — matches `@radix-ui/react-tabs`.
+//!
+//! A set of layered sections of content, known as tab panels, that are displayed
+//! one at a time.
 
-use crate::{
-    focus::{use_focus_controlled_item, use_focus_provider, FocusState},
-    use_controlled, use_id_or, use_unique_id,
-};
+use crate::direction::{Direction, Orientation};
+use crate::merge_attributes;
+use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
+use crate::{use_controlled, use_unique_id};
+use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
-use tailwind_fuse::*;
+use dioxus_attributes::attributes;
 
-#[derive(Clone, Copy)]
-struct TabsContext {
-    // State
-    value: ReadSignal<String>,
-    set_value: Callback<String>,
-    disabled: ReadSignal<bool>,
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
 
-    // Focus state
-    focus: FocusState,
-
-    // Orientation
-    horizontal: ReadSignal<bool>,
-    roving_loop: ReadSignal<bool>,
-
-    // ARIA attributes
-    tab_content_ids: Signal<Vec<String>>,
+/// Controls whether a tab is activated automatically on focus or manually.
+///
+/// Matches Radix's `activationMode` prop.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum ActivationMode {
+    /// Tab activates when its trigger receives focus (arrow key nav activates).
+    #[default]
+    Automatic,
+    /// Tab activates only on explicit click / Enter / Space.
+    Manual,
 }
 
-/// The props for the [`Tabs`] component.
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
+#[derive(Clone)]
+struct TabsCtx {
+    base_id: String,
+    value: Memo<String>,
+    set_value: Callback<String>,
+    orientation: Orientation,
+    dir: Direction,
+    activation_mode: ActivationMode,
+}
+
+// ---------------------------------------------------------------------------
+// ID helpers (matches Radix's makeTriggerId / makeContentId)
+// ---------------------------------------------------------------------------
+
+fn make_trigger_id(base_id: &str, value: &str) -> String {
+    format!("{base_id}-trigger-{value}")
+}
+
+fn make_content_id(base_id: &str, value: &str) -> String {
+    format!("{base_id}-content-{value}")
+}
+
+// ---------------------------------------------------------------------------
+// Tabs (root)
+// ---------------------------------------------------------------------------
+
+/// Props for [`Tabs`].
+#[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
 pub struct TabsProps {
-    /// The controlled value of the active tab.
+    /// Controlled active tab value. Pass `None` for uncontrolled.
+    #[props(default)]
     pub value: ReadSignal<Option<String>>,
 
-    /// The default active tab value when uncontrolled.
+    /// Default active tab when uncontrolled.
     #[props(default)]
     pub default_value: String,
 
-    /// Callback fired when the active tab changes.
+    /// Callback when the active tab changes.
     #[props(default)]
     pub on_value_change: Callback<String>,
 
-    /// Whether the tabs are disabled.
+    /// Layout orientation. Defaults to `Horizontal` (matching Radix).
+    #[props(default = Orientation::Horizontal)]
+    pub orientation: Orientation,
+
+    /// Text direction for RTL support. Defaults to `Ltr`.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub dir: Direction,
 
-    /// Whether the tabs are horizontal.
+    /// Whether tabs activate on focus or only on click.
     #[props(default)]
-    pub horizontal: ReadSignal<bool>,
+    pub activation_mode: ActivationMode,
 
-    /// Whether focus should loop around when reaching the end.
-    #[props(default = ReadSignal::new(Signal::new(true)))]
-    pub roving_loop: ReadSignal<bool>,
-
-    /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the tabs element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the tabs component.
     pub children: Element,
 }
 
-/// # Tabs
+/// A set of layered sections of content displayed one at a time.
 ///
-/// The `Tabs` component creates a tabbed interface that allows users to switch between different panels
-/// of content. The [`TabTrigger`] component is used to switch between the different [`TabContent`]s.
+/// Matches Radix's `Tabs`.
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::tabs::{TabContent, TabTrigger, Tabs, TabList};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Tabs {
-///             default_value: "tab1".to_string(),
-///             horizontal: true,
-///             TabList {
-///                 TabTrigger {
-///                     value: "tab1".to_string(),
-///                     index: 0usize,
-///                     "Tab 1"
-///                 }
-///                 TabTrigger {
-///                     value: "tab2".to_string(),
-///                     index: 1usize,
-///                     "Tab 2"
-///                 }
-///             }
-///             TabContent {
-///                 index: 0usize,
-///                 value: "tab1".to_string(),
-///                 "Tab 1 Content"
-///             }
-///             TabContent {
-///                 index: 1usize,
-///                 value: "tab2".to_string(),
-///                 "Tab 2 Content"
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::tabs::*;
+/// rsx! {
+///     Tabs { default_value: "tab1".to_string(),
+///         TabsList {
+///             TabsTrigger { value: "tab1".to_string(), "Tab 1" }
+///             TabsTrigger { value: "tab2".to_string(), "Tab 2" }
 ///         }
+///         TabsContent { value: "tab1".to_string(), "Content 1" }
+///         TabsContent { value: "tab2".to_string(), "Content 2" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`Tabs`] component defines the following data attributes you can use to control styling:
-/// - `data-orientation`: Indicates the orientation of the tabs. Values are `horizontal` or `vertical`.
-/// - `data-disabled`: Indicates if the tabs are disabled. Values are `true` or `false`.
 #[component]
 pub fn Tabs(props: TabsProps) -> Element {
     let (value, set_value) =
         use_controlled(props.value, props.default_value, props.on_value_change);
 
-    let class = tw_merge!(
-        "flex gap-2 data-[orientation=horizontal]:flex-col",
-        props.class,
-    );
+    let base_id_signal = use_unique_id();
+    let base_id = use_hook(|| base_id_signal.cloned());
 
-    let focus = use_focus_provider(props.roving_loop);
-    let mut ctx = use_context_provider(|| TabsContext {
-        value: value.into(),
+    use_context_provider(|| TabsCtx {
+        base_id,
+        value,
         set_value,
-        disabled: props.disabled,
-
-        focus,
-
-        horizontal: props.horizontal,
-        roving_loop: props.roving_loop,
-        tab_content_ids: Signal::new(Vec::new()),
+        orientation: props.orientation,
+        dir: props.dir,
+        activation_mode: props.activation_mode,
     });
 
     rsx! {
         div {
             "data-slot": "tabs",
-            "data-orientation": if (props.horizontal)() { "horizontal" } else { "vertical" },
-            "data-disabled": (props.disabled)(),
-            class: class,
-
-            onfocusout: move |_| ctx.focus.blur(),
+            "data-orientation": props.orientation.as_str(),
+            class: props.class,
             ..props.attributes,
-
             {props.children}
         }
     }
 }
 
-/// The props for the [`TabList`] component.
+// ---------------------------------------------------------------------------
+// TabsList
+// ---------------------------------------------------------------------------
+
+/// Props for [`TabsList`].
+#[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
-pub struct TabListProps {
-    /// Additional Tailwind classes to apply.
+pub struct TabsListProps {
+    /// Whether keyboard navigation loops. Defaults to `true`.
+    #[props(default = true)]
+    pub r#loop: bool,
+
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the tab list element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the tab list component.
     pub children: Element,
 }
 
-/// # TabList
+/// Contains the triggers for a set of tabs.
 ///
-/// The `TabList` component contains a list of [`TabTrigger`] components that allow users to switch between different tabs.
+/// Matches Radix's `TabsList`. Delegates keyboard navigation to
+/// [`RovingFocusGroup`] via `r#as` (asChild pattern), matching Radix's
+/// composition of `RovingFocusGroup.Root asChild` wrapping a `<div>`.
 ///
-/// This must be used inside a [`Tabs`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::tabs::{TabContent, TabTrigger, Tabs, TabList};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Tabs {
-///             default_value: "tab1".to_string(),
-///             horizontal: true,
-///             TabList {
-///                 TabTrigger {
-///                     value: "tab1".to_string(),
-///                     index: 0usize,
-///                     "Tab 1"
-///                 }
-///                 TabTrigger {
-///                     value: "tab2".to_string(),
-///                     index: 1usize,
-///                     "Tab 2"
-///                 }
-///             }
-///             TabContent {
-///                 index: 0usize,
-///                 value: "tab1".to_string(),
-///                 "Tab 1 Content"
-///             }
-///             TabContent {
-///                 index: 1usize,
-///                 value: "tab2".to_string(),
-///                 "Tab 2 Content"
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::tabs::*;
+/// rsx! {
+///     Tabs { default_value: "tab1".to_string(),
+///         TabsList {
+///             TabsTrigger { value: "tab1".to_string(), "Tab 1" }
+///             TabsTrigger { value: "tab2".to_string(), "Tab 2" }
 ///         }
+///         TabsContent { value: "tab1".to_string(), "Content 1" }
+///         TabsContent { value: "tab2".to_string(), "Content 2" }
 ///     }
-/// }
+/// };
 /// ```
 #[component]
-pub fn TabList(props: TabListProps) -> Element {
-    let class = tw_merge!(
-        "inline-flex w-fit items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground",
-        props.class,
-    );
+pub fn TabsList(props: TabsListProps) -> Element {
+    let ctx: TabsCtx = use_context();
+    let children = props.children;
+    let class = props.class;
+    let user_attrs = props.attributes;
 
     rsx! {
-        div {
-            role: "tablist",
-            "data-slot": "tabs-list",
-            class: class,
-            ..props.attributes,
+        RovingFocusGroup {
+            orientation: Signal::new(Some(ctx.orientation)),
+            dir: Signal::new(ctx.dir),
+            r#loop: Signal::new(props.r#loop),
+            r#as: {
+                let children = children.clone();
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                move |roving_attrs: Vec<Attribute>| {
+                    let list_attrs = attributes!(div {
+                        role: "tablist",
+                        "data-slot": "tabs-list",
+                        aria_orientation: ctx.orientation.as_str(),
+                        class: class.clone(),
+                    });
+                    let merged = merge_attributes(vec![roving_attrs, list_attrs, user_attrs.clone()]);
 
-            {props.children}
+                    rsx! {
+                        div { ..merged, {children.clone()} }
+                    }
+                }
+            },
         }
     }
 }
 
-/// The props for the [`TabTrigger`] component
-#[derive(Props, Clone, PartialEq)]
-pub struct TabTriggerProps {
-    /// The value of the tab trigger, which is used to identify the corresponding tab content. This
-    /// must match the `value` prop of the corresponding [`TabContent`].
-    pub value: String,
-    /// The index of the tab trigger. This is used to define the focus order for keyboard navigation.
-    pub index: ReadSignal<usize>,
+// ---------------------------------------------------------------------------
+// TabsTrigger
+// ---------------------------------------------------------------------------
 
-    /// Whether the tab trigger is disabled.
+/// Props for [`TabsTrigger`].
+#[allow(missing_docs)]
+#[derive(Props, Clone, PartialEq)]
+pub struct TabsTriggerProps {
+    /// The value that associates this trigger with its content panel.
+    pub value: String,
+
+    /// Whether this trigger is disabled.
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// The ID of the tab trigger element.
-    pub id: Option<String>,
-    /// The class of the tab trigger element.
+    #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the tab trigger element.
     #[props(extends = GlobalAttributes)]
-    #[props(extends = button)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the tab trigger component.
     pub children: Element,
 }
 
-/// # TabTrigger
+/// The button that activates a tab panel.
 ///
-/// The `TabTrigger` component is a button that switches to the [`TabContent`] with the same `value` when clicked.
+/// Matches Radix's `TabsTrigger`. Delegates focus management to
+/// [`RovingFocusGroupItem`] via `r#as` (asChild pattern), composing
+/// tab-specific event handlers with roving focus handlers.
 ///
-/// This must be used inside a [`TabList`] component.
-///
-/// ## Example
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::tabs::{TabContent, TabTrigger, Tabs, TabList};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Tabs {
-///             default_value: "tab1".to_string(),
-///             horizontal: true,
-///             TabList {
-///                 TabTrigger {
-///                     value: "tab1".to_string(),
-///                     index: 0usize,
-///                     "Tab 1"
-///                 }
-///                 TabTrigger {
-///                     value: "tab2".to_string(),
-///                     index: 1usize,
-///                     "Tab 2"
-///                 }
-///             }
-///             TabContent {
-///                 index: 0usize,
-///                 value: "tab1".to_string(),
-///                 "Tab 1 Content"
-///             }
-///             TabContent {
-///                 index: 1usize,
-///                 value: "tab2".to_string(),
-///                 "Tab 2 Content"
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::tabs::*;
+/// rsx! {
+///     Tabs { default_value: "tab1".to_string(),
+///         TabsList {
+///             TabsTrigger { value: "tab1".to_string(), "Tab 1" }
+///             TabsTrigger { value: "tab2".to_string(), "Tab 2" }
 ///         }
+///         TabsContent { value: "tab1".to_string(), "Content 1" }
+///         TabsContent { value: "tab2".to_string(), "Content 2" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`TabTrigger`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the state of the tab trigger. Values are `active` or `inactive`.
-/// - `data-disabled`: Indicates if the tab trigger is disabled. Values are `true` or `false`.
 #[component]
-pub fn TabTrigger(props: TabTriggerProps) -> Element {
-    let mut ctx: TabsContext = use_context();
+pub fn TabsTrigger(props: TabsTriggerProps) -> Element {
+    let ctx: TabsCtx = use_context();
 
-    let value = props.value.clone();
-    let selected = use_memo(move || (ctx.value)() == value);
+    let trigger_value = props.value.clone();
+    let is_selected = use_memo(move || (ctx.value)() == trigger_value);
 
-    let tab_index = use_memo(move || {
-        if !(ctx.roving_loop)() {
-            return "0";
-        }
+    let trigger_id = make_trigger_id(&ctx.base_id, &props.value);
+    let content_id = make_content_id(&ctx.base_id, &props.value);
+    let disabled = props.disabled;
+    let class = props.class;
+    let user_attrs = props.attributes;
+    let children = props.children;
 
-        if selected() {
-            return "0";
-        }
-        if ctx.focus.is_focused(props.index.cloned()) {
-            return "0";
-        }
-        "-1"
-    });
-
-    let onmounted = use_focus_controlled_item(props.index);
-
-    let class = tw_merge!(
-        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-2 py-1 text-sm font-medium outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs dark:data-[state=active]:border-input dark:data-[state=active]:border [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        props.class,
-    );
+    let mousedown_value = props.value.clone();
+    let keydown_value = props.value.clone();
+    let focus_value = props.value.clone();
 
     rsx! {
-        button {
-            role: "tab",
-            id: props.id,
-            class: class,
-            tabindex: tab_index,
-            type: "button",
+        RovingFocusGroupItem {
+            focusable: !disabled,
+            active: is_selected(),
+            r#as: {
+                let trigger_id = trigger_id.clone();
+                let content_id = content_id.clone();
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                let children = children.clone();
+                let mousedown_value = mousedown_value.clone();
+                let keydown_value = keydown_value.clone();
+                let focus_value = focus_value.clone();
+                move |slot: RovingFocusSlotProps| {
+                    // Build tab-specific attributes (override roving defaults like data-slot)
+                    let tab_attrs = attributes!(button {
+                        r#type: "button",
+                        role: "tab",
+                        id: trigger_id.clone(),
+                        "data-slot": "tabs-trigger",
+                        "data-state": if is_selected() { "active" } else { "inactive" },
+                        "data-disabled": if disabled { "" },
+                        "data-orientation": ctx.orientation.as_str(),
+                        aria_selected: is_selected(),
+                        aria_controls: content_id.clone(),
+                        disabled: disabled,
+                        class: class.clone(),
+                    });
+                    // Roving attrs first, then tab overrides, then user attrs last
+                    let merged = merge_attributes(vec![slot.attributes, tab_attrs, user_attrs.clone()]);
 
-            aria_selected: selected,
-            aria_controls: (ctx.tab_content_ids)().get((props.index)()).cloned(),
-            "data-slot": "tabs-trigger",
-            "data-state": if selected() { "active" } else { "inactive" },
-            "data-disabled": (ctx.disabled)() || (props.disabled)(),
-            disabled: (ctx.disabled)() || (props.disabled)(),
+                    let mousedown_value = mousedown_value.clone();
+                    let keydown_value = keydown_value.clone();
+                    let focus_value = focus_value.clone();
 
-            onmounted,
-            onclick: move |_| {
-                let value = props.value.clone();
-                if !selected() {
-                    ctx.set_value.call(value);
+                    rsx! {
+                        button {
+                            // Compose event handlers: tab-specific first, then roving focus
+                            onmounted: move |e| slot.on_mounted.call(e),
+                            onmousedown: {
+                                let mousedown_value = mousedown_value.clone();
+                                move |event: MouseEvent| {
+                                    if !disabled
+                                        && event.trigger_button() == Some(MouseButton::Primary)
+                                        && !event.modifiers().ctrl()
+                                    {
+                                        ctx.set_value.call(mousedown_value.clone());
+                                    } else if disabled {
+                                        event.prevent_default();
+                                    }
+                                    slot.on_mousedown.call(event);
+                                }
+                            },
+                            onkeydown: {
+                                let keydown_value = keydown_value.clone();
+                                move |event: KeyboardEvent| {
+                                    if matches!(event.key(), Key::Character(ref c) if c == " ")
+                                        || event.key() == Key::Enter
+                                    {
+                                        ctx.set_value.call(keydown_value.clone());
+                                    }
+                                    slot.on_keydown.call(event);
+                                }
+                            },
+                            onfocus: {
+                                let focus_value = focus_value.clone();
+                                move |event: FocusEvent| {
+                                    if ctx.activation_mode == ActivationMode::Automatic
+                                        && !disabled
+                                        && !is_selected()
+                                    {
+                                        ctx.set_value.call(focus_value.clone());
+                                    }
+                                    slot.on_focus.call(event);
+                                }
+                            },
+                            ..merged,
+                            {children.clone()}
+                        }
+                    }
                 }
             },
-
-            onfocus: move |_| ctx.focus.set_focus(Some((props.index)())),
-
-            onkeydown: move |event: Event<KeyboardData>| {
-                let key = event.key();
-                let horizontal = (ctx.horizontal)();
-                let mut prevent_default = true;
-                match key {
-                    Key::ArrowUp if !horizontal => ctx.focus.focus_prev(),
-                    Key::ArrowDown if !horizontal => ctx.focus.focus_next(),
-                    Key::ArrowLeft if horizontal => ctx.focus.focus_prev(),
-                    Key::ArrowRight if horizontal => ctx.focus.focus_next(),
-                    Key::Home => ctx.focus.focus_first(),
-                    Key::End => ctx.focus.focus_last(),
-                    _ => prevent_default = false,
-                };
-                if prevent_default {
-                    event.prevent_default();
-                }
-            },
-
-            ..props.attributes,
-
-            {props.children}
         }
     }
 }
 
-/// The props for the [`TabContent`] component
+// ---------------------------------------------------------------------------
+// TabsContent
+// ---------------------------------------------------------------------------
+
+/// Props for [`TabsContent`].
+#[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
-pub struct TabContentProps {
-    /// The value of the tab content, which must match the `value` prop of the corresponding [`TabTrigger`].
+pub struct TabsContentProps {
+    /// The value that associates this content with its trigger.
     pub value: String,
 
-    /// The ID of the tab content element.
-    pub id: ReadSignal<Option<String>>,
-    /// The class of the tab content element.
+    /// Keep content mounted even when inactive.
+    #[props(default)]
+    pub force_mount: bool,
+
+    #[props(default)]
     pub class: Option<String>,
 
-    /// The index of the tab content. This is used to define the focus order for keyboard navigation.
-    pub index: ReadSignal<usize>,
-
-    /// Additional attributes to apply to the tab content element.
     #[props(extends = GlobalAttributes)]
-    #[props(extends = div)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the tab content element.
     pub children: Element,
 }
 
-/// # TabContent
+/// The content panel for a tab.
 ///
-/// The content of a tab panel. This component will only be rendered when its corresponding [`TabTrigger`] is active.
+/// Matches Radix's `TabsContent`.
 ///
-/// This should be used inside a [`Tabs`] component.
-///
-/// ## Example
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::tabs::{TabContent, TabTrigger, Tabs, TabList};
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Tabs {
-///             default_value: "tab1".to_string(),
-///             horizontal: true,
-///             TabList {
-///                 TabTrigger {
-///                     value: "tab1".to_string(),
-///                     index: 0usize,
-///                     "Tab 1"
-///                 }
-///                 TabTrigger {
-///                     value: "tab2".to_string(),
-///                     index: 1usize,
-///                     "Tab 2"
-///                 }
-///             }
-///             TabContent {
-///                 index: 0usize,
-///                 value: "tab1".to_string(),
-///                 "Tab 1 Content"
-///             }
-///             TabContent {
-///                 index: 1usize,
-///                 value: "tab2".to_string(),
-///                 "Tab 2 Content"
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::tabs::*;
+/// rsx! {
+///     Tabs { default_value: "tab1".to_string(),
+///         TabsList {
+///             TabsTrigger { value: "tab1".to_string(), "Tab 1" }
+///             TabsTrigger { value: "tab2".to_string(), "Tab 2" }
 ///         }
+///         TabsContent { value: "tab1".to_string(), "Content 1" }
+///         TabsContent { value: "tab2".to_string(), "Content 2" }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`TabTrigger`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the state of the tab trigger. Values are `active` or `inactive`.
 #[component]
-pub fn TabContent(props: TabContentProps) -> Element {
-    let mut ctx: TabsContext = use_context();
-    let selected = use_memo(move || (ctx.value)() == props.value);
-    let uuid = use_unique_id();
-    let id = use_id_or(uuid, props.id);
+pub fn TabsContent(props: TabsContentProps) -> Element {
+    let ctx: TabsCtx = use_context();
 
-    let class = tw_merge!("flex-1 outline-none", props.class,);
+    let content_value = props.value.clone();
+    let is_selected = use_memo(move || (ctx.value)() == content_value);
 
-    use_effect(move || {
-        let mut tab_ids = ctx.tab_content_ids.write();
-        let index = (props.index)();
-        while tab_ids.len() <= index {
-            tab_ids.push(String::new());
-        }
-        tab_ids[index] = id();
-    });
+    let trigger_id = make_trigger_id(&ctx.base_id, &props.value);
+    let content_id = make_content_id(&ctx.base_id, &props.value);
+
+    let is_present = is_selected() || props.force_mount;
 
     rsx! {
         div {
             role: "tabpanel",
-            id,
-            class: class,
-
-            tabindex: "0",
+            id: content_id,
             "data-slot": "tabs-content",
-            "data-state": if selected() { "active" } else { "inactive" },
-            hidden: !selected(),
+            "data-state": if is_selected() { "active" } else { "inactive" },
+            "data-orientation": ctx.orientation.as_str(),
+            aria_labelledby: trigger_id,
+            tabindex: "0",
+            hidden: !is_selected(),
+            class: props.class,
             ..props.attributes,
 
-            {props.children}
+            if is_present {
+                {props.children}
+            }
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Backward-compat aliases
+// ---------------------------------------------------------------------------
+
+/// Alias for [`TabsList`] (old name).
+pub use TabsList as TabList;
+
+/// Alias for [`TabsTrigger`] (old name).
+pub use TabsTrigger as TabTrigger;
+
+/// Alias for [`TabsContent`] (old name).
+pub use TabsContent as TabContent;

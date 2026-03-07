@@ -9,8 +9,10 @@
 
 use crate::collection::{use_collection_item, CollectionContext, CollectionItem};
 use crate::direction::{Direction, Orientation};
-use crate::{use_controlled, use_unique_id};
+use crate::slot::render_slot;
+use crate::{merge_attributes, use_controlled, use_unique_id};
 use dioxus::prelude::*;
+use dioxus_attributes::attributes;
 
 // ---------------------------------------------------------------------------
 // Collection item data
@@ -74,12 +76,17 @@ pub struct RovingFocusGroupProps {
     #[props(default)]
     pub on_current_tab_stop_id_change: Callback<Option<String>>,
 
+    /// Render as a custom element (Radix `asChild` equivalent).
+    #[props(default)]
+    pub r#as: Option<Callback<Vec<Attribute>, Element>>,
+
     #[props(default)]
     pub class: Option<String>,
 
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
+    #[props(default)]
     pub children: Element,
 }
 
@@ -143,56 +150,56 @@ pub fn RovingFocusGroup(props: RovingFocusGroupProps) -> Element {
 
     let orientation = (props.orientation)();
 
-    rsx! {
-        div {
-            "data-slot": "roving-focus-group",
-            "data-orientation": orientation.map(|o| o.as_str()),
-            tabindex: tab_index,
-            style: "outline: none;",
-            class: props.class,
+    let handle_focus = move |_event: FocusEvent| {
+        // When keyboard-focused (not tabbing back out), focus the active item
+        if !is_tabbing_back_out() {
+            let items = ctx.collection.get_items();
+            let focusable: Vec<&RovingCollectionItem> =
+                items.iter().filter(|i| i.data.focusable).collect();
 
-            onfocus: move |_event: FocusEvent| {
-                // Only handle direct focus on the group (not bubbled from items)
-                // When keyboard-focused (not tabbing back out), focus the active item
-                if !is_tabbing_back_out() {
-                    let items = ctx.collection.get_items();
-                    let focusable: Vec<&RovingCollectionItem> = items
-                        .iter()
-                        .filter(|i| i.data.focusable)
-                        .collect();
+            // Priority: active item > current tab stop > first
+            let target = focusable
+                .iter()
+                .find(|i| i.data.active)
+                .or_else(|| {
+                    let current_id = current_tab_stop_id.read();
+                    current_id
+                        .as_ref()
+                        .and_then(|id| focusable.iter().find(|i| i.data.id == *id))
+                })
+                .or_else(|| focusable.first())
+                .copied();
 
-                    // Priority: active item > current tab stop > first
-                    let target = focusable
-                        .iter()
-                        .find(|i| i.data.active)
-                        .or_else(|| {
-                            let current_id = current_tab_stop_id.read();
-                            current_id.as_ref().and_then(|id| {
-                                focusable.iter().find(|i| i.data.id == *id)
-                            })
-                        })
-                        .or_else(|| focusable.first())
-                        .copied();
-
-                    if let Some(item) = target {
-                        if let Some(md) = (item.mounted)() {
-                            spawn(async move {
-                                let _ = md.set_focus(true).await;
-                            });
-                        }
-                    }
+            if let Some(item) = target {
+                if let Some(md) = (item.mounted)() {
+                    spawn(async move {
+                        let _ = md.set_focus(true).await;
+                    });
                 }
-            },
-
-            onblur: move |_| {
-                is_tabbing_back_out.set(false);
-            },
-
-            ..props.attributes,
-
-            {props.children}
+            }
         }
-    }
+    };
+
+    let handle_blur = move |_: FocusEvent| {
+        is_tabbing_back_out.set(false);
+    };
+
+    let base = attributes!(div {
+        "data-slot": "roving-focus-group",
+        "data-orientation": orientation.map(|o| o.as_str()),
+        tabindex: tab_index,
+        style: "outline: none;",
+        class: props.class,
+        onfocus: handle_focus,
+        onblur: handle_blur,
+    });
+    let merged = merge_attributes(vec![base, props.attributes]);
+
+    render_slot(props.r#as, merged, props.children, |attrs, children| {
+        rsx! {
+            div { ..attrs, {children} }
+        }
+    })
 }
 
 // Tracking focusable item count
@@ -204,6 +211,25 @@ struct RovingFocusableCount {
 // ---------------------------------------------------------------------------
 // RovingFocusGroupItem
 // ---------------------------------------------------------------------------
+
+/// Props passed to the `r#as` callback of [`RovingFocusGroupItem`].
+///
+/// Separates non-event attributes from event handlers so consumers can
+/// compose their own handlers with the roving focus handlers explicitly.
+/// This matches Radix's `asChild` + `Slot.mergeProps` behaviour.
+#[derive(Clone)]
+pub struct RovingFocusSlotProps {
+    /// Non-event attributes: `tabindex`, `data-orientation`, `data-slot`, etc.
+    pub attributes: Vec<Attribute>,
+    /// Keyboard handler for arrow-key navigation and Shift+Tab.
+    pub on_keydown: Callback<Event<KeyboardData>>,
+    /// Focus handler that updates the current tab stop.
+    pub on_focus: Callback<Event<FocusData>>,
+    /// Mouse-down handler that updates the current tab stop.
+    pub on_mousedown: Callback<Event<MouseData>>,
+    /// Mount handler for registering the element with the collection.
+    pub on_mounted: Callback<Event<MountedData>>,
+}
 
 /// Props for [`RovingFocusGroupItem`].
 #[allow(missing_docs)]
@@ -221,12 +247,21 @@ pub struct RovingFocusGroupItemProps {
     #[props(default)]
     pub active: bool,
 
+    /// Render as a custom element (Radix `asChild` equivalent).
+    ///
+    /// The callback receives [`RovingFocusSlotProps`] with attributes and
+    /// event handlers separated so they can be composed with the consumer's
+    /// own handlers.
+    #[props(default)]
+    pub r#as: Option<Callback<RovingFocusSlotProps, Element>>,
+
     #[props(default)]
     pub class: Option<String>,
 
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
+    #[props(default)]
     pub children: Element,
 }
 
@@ -234,6 +269,9 @@ pub struct RovingFocusGroupItemProps {
 ///
 /// Renders a `<span>` with the appropriate `tabindex` based on whether it is
 /// the current tab stop. Handles arrow key navigation between items.
+///
+/// When `r#as` is provided, passes [`RovingFocusSlotProps`] to the callback
+/// instead of rendering a default `<span>`, matching Radix's `asChild` pattern.
 #[component]
 pub fn RovingFocusGroupItem(props: RovingFocusGroupItemProps) -> Element {
     let auto_id = use_unique_id();
@@ -271,128 +309,141 @@ pub fn RovingFocusGroupItem(props: RovingFocusGroupItemProps) -> Element {
     });
     use_drop(move || {
         if focusable {
-            *focusable_count.count.write() -= 1;
+            let mut count = focusable_count.count.write();
+            *count = count.saturating_sub(1);
         }
     });
 
     let tab_index = if is_current_tab_stop() { "0" } else { "-1" };
     let orientation = (ctx.orientation)();
-    let item_id = id.clone();
-    let focus_id = id.clone();
 
-    rsx! {
-        span {
-            "data-slot": "roving-focus-group-item",
-            "data-orientation": orientation.map(|o| o.as_str()),
-            tabindex: tab_index,
-            class: props.class,
+    // --- Event handlers (accept Event<T> for direct use in RSX and r#as) ---
 
-            onmounted: move |event: Event<MountedData>| {
-                mounted_ref.set(Some(event.data()));
-            },
+    let handle_mounted = use_callback(move |event: Event<MountedData>| {
+        mounted_ref.set(Some(event.data()));
+    });
 
-            onmousedown: move |event: MouseEvent| {
-                if !focusable {
-                    event.prevent_default();
-                } else {
-                    ctx.on_item_focus.call(item_id.clone());
+    let handle_mousedown = {
+        let item_id = id.clone();
+        use_callback(move |event: Event<MouseData>| {
+            if !focusable {
+                event.prevent_default();
+            } else {
+                ctx.on_item_focus.call(item_id.clone());
+            }
+        })
+    };
+
+    let handle_focus = {
+        let focus_id = id.clone();
+        use_callback(move |_: Event<FocusData>| {
+            ctx.on_item_focus.call(focus_id.clone());
+        })
+    };
+
+    let handle_keydown = {
+        let item_id = id.clone();
+        use_callback(move |event: Event<KeyboardData>| {
+            if event.key() == Key::Tab && event.modifiers().shift() {
+                ctx.on_item_shift_tab.call(());
+                return;
+            }
+
+            let focus_intent = get_focus_intent(&event, (ctx.orientation)(), (ctx.dir)());
+
+            if let Some(intent) = focus_intent {
+                if event.modifiers().meta()
+                    || event.modifiers().ctrl()
+                    || event.modifiers().alt()
+                    || event.modifiers().shift()
+                {
+                    return;
                 }
-            },
+                event.prevent_default();
 
-            onfocus: {
-                let focus_id = focus_id.clone();
-                move |_| {
-                    ctx.on_item_focus.call(focus_id.clone());
-                }
-            },
+                let items = ctx.collection.get_items();
+                let focusable_items: Vec<&RovingCollectionItem> =
+                    items.iter().filter(|i| i.data.focusable).collect();
 
-            onkeydown: {
-                let item_id = id.clone();
-                move |event: KeyboardEvent| {
-                    if event.key() == Key::Tab && event.modifiers().shift() {
-                        ctx.on_item_shift_tab.call(());
-                        return;
+                let candidates = match intent {
+                    FocusIntent::First => focusable_items,
+                    FocusIntent::Last => {
+                        let mut v = focusable_items;
+                        v.reverse();
+                        v
                     }
+                    FocusIntent::Next | FocusIntent::Prev => {
+                        let current_idx = focusable_items.iter().position(|i| i.data.id == item_id);
 
-                    let focus_intent = get_focus_intent(
-                        &event,
-                        (ctx.orientation)(),
-                        (ctx.dir)(),
-                    );
+                        let is_prev = matches!(intent, FocusIntent::Prev);
+                        let do_loop = (ctx.r#loop)();
 
-                    if let Some(intent) = focus_intent {
-                        if event.modifiers().meta()
-                            || event.modifiers().ctrl()
-                            || event.modifiers().alt()
-                            || event.modifiers().shift()
-                        {
-                            return;
-                        }
-                        event.prevent_default();
-
-                        let items = ctx.collection.get_items();
-                        let focusable_items: Vec<&RovingCollectionItem> = items
-                            .iter()
-                            .filter(|i| i.data.focusable)
-                            .collect();
-
-                        let candidates = match intent {
-                            FocusIntent::First => focusable_items,
-                            FocusIntent::Last => {
-                                let mut v = focusable_items;
-                                v.reverse();
-                                v
-                            }
-                            FocusIntent::Next | FocusIntent::Prev => {
-                                let current_idx = focusable_items
-                                    .iter()
-                                    .position(|i| i.data.id == item_id);
-
-                                let is_prev = matches!(intent, FocusIntent::Prev);
-                                let do_loop = (ctx.r#loop)();
-
-                                if let Some(idx) = current_idx {
-                                    if is_prev {
-                                        if idx == 0 {
-                                            if do_loop {
-                                                vec![*focusable_items.last().unwrap()]
-                                            } else {
-                                                vec![]
-                                            }
-                                        } else {
-                                            vec![focusable_items[idx - 1]]
-                                        }
-                                    } else if idx + 1 >= focusable_items.len() {
-                                        if do_loop {
-                                            vec![focusable_items[0]]
-                                        } else {
-                                            vec![]
-                                        }
+                        if let Some(idx) = current_idx {
+                            if is_prev {
+                                if idx == 0 {
+                                    if do_loop {
+                                        vec![*focusable_items.last().unwrap()]
                                     } else {
-                                        vec![focusable_items[idx + 1]]
+                                        vec![]
                                     }
                                 } else {
-                                    focusable_items
+                                    vec![focusable_items[idx - 1]]
                                 }
+                            } else if idx + 1 >= focusable_items.len() {
+                                if do_loop {
+                                    vec![focusable_items[0]]
+                                } else {
+                                    vec![]
+                                }
+                            } else {
+                                vec![focusable_items[idx + 1]]
                             }
-                        };
-
-                        // Focus the first candidate
-                        for candidate in candidates {
-                            if let Some(md) = (candidate.mounted)() {
-                                spawn(async move {
-                                    let _ = md.set_focus(true).await;
-                                });
-                                break;
-                            }
+                        } else {
+                            focusable_items
                         }
                     }
+                };
+
+                // Focus the first candidate
+                for candidate in candidates {
+                    if let Some(md) = (candidate.mounted)() {
+                        spawn(async move {
+                            let _ = md.set_focus(true).await;
+                        });
+                        break;
+                    }
                 }
-            },
+            }
+        })
+    };
 
-            ..props.attributes,
+    // --- Build non-event attributes ---
+    let base = attributes!(span {
+        "data-slot": "roving-focus-group-item",
+        "data-orientation": orientation.map(|o| o.as_str()),
+        tabindex: tab_index,
+        class: props.class,
+    });
+    let merged = merge_attributes(vec![base, props.attributes]);
 
-            {props.children}
+    if let Some(dynamic) = props.r#as {
+        dynamic.call(RovingFocusSlotProps {
+            attributes: merged,
+            on_keydown: handle_keydown,
+            on_focus: handle_focus,
+            on_mousedown: handle_mousedown,
+            on_mounted: handle_mounted,
+        })
+    } else {
+        rsx! {
+            span {
+                onmounted: move |event| handle_mounted.call(event),
+                onmousedown: move |event| handle_mousedown.call(event),
+                onfocus: move |event| handle_focus.call(event),
+                onkeydown: move |event| handle_keydown.call(event),
+                ..merged,
+                {props.children}
+            }
         }
     }
 }
