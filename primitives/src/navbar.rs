@@ -135,10 +135,7 @@ pub fn Navbar(props: NavbarProps) -> Element {
         .iter()
         .find_map(|attr| (attr.name == "aria-label").then(|| attr.value.clone()));
 
-    let class = tw_merge!(
-        "flex items-center gap-1",
-        props.class,
-    );
+    let class = tw_merge!("flex items-center gap-1", props.class,);
 
     rsx! {
         div {

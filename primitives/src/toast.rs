@@ -6,10 +6,10 @@ use crate::{
 };
 use dioxus::dioxus_core::DynamicNode;
 use dioxus::prelude::*;
-use tailwind_fuse::*;
 use dioxus_sdk_time::use_timeout;
 use std::collections::VecDeque;
 use std::time::Duration;
+use tailwind_fuse::*;
 
 /// Toast types for different visual styles
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

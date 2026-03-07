@@ -12,7 +12,9 @@ pub enum ToggleVariant {
     Default,
 
     /// Bordered toggle with shadow.
-    #[tw(class = "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground")]
+    #[tw(
+        class = "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground"
+    )]
     Outline,
 }
 

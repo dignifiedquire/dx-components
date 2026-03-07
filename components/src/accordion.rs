@@ -6,8 +6,8 @@
 
 use dioxus::prelude::*;
 use dioxus_primitives::accordion as primitives;
-use dx_icons_tabler::IconChevronDown;
 pub use dioxus_primitives::accordion::{AccordionType, Direction, Orientation};
+use dx_icons_tabler::IconChevronDown;
 use tailwind_fuse::*;
 
 // ---------------------------------------------------------------------------

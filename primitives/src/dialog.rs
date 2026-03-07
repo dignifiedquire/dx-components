@@ -350,10 +350,7 @@ pub fn DialogTitle(props: DialogTitleProps) -> Element {
     let ctx: DialogCtx = use_context();
     let id = use_id_or(ctx.dialog_labelledby, props.id);
 
-    let class = tw_merge!(
-        "text-lg font-semibold leading-none",
-        props.class,
-    );
+    let class = tw_merge!("text-lg font-semibold leading-none", props.class,);
 
     rsx! {
         h2 {
@@ -428,10 +425,7 @@ pub fn DialogDescription(props: DialogDescriptionProps) -> Element {
     let ctx: DialogCtx = use_context();
     let id = use_id_or(ctx.dialog_describedby, props.id);
 
-    let class = tw_merge!(
-        "text-sm text-muted-foreground",
-        props.class,
-    );
+    let class = tw_merge!("text-sm text-muted-foreground", props.class,);
 
     rsx! {
         p {

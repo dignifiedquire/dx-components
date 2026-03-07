@@ -296,10 +296,7 @@ pub fn AvatarImage(props: AvatarImageProps) -> Element {
         return rsx!({});
     }
 
-    let class = tw_merge!(
-        "aspect-square size-full",
-        props.class,
-    );
+    let class = tw_merge!("aspect-square size-full", props.class,);
 
     rsx! {
         img {

@@ -1104,7 +1104,10 @@ pub struct CalendarNavigationProps {
 /// ```
 #[component]
 pub fn CalendarNavigation(props: CalendarNavigationProps) -> Element {
-    let class = tw_merge!("relative flex items-center justify-center gap-2 px-12 pt-3 pb-1", props.class);
+    let class = tw_merge!(
+        "relative flex items-center justify-center gap-2 px-12 pt-3 pb-1",
+        props.class
+    );
 
     rsx! {
         div {
@@ -1411,7 +1414,10 @@ pub fn CalendarMonthTitle(props: CalendarMonthTitleProps) -> Element {
         format!("{} {}", view_date.month(), view_date.year())
     });
 
-    let class = tw_merge!("flex w-full h-7 items-center justify-center text-sm font-semibold", props.class);
+    let class = tw_merge!(
+        "flex w-full h-7 items-center justify-center text-sm font-semibold",
+        props.class
+    );
 
     rsx! {
         div {

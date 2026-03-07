@@ -177,10 +177,7 @@ fn process_markdown_to_html(markdown_path: &std::path::Path) -> String {
             Event::Start(Tag::CodeBlock(kind)) => {
                 // Flush any pending non-code events first
                 if !pending_events.is_empty() {
-                    pulldown_cmark::html::push_html(
-                        &mut html_output,
-                        pending_events.drain(..),
-                    );
+                    pulldown_cmark::html::push_html(&mut html_output, pending_events.drain(..));
                 }
                 in_code_block = true;
                 code_buf.clear();

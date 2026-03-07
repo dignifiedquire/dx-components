@@ -39,7 +39,10 @@ fn root_no_baked_classes() {
 
     // The root accordion div should NOT have w-full baked in
     // It should only have data-slot="accordion", no extra classes
-    assert!(!html.contains("w-full"), "accordion root should NOT have w-full baked in");
+    assert!(
+        !html.contains("w-full"),
+        "accordion root should NOT have w-full baked in"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -66,7 +69,10 @@ fn item_classes() {
     let html = render(App);
     eprintln!("=== item_classes ===\n{html}\n");
 
-    assert!(html.contains("border-b last:border-b-0"), "AccordionItem should have border-b last:border-b-0");
+    assert!(
+        html.contains("border-b last:border-b-0"),
+        "AccordionItem should have border-b last:border-b-0"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -90,8 +96,14 @@ fn trigger_classes() {
     eprintln!("=== trigger_classes ===\n{html}\n");
 
     // Header wrapper is <h3 class="flex">
-    assert!(html.contains(r#"<h3 data-slot="accordion-header""#), "should have h3 with accordion-header");
-    assert!(html.contains(r#"class="flex""#), "header should have class=flex");
+    assert!(
+        html.contains(r#"<h3 data-slot="accordion-header""#),
+        "should have h3 with accordion-header"
+    );
+    assert!(
+        html.contains(r#"class="flex""#),
+        "header should have class=flex"
+    );
 
     // Trigger button has exact shadcn classes.
     // Note: SSR HTML-escapes & → &#38; and > → &#62; in attribute values.
@@ -99,7 +111,10 @@ fn trigger_classes() {
     // focus-visible:ring-ring/50, so ring-[3px] is absent from the output.
     // TODO: Once tailwind_fuse preserves ring-[3px], update this to include it.
     let expected_trigger_class = r#"flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&#38;[data-state=open]&#62;svg]:rotate-180"#;
-    assert!(html.contains(expected_trigger_class), "trigger should have exact shadcn classes.\nActual:\n{html}");
+    assert!(
+        html.contains(expected_trigger_class),
+        "trigger should have exact shadcn classes.\nActual:\n{html}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -130,7 +145,10 @@ fn trigger_chevron() {
     );
 
     // Chevron path (tabler renders as absolute commands)
-    assert!(html.contains(r#"d="M6 9l6 6l6 -6""#), "should have chevron down path");
+    assert!(
+        html.contains(r#"d="M6 9l6 6l6 -6""#),
+        "should have chevron down path"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -180,7 +198,10 @@ fn content_inner_classes() {
     let html = render(App);
     eprintln!("=== content_inner_classes ===\n{html}\n");
 
-    assert!(html.contains(r#"class="pt-0 pb-4""#), "inner wrapper should have pt-0 pb-4");
+    assert!(
+        html.contains(r#"class="pt-0 pb-4""#),
+        "inner wrapper should have pt-0 pb-4"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -256,10 +277,18 @@ fn full_snapshot() {
     assert!(html.contains("w-full"), "consumer w-full should be on root");
 
     // 3 items
-    assert_eq!(html.matches("border-b last:border-b-0").count(), 3, "should have 3 items");
+    assert_eq!(
+        html.matches("border-b last:border-b-0").count(),
+        3,
+        "should have 3 items"
+    );
 
     // 3 triggers with chevrons
-    assert_eq!(html.matches(r#"d="M6 9l6 6l6 -6""#).count(), 3, "should have 3 chevrons");
+    assert_eq!(
+        html.matches(r#"d="M6 9l6 6l6 -6""#).count(),
+        3,
+        "should have 3 chevrons"
+    );
 
     // 1 open, 2 closed
     assert!(html.contains("Product Information"));

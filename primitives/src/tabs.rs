@@ -456,10 +456,7 @@ pub fn TabContent(props: TabContentProps) -> Element {
     let uuid = use_unique_id();
     let id = use_id_or(uuid, props.id);
 
-    let class = tw_merge!(
-        "flex-1 outline-none",
-        props.class,
-    );
+    let class = tw_merge!("flex-1 outline-none", props.class,);
 
     use_effect(move || {
         let mut tab_ids = ctx.tab_content_ids.write();

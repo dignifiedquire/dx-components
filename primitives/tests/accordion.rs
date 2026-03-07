@@ -73,14 +73,20 @@ fn all_closed() {
     // All three items are closed — data-state="closed" on collapsible wrappers
     let closed_count = html.matches(r#"data-state="closed""#).count();
     // Each item has: collapsible root + header + trigger + content = 4 per item = 12 total
-    assert!(closed_count >= 12, "expected at least 12 data-state=closed, got {closed_count}");
+    assert!(
+        closed_count >= 12,
+        "expected at least 12 data-state=closed, got {closed_count}"
+    );
 
     // No open state anywhere
     assert!(!html.contains(r#"data-state="open""#));
 
     // All triggers have aria-expanded=false
     let expanded_false_count = html.matches("aria-expanded=false").count();
-    assert_eq!(expanded_false_count, 3, "all 3 triggers should have aria-expanded=false");
+    assert_eq!(
+        expanded_false_count, 3,
+        "all 3 triggers should have aria-expanded=false"
+    );
 
     // Content text not in DOM (inner wrapper only renders when is_open)
     assert!(!html.contains("Content One"));
@@ -92,7 +98,10 @@ fn all_closed() {
     let content_count = html.matches(r#"data-slot="collapsible-content""#).count();
     assert_eq!(content_count, 3, "all 3 content divs should be in DOM");
     let hidden_count = html.matches("hidden=true").count();
-    assert!(hidden_count >= 3, "all 3 content divs should be hidden, got {hidden_count}");
+    assert!(
+        hidden_count >= 3,
+        "all 3 content divs should be hidden, got {hidden_count}"
+    );
 
     // All triggers are buttons
     let button_count = html.matches(r#"type="button""#).count();
@@ -154,7 +163,10 @@ fn one_default_open() {
 
     // Open item has data-state="open" (collapsible + header + trigger + content = 4)
     let open_count = html.matches(r#"data-state="open""#).count();
-    assert_eq!(open_count, 4, "open item should have 4 data-state=open (collapsible, header, trigger, content)");
+    assert_eq!(
+        open_count, 4,
+        "open item should have 4 data-state=open (collapsible, header, trigger, content)"
+    );
 
     // Content One IS in the DOM
     assert!(html.contains("Content One"));
@@ -167,8 +179,12 @@ fn one_default_open() {
     assert!(html.contains("aria-labelledby"));
 
     // AccordionContent sets CSS variable aliases
-    assert!(html.contains("--radix-accordion-content-height: var(--radix-collapsible-content-height)"));
-    assert!(html.contains("--radix-accordion-content-width: var(--radix-collapsible-content-width)"));
+    assert!(
+        html.contains("--radix-accordion-content-height: var(--radix-collapsible-content-height)")
+    );
+    assert!(
+        html.contains("--radix-accordion-content-width: var(--radix-collapsible-content-width)")
+    );
 
     // --- Closed items (two, three) ---
 
@@ -213,11 +229,20 @@ fn disabled() {
     // All triggers have disabled=true
     let disabled_count = html.matches("disabled=true").count();
     // Each trigger has disabled=true AND data-disabled=true, plus collapsible root + header
-    assert!(disabled_count >= 2, "triggers should be disabled, got {disabled_count}");
+    assert!(
+        disabled_count >= 2,
+        "triggers should be disabled, got {disabled_count}"
+    );
 
     // Triggers have the HTML disabled attribute and are buttons
-    assert!(html.contains(r#"type="button""#), "triggers should be buttons");
-    assert!(html.contains("disabled=true"), "triggers should have disabled attr");
+    assert!(
+        html.contains(r#"type="button""#),
+        "triggers should be buttons"
+    );
+    assert!(
+        html.contains("disabled=true"),
+        "triggers should have disabled attr"
+    );
 }
 
 // ---------------------------------------------------------------------------

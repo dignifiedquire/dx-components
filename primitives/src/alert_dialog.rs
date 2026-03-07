@@ -410,7 +410,10 @@ pub struct AlertDialogActionsProps {
 /// ```
 #[component]
 pub fn AlertDialogActions(props: AlertDialogActionsProps) -> Element {
-    let class = tw_merge!("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", props.class);
+    let class = tw_merge!(
+        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        props.class
+    );
     rsx! {
         div { "data-slot": "alert-dialog-actions", class: class, ..props.attributes, {props.children} }
     }
