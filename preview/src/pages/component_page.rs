@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::components;
-use crate::components::tabs::component::*;
+use crate::components::tabs::component::{Tabs, TabsContent, TabsList, TabsTrigger};
 use crate::ui::code_block::{CodeBlock, ComponentCode, CopyButton};
 use crate::ui::prev_next::PrevNextNav;
 use crate::Route;
@@ -59,22 +59,18 @@ fn ComponentHighlight(demo: ComponentDemoData) -> Element {
             h2 { class: "scroll-m-24 text-xl font-semibold tracking-tight mb-4", "Installation" }
             Tabs {
                 default_value: "Automatic",
-                horizontal: true,
-                width: "100%",
-                class: "rounded-xl border border-border overflow-hidden",
+                class: "w-full rounded-xl border border-border overflow-hidden",
 
-                TabList {
-                    TabTrigger { value: "Automatic", index: 0usize, "CLI" }
-                    TabTrigger { value: "Manual", index: 1usize, "Manual" }
+                TabsList {
+                    TabsTrigger { value: "Automatic", "CLI" }
+                    TabsTrigger { value: "Manual", "Manual" }
                 }
-                TabContent {
-                    index: 0usize,
+                TabsContent {
                     value: "Automatic",
                     class: "p-4",
                     CliComponentInstallation { name: raw_name }
                 }
-                TabContent {
-                    index: 1usize,
+                TabsContent {
                     value: "Manual",
                     class: "p-4",
                     ManualComponentInstallation { component, style }

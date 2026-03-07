@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use dx_icons_tabler::{IconCheck, IconChevronDown, IconChevronUp, IconCopy};
 
-use crate::components::tabs::component::*;
+use crate::components::tabs::component::{Tabs, TabsContent, TabsList, TabsTrigger};
 use crate::{ComponentType, HighlightedCode, THEME_CSS};
 
 #[component]
@@ -62,50 +62,35 @@ pub(crate) fn ComponentCode(
     rsx! {
         Tabs {
             default_value: "main.rs",
-            border_bottom_left_radius: "0.5rem",
-            border_bottom_right_radius: "0.5rem",
-            horizontal: true,
-            width: "100%",
-            TabList {
-                TabTrigger { value: "main.rs", index: 0usize, "main.rs" }
-                TabTrigger { value: "style.css", index: 1usize, "style.css" }
+            class: "w-full rounded-b-lg",
+            TabsList {
+                TabsTrigger { value: "main.rs", "main.rs" }
+                TabsTrigger { value: "style.css", "style.css" }
                 if component_type != ComponentType::Block {
-                    TabTrigger { value: "dx-components-theme.css", index: 2usize, "dx-components-theme.css" }
+                    TabsTrigger { value: "dx-components-theme.css", "dx-components-theme.css" }
                 }
             }
-            div {
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                flex_direction: "column",
-                justify_content: "center",
-                align_items: "center",
-                TabContent {
-                    index: 0usize,
+            div { class: "flex w-full flex-col items-center justify-center",
+                TabsContent {
                     value: "main.rs",
-                    width: "100%",
-                    position: "relative",
+                    class: "relative w-full",
                     CodeBlock { source: rs_highlighted, collapsed: is_collapsed }
                     if !external_collapse {
                         ExpandButton { collapsed }
                     }
                 }
-                TabContent {
-                    index: 1usize,
+                TabsContent {
                     value: "style.css",
-                    width: "100%",
-                    position: "relative",
+                    class: "relative w-full",
                     CodeBlock { source: css_highlighted, collapsed: is_collapsed }
                     if !external_collapse {
                         ExpandButton { collapsed }
                     }
                 }
                 if component_type != ComponentType::Block {
-                    TabContent {
-                        index: 2usize,
+                    TabsContent {
                         value: "dx-components-theme.css",
-                        width: "100%",
-                        position: "relative",
+                        class: "relative w-full",
                         CodeBlock { source: THEME_CSS, collapsed: is_collapsed }
                         if !external_collapse {
                             ExpandButton { collapsed }

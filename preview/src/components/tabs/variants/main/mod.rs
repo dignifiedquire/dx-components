@@ -1,17 +1,19 @@
 use dioxus::prelude::*;
 use dioxus_primitives::button::Button;
 use dioxus_primitives::label::Label;
-use dioxus_primitives::tabs::{TabContent, TabList, TabTrigger, Tabs};
+use dioxus_primitives::tabs::{Tabs, TabsContent, TabsList, TabsTrigger};
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        Tabs { default_value: "account".to_string(), horizontal: true, max_width: "24rem",
-            TabList {
-                TabTrigger { value: "account".to_string(), index: 0usize, "Account" }
-                TabTrigger { value: "password".to_string(), index: 1usize, "Password" }
+        Tabs {
+            default_value: "account".to_string(),
+            class: "flex w-full max-w-sm flex-col gap-2",
+            TabsList {
+                TabsTrigger { value: "account".to_string(), "Account" }
+                TabsTrigger { value: "password".to_string(), "Password" }
             }
-            TabContent { index: 0usize, value: "account".to_string(),
+            TabsContent { value: "account".to_string(),
                 div { class: "rounded-lg border bg-card p-6 text-card-foreground shadow-sm",
                     div { class: "flex flex-col gap-1.5",
                         h3 { class: "text-lg font-semibold leading-none tracking-tight", "Account" }
@@ -32,7 +34,7 @@ pub fn Demo() -> Element {
                     }
                 }
             }
-            TabContent { index: 1usize, value: "password".to_string(),
+            TabsContent { value: "password".to_string(),
                 div { class: "rounded-lg border bg-card p-6 text-card-foreground shadow-sm",
                     div { class: "flex flex-col gap-1.5",
                         h3 { class: "text-lg font-semibold leading-none tracking-tight", "Password" }
