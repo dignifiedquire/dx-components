@@ -9,6 +9,7 @@ use dioxus::core::{current_scope_id, use_drop};
 use dioxus::prelude::*;
 use dioxus::prelude::{asset, manganis, Asset};
 use dioxus_core::AttributeValue::Text;
+use dioxus_elements::geometry::PixelsRect;
 use time::OffsetDateTime;
 
 pub use dioxus_attributes;
@@ -116,6 +117,101 @@ pub fn use_controlled<T: Clone + PartialEq + 'static>(
     });
 
     (value, set_value)
+}
+
+/// Returns the previous value of a reactive signal.
+///
+/// Matches Radix's `usePrevious(value)`. On each render, if `value` has changed,
+/// the previous value is stored and returned. The initial previous value equals
+/// the initial `value`.
+pub fn use_previous<T: Clone + PartialEq + 'static>(value: ReadSignal<T>) -> Memo<T> {
+    let mut prev = use_signal(|| value.cloned());
+    let mut last_seen = use_signal(|| value.cloned());
+
+    use_memo(move || {
+        let current = value.cloned();
+        let seen = last_seen.cloned();
+        if current != seen {
+            prev.set(seen);
+            last_seen.set(current);
+        }
+        prev.cloned()
+    })
+}
+
+/// Returns `true` once the component has mounted on the client.
+///
+/// Matches Radix's `useIsHydrated()`: returns `false` during SSR and on
+/// the initial server render, `true` after the component mounts in the browser.
+pub fn use_is_hydrated() -> ReadSignal<bool> {
+    let mut hydrated = use_signal(|| false);
+    use_effect(move || {
+        hydrated.set(true);
+    });
+    hydrated.into()
+}
+
+/// Element size returned by [`use_size`].
+///
+/// Matches Radix's `useSize(element)`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ElementSize {
+    /// Width in pixels.
+    pub width: f64,
+    /// Height in pixels.
+    pub height: f64,
+}
+
+/// Reads an element's size from its [`MountedData`].
+///
+/// Matches Radix's `useSize(element)`. Returns `None` until the element is
+/// mounted, then queries `get_client_rect()` reactively.
+///
+/// Pass a `Signal<Option<Rc<MountedData>>>` obtained via `onmounted`.
+pub fn use_size(mounted: ReadSignal<Option<Rc<MountedData>>>) -> ReadSignal<Option<ElementSize>> {
+    let mut size: Signal<Option<ElementSize>> = use_signal(|| None);
+
+    use_effect(move || {
+        if let Some(md) = mounted.cloned() {
+            spawn(async move {
+                if let Ok(rect) = md.get_client_rect().await {
+                    size.set(Some(ElementSize {
+                        width: rect.size.width,
+                        height: rect.size.height,
+                    }));
+                }
+            });
+        } else {
+            size.set(None);
+        }
+    });
+
+    size.into()
+}
+
+/// Reads an element's bounding client rect from its [`MountedData`].
+///
+/// Matches Radix's `useRect(measurable)` which uses `observeElementRect`.
+/// Returns `None` until the element is mounted, then queries
+/// `get_client_rect()` reactively.
+///
+/// Pass a `Signal<Option<Rc<MountedData>>>` obtained via `onmounted`.
+pub fn use_rect(mounted: ReadSignal<Option<Rc<MountedData>>>) -> ReadSignal<Option<PixelsRect>> {
+    let mut rect: Signal<Option<PixelsRect>> = use_signal(|| None);
+
+    use_effect(move || {
+        if let Some(md) = mounted.cloned() {
+            spawn(async move {
+                if let Ok(r) = md.get_client_rect().await {
+                    rect.set(Some(r));
+                }
+            });
+        } else {
+            rect.set(None);
+        }
+    });
+
+    rect.into()
 }
 
 /// Run some cleanup code when the component is unmounted if the effect was run.
