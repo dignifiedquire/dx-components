@@ -1,8 +1,9 @@
 //! Accordion primitive — matches `@radix-ui/react-accordion`.
 
 use crate::collapsible::{Collapsible, CollapsibleContent, CollapsibleTrigger};
-use crate::collection::{CollectionContext, CollectionItem, use_collection_item};
+use crate::collection::{use_collection_item, CollectionContext, CollectionItem};
 use crate::dioxus_elements::Key;
+pub use crate::direction::{Direction, Orientation};
 use crate::{use_controlled, use_unique_id};
 use dioxus::prelude::*;
 
@@ -18,36 +19,6 @@ pub enum AccordionType {
     Single,
     /// Multiple items can be open simultaneously.
     Multiple,
-}
-
-/// Radix `orientation`.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub enum Orientation {
-    /// Arrow Up/Down navigates.
-    #[default]
-    Vertical,
-    /// Arrow Left/Right navigates.
-    Horizontal,
-}
-
-impl Orientation {
-    /// Returns `"vertical"` or `"horizontal"`.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Vertical => "vertical",
-            Self::Horizontal => "horizontal",
-        }
-    }
-}
-
-/// Text direction for horizontal keyboard navigation.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub enum Direction {
-    /// Left-to-right.
-    #[default]
-    Ltr,
-    /// Right-to-left.
-    Rtl,
 }
 
 // ---------------------------------------------------------------------------
