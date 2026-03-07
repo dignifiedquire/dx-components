@@ -15,13 +15,13 @@ pub use dioxus_attributes;
 
 pub mod accordion;
 pub mod alert_dialog;
-mod collection;
 pub mod aspect_ratio;
 pub mod avatar;
 pub mod button;
 pub mod calendar;
 pub mod checkbox;
 pub mod collapsible;
+mod collection;
 pub mod context_menu;
 pub mod date_picker;
 pub mod dialog;
@@ -42,6 +42,7 @@ pub mod scroll_area;
 pub mod select;
 pub mod separator;
 pub mod slider;
+pub(crate) mod slot;
 pub mod switch;
 pub mod tabs;
 pub mod toast;
@@ -252,6 +253,7 @@ enum PresenceState {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
+#[allow(dead_code)]
 enum PresenceEvent {
     Mount,
     Unmount,
@@ -265,9 +267,7 @@ fn presence_transition(state: PresenceState, event: PresenceEvent) -> PresenceSt
         (PresenceState::Mounted, PresenceEvent::Unmount) => PresenceState::Unmounted,
         (PresenceState::Mounted, PresenceEvent::AnimationOut) => PresenceState::UnmountSuspended,
         (PresenceState::UnmountSuspended, PresenceEvent::Mount) => PresenceState::Mounted,
-        (PresenceState::UnmountSuspended, PresenceEvent::AnimationEnd) => {
-            PresenceState::Unmounted
-        }
+        (PresenceState::UnmountSuspended, PresenceEvent::AnimationEnd) => PresenceState::Unmounted,
         (PresenceState::Unmounted, PresenceEvent::Mount) => PresenceState::Mounted,
         _ => state,
     }
@@ -356,8 +356,7 @@ pub(crate) fn use_presence(open: Memo<bool>, id: Memo<String>) -> UsePresence {
             let id_val = id();
             spawn(async move {
                 // Wait one frame for CSS to reflect new data-state
-                let mut raf =
-                    document::eval("requestAnimationFrame(() => dioxus.send(true))");
+                let mut raf = document::eval("requestAnimationFrame(() => dioxus.send(true))");
                 let _ = raf.recv::<bool>().await;
 
                 if *gen.peek() != my_gen {
@@ -376,9 +375,7 @@ pub(crate) fn use_presence(open: Memo<bool>, id: Memo<String>) -> UsePresence {
                     if *gen.peek() != my_gen {
                         return;
                     }
-                    if !has_anim
-                        && *state.peek() == PresenceState::UnmountSuspended
-                    {
+                    if !has_anim && *state.peek() == PresenceState::UnmountSuspended {
                         // No exit animation → immediate unmount
                         // (Radix: send('UNMOUNT') instead of send('ANIMATION_OUT'))
                         state.set(PresenceState::Unmounted);
@@ -471,8 +468,7 @@ pub(crate) fn use_collapsible_content_dimensions(
                 let id_val = id();
                 let suppress = suppress.clone();
                 spawn(async move {
-                    let mut raf =
-                        document::eval("requestAnimationFrame(() => dioxus.send(true))");
+                    let mut raf = document::eval("requestAnimationFrame(() => dioxus.send(true))");
                     let _ = raf.recv::<bool>().await;
                     if suppress.get() {
                         suppress.set(false);
@@ -608,12 +604,16 @@ impl LocalDateExt for time::OffsetDateTime {
 
 /// Merge multiple attribute vectors.
 ///
-/// Rules:
-/// - Later lists win for the same (name, namespace) pair.
-/// - `class` is concatenated with a single space separator (trimmed); last wins for volatility flag.
-/// - Other attributes are overwritten by the last occurrence.
+/// This is the Dioxus equivalent of Radix's `mergeProps`. Rules:
+/// - `class`: concatenated with a single space separator (trimmed). Last wins for volatility flag.
+/// - `style`: concatenated with `"; "` separator (trimmed). Allows multiple sources to contribute
+///   inline styles without overwriting each other.
+/// - All other attributes: last occurrence wins for the same `(name, namespace)` pair.
 ///
-/// TODO: event handler attributes are not merged/combined yet.
+/// Note: event handler attributes (`AttributeValue::Listener`) follow last-writer-wins like
+/// other attributes. In practice, event handlers are typically separate component props
+/// (not captured by `extends = GlobalAttributes`), so collisions are rare. The component's
+/// internal handlers are included via the `attributes!` macro and passed through `r#as`.
 pub fn merge_attributes(mut lists: Vec<Vec<Attribute>>) -> Vec<Attribute> {
     let mut merged = Vec::new();
     // The inputs are usually sorted by name, so we can do a k-way merge cheaply
@@ -657,6 +657,17 @@ pub fn merge_attributes(mut lists: Vec<Vec<Attribute>>) -> Vec<Attribute> {
                             },
                             _ => attr,
                         };
+                    } else if attr.name == "style" {
+                        let was_volatile = existing.volatile;
+                        *existing = match (&existing.value, &attr.value) {
+                            (Text(a), Text(b)) => Attribute {
+                                name: attr.name,
+                                namespace: attr.namespace,
+                                volatile: was_volatile || attr.volatile,
+                                value: Text(join_style(a, b)),
+                            },
+                            _ => attr,
+                        };
                     } else {
                         *existing = attr;
                     }
@@ -676,6 +687,16 @@ fn join_class(a: &str, b: &str) -> String {
     let (a, b) = (a.trim(), b.trim());
     if !a.is_empty() && !b.is_empty() {
         format!("{a} {b}")
+    } else {
+        format!("{a}{b}")
+    }
+}
+
+fn join_style(a: &str, b: &str) -> String {
+    let a = a.trim().trim_end_matches(';').trim();
+    let b = b.trim().trim_end_matches(';').trim();
+    if !a.is_empty() && !b.is_empty() {
+        format!("{a}; {b}")
     } else {
         format!("{a}{b}")
     }
@@ -794,5 +815,75 @@ mod tests {
 
         let result = merge_attributes(vec![vec![a1], vec![a2]]);
         assert!(result[0].volatile);
+    }
+
+    #[test]
+    fn style_attributes_are_merged() {
+        let result = merge_attributes(vec![
+            vec![attr("style", "color: red")],
+            vec![attr("style", "font-size: 14px")],
+        ]);
+        assert_eq!(result.len(), 1);
+        assert_eq!(get_value(&result[0]), "color: red; font-size: 14px");
+    }
+
+    #[test]
+    fn style_merge_handles_trailing_semicolons() {
+        let result = merge_attributes(vec![
+            vec![attr("style", "color: red;")],
+            vec![attr("style", "font-size: 14px;")],
+        ]);
+        assert_eq!(get_value(&result[0]), "color: red; font-size: 14px");
+    }
+
+    #[test]
+    fn style_merge_handles_empty() {
+        let result = merge_attributes(vec![
+            vec![attr("style", "")],
+            vec![attr("style", "color: red")],
+        ]);
+        assert_eq!(get_value(&result[0]), "color: red");
+    }
+
+    #[test]
+    fn style_merge_trims_whitespace() {
+        let result = merge_attributes(vec![
+            vec![attr("style", "  color: red;  ")],
+            vec![attr("style", "  font-size: 14px  ")],
+        ]);
+        assert_eq!(get_value(&result[0]), "color: red; font-size: 14px");
+    }
+
+    #[test]
+    fn style_merge_three_lists() {
+        let result = merge_attributes(vec![
+            vec![attr("style", "color: red")],
+            vec![attr("style", "font-size: 14px")],
+            vec![attr("style", "margin: 0")],
+        ]);
+        assert_eq!(
+            get_value(&result[0]),
+            "color: red; font-size: 14px; margin: 0"
+        );
+    }
+
+    #[test]
+    fn mixed_class_style_and_other() {
+        let result = merge_attributes(vec![
+            vec![
+                attr("class", "a"),
+                attr("id", "x"),
+                attr("style", "color: red"),
+            ],
+            vec![
+                attr("class", "b"),
+                attr("id", "y"),
+                attr("style", "font-size: 14px"),
+            ],
+        ]);
+        assert_eq!(result.len(), 3);
+        assert_eq!(get_value(&result[0]), "a b"); // class merged
+        assert_eq!(get_value(&result[1]), "y"); // id overwritten
+        assert_eq!(get_value(&result[2]), "color: red; font-size: 14px"); // style merged
     }
 }
