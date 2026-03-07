@@ -1,14 +1,14 @@
-//! Defines the [`Select`] component and its sub-components, which provide a searchable select input with keyboard navigation.
+//! Select primitive — matches Radix UI Select structure.
 //!
-//! The Select component consists of several parts that work together:
-//! - [`Select`] - The root container component
-//! - [`SelectTrigger`] - The button that opens/closes the dropdown
-//! - [`SelectList`] - The dropdown container for options
-//! - [`SelectOption`] - Individual selectable options
-//! - [`SelectItemIndicator`] - Visual indicator for selected items
-//! - [`SelectGroup`] - Groups related options together
-//! - [`SelectGroupLabel`] - Labels for option groups
-//! - [`SelectValue`] - Displays the currently selected value
+//! - [`Select`]: No DOM, pure context provider
+//! - [`SelectTrigger`]: Button with `role="combobox"`
+//! - [`SelectValue`]: Displays the currently selected value
+//! - [`SelectContent`]: Dropdown container with `role="listbox"` (aliased as [`SelectList`])
+//! - [`SelectItem`]: Individual item with `role="option"` (aliased as [`SelectOption`])
+//! - [`SelectItemIndicator`]: Visual indicator for selected items
+//! - [`SelectGroup`]: Grouping element with `role="group"`
+//! - [`SelectLabel`]: Non-interactive label (aliased as [`SelectGroupLabel`])
+//! - [`SelectSeparator`]: Visual separator
 //!
 //! ## Features
 //!
@@ -17,54 +17,6 @@
 //! - **Accessibility**: ARIA compliant with proper roles and attributes
 //! - **Customizable**: Flexible styling through data attributes and CSS
 //! - **Focus Management**: Automatic focus handling and restoration
-//!
-//! ## Typeahead Buffer Behavior
-//!
-//! The Select component implements an typeahead search buffer that lets you type while the dropdown is open to focus a matching
-//! option. The buffer will be cleared after some amount of time has passed with no new input. The timeout is 1 second by default,
-//! but can be configured by setting the [`SelectProps::typeahead_timeout`].
-//!
-//! ## Example
-//!
-//! ```rust
-//! use dioxus::prelude::*;
-//! use dioxus_primitives::select::{
-//!     Select, SelectGroup, SelectGroupLabel, SelectItemIndicator,
-//!     SelectList, SelectOption, SelectTrigger, SelectValue,
-//! };
-//!
-//! #[component]
-//! fn Demo() -> Element {
-//!     rsx! {
-//!         Select::<String> {
-//!             placeholder: "Select a fruit...",
-//!             SelectTrigger{
-//!                 aria_label: "Select Trigger",
-//!                 width: "12rem",
-//!                 SelectValue {}
-//!             }
-//!             SelectList {
-//!                 aria_label: "Select Demo",
-//!                 SelectGroup {
-//!                     SelectGroupLabel { "Fruits" }
-//!                     SelectOption::<String> {
-//!                         index: 0usize,
-//!                         value: "apple",
-//!                         "Apple"
-//!                         SelectItemIndicator { "✔️" }
-//!                     }
-//!                     SelectOption::<String> {
-//!                         index: 1usize,
-//!                         value: "banana",
-//!                         "Banana"
-//!                         SelectItemIndicator { "✔️" }
-//!                     }
-//!                 }
-//!             }
-//!         }
-//!     }
-//! }
-//! ```
 
 // Internal modules
 mod components;
@@ -73,8 +25,30 @@ pub(crate) mod text_search;
 
 // Re-export all public components and types
 pub use components::{
-    Select, SelectGroup, SelectGroupLabel, SelectGroupLabelProps, SelectGroupProps,
-    SelectItemIndicator, SelectItemIndicatorProps, SelectList, SelectListProps, SelectOption,
-    SelectOptionProps, SelectProps, SelectTrigger, SelectTriggerProps, SelectValue,
+    // Primary Radix-aligned names
+    Select,
+    SelectContent,
+    SelectContentProps,
+    SelectGroup,
+    // Backward-compatible aliases
+    SelectGroupLabel,
+    SelectGroupLabelProps,
+    SelectGroupProps,
+    SelectItem,
+    SelectItemIndicator,
+    SelectItemIndicatorProps,
+    SelectItemProps,
+    SelectLabel,
+    SelectLabelProps,
+    SelectList,
+    SelectListProps,
+    SelectOption,
+    SelectOptionProps,
+    SelectProps,
+    SelectSeparator,
+    SelectSeparatorProps,
+    SelectTrigger,
+    SelectTriggerProps,
+    SelectValue,
     SelectValueProps,
 };

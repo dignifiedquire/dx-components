@@ -1,4 +1,4 @@
-//! SelectList component implementation.
+//! SelectContent (formerly SelectList) component implementation.
 
 use crate::{
     select::context::SelectListContext, use_animated_open, use_effect, use_id_or, use_unique_id,
@@ -7,70 +7,28 @@ use dioxus::prelude::*;
 
 use super::super::context::SelectContext;
 
-/// The props for the [`SelectList`] component
+/// The props for the [`SelectContent`] component
 #[derive(Props, Clone, PartialEq)]
-pub struct SelectListProps {
-    /// The ID of the list for ARIA attributes
+pub struct SelectContentProps {
+    /// The ID of the content for ARIA attributes
     #[props(default)]
     pub id: ReadSignal<Option<String>>,
 
-    /// Additional attributes for the list
+    /// Additional attributes for the content
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children to render inside the list
+    /// The children to render inside the content
     pub children: Element,
 }
 
-/// # SelectList
-///
-/// The dropdown list container for the [`Select`](super::select::Select) component that contains the
-/// [`SelectOption`](super::option::SelectOption)s. The list will only be rendered when the select is open.
-///
-/// This must be used inside a [`Select`](super::select::Select) component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::select::{
-///     Select, SelectGroup, SelectGroupLabel, SelectItemIndicator, SelectList, SelectOption,
-///     SelectTrigger, SelectValue,
-/// };
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Select::<String> {
-///             placeholder: "Select a fruit...",
-///             SelectTrigger {
-///                 aria_label: "Select Trigger",
-///                 width: "12rem",
-///                 SelectValue {}
-///             }
-///             SelectList {
-///                 aria_label: "Select Demo",
-///                 SelectGroup {
-///                     SelectGroupLabel { "Fruits" }
-///                     SelectOption::<String> {
-///                         index: 0usize,
-///                         value: "apple",
-///                         "Apple"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                     SelectOption::<String> {
-///                         index: 1usize,
-///                         value: "banana",
-///                         "Banana"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// Backward-compatible alias.
+pub type SelectListProps = SelectContentProps;
+
+/// The dropdown content container for the Select component that contains the
+/// [`SelectItem`](super::option::SelectItem)s. Only rendered when the select is open.
 #[component]
-pub fn SelectList(props: SelectListProps) -> Element {
+pub fn SelectContent(props: SelectContentProps) -> Element {
     let mut ctx = use_context::<SelectContext>();
 
     let id = use_unique_id();
@@ -174,9 +132,8 @@ pub fn SelectList(props: SelectListProps) -> Element {
             div {
                 id,
                 role: "listbox",
+                "data-slot": "select-content",
                 tabindex: if focused() { "0" } else { "-1" },
-
-                // Data attributes
                 "data-state": if open() { "open" } else { "closed" },
 
                 onmounted: move |evt| listbox_ref.set(Some(evt.data())),
@@ -191,8 +148,13 @@ pub fn SelectList(props: SelectListProps) -> Element {
                 {props.children}
             }
         } else {
-            // If not rendering, return children directly so we can populate the selected list, but they should choose to not render themselves
             {props.children}
         }
     }
+}
+
+/// Backward-compatible alias for [`SelectContent`].
+#[component]
+pub fn SelectList(props: SelectContentProps) -> Element {
+    SelectContent(props)
 }

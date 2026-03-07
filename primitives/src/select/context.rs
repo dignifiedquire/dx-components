@@ -66,7 +66,7 @@ pub(super) struct SelectContext {
     /// The focus state for the select
     pub focus_state: FocusState,
     /// Whether the select is disabled
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
     /// The placeholder text
     pub placeholder: ReadSignal<String>,
     /// Task handle for clearing typeahead buffer

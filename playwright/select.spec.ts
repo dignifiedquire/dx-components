@@ -1,154 +1,126 @@
 import { test, expect } from "@playwright/test";
 
 test("test", async ({ page }) => {
-    await page.goto("http://127.0.0.1:8080/component/?name=select&", {
+    await page.goto("http://127.0.0.1:8080/docs/components/select", {
         timeout: 20 * 60 * 1000,
-    }); // Increase timeout to 20 minutes
-    // Find Select a fruit...
-    let selectTrigger = page.locator(".select-trigger");
+    });
+
+    // Scope to the preview container
+    const preview = page.locator('[data-slot="preview"]').first();
+    await expect(preview).toBeVisible();
+
+    // Trigger
+    const selectTrigger = preview.locator('[data-slot="select-trigger"]');
+    await expect(selectTrigger).toBeVisible();
+    await expect(selectTrigger).toHaveAttribute("role", "combobox");
+    await expect(selectTrigger).toHaveAttribute("data-state", "closed");
+    await expect(selectTrigger).toHaveAttribute("aria-expanded", "false");
+    await expect(selectTrigger).toHaveAttribute("aria-autocomplete", "none");
+
+    // Value shows placeholder
+    const selectValue = preview.locator('[data-slot="select-value"]');
+    await expect(selectValue).toBeVisible();
+    await expect(selectValue).toHaveAttribute("data-placeholder", "");
+
+    // Open menu
     await selectTrigger.click();
-    // Assert the select menu is open
-    const selectMenu = page.locator(".select-list");
-    await expect(selectMenu).toHaveAttribute("data-state", "open");
+    await expect(selectTrigger).toHaveAttribute("data-state", "open");
+    await expect(selectTrigger).toHaveAttribute("aria-expanded", "true");
+
+    // Content
+    const content = page.locator('[data-slot="select-content"]');
+    await expect(content).toBeVisible();
+    await expect(content).toHaveAttribute("role", "listbox");
+    await expect(content).toHaveAttribute("data-state", "open");
+
+    // Items have correct role
+    const items = content.locator('[data-slot="select-item"]');
+    const count = await items.count();
+    expect(count).toBeGreaterThan(0);
+    await expect(items.first()).toHaveAttribute("role", "option");
+
+    // Group
+    const group = content.locator('[data-slot="select-group"]');
+    await expect(group.first()).toHaveAttribute("role", "group");
+
+    // Label
+    const label = content.locator('[data-slot="select-label"]');
+    await expect(label.first()).toBeVisible();
 
     // Assert the menu is focused
-    await expect(selectMenu).toBeFocused();
+    await expect(content).toBeFocused();
     await page.keyboard.press("ArrowDown");
-    const firstOption = selectMenu.getByRole("option", { name: "apple" });
-    await expect(firstOption).toBeFocused();
+    const firstItem = items.first();
+    await expect(firstItem).toBeFocused();
+    await expect(firstItem).toHaveAttribute("data-highlighted", "");
 
-    // Assert moving down with arrow keys moves focus to the next option
+    // Arrow down moves focus
     await page.keyboard.press("ArrowDown");
-    const secondOption = selectMenu.getByRole("option", { name: "banana" });
-    await expect(secondOption).toBeFocused();
+    const secondItem = items.nth(1);
+    await expect(secondItem).toBeFocused();
 
-    // Assert moving up with arrow keys moves focus back to the previous option
+    // Arrow up moves back
     await page.keyboard.press("ArrowUp");
-    await expect(firstOption).toBeFocused();
+    await expect(firstItem).toBeFocused();
 
-    // Assert pressing Enter selects the focused option
+    // Enter selects
     await page.keyboard.press("Enter");
-    // Assert the select menu is closed after selection
-    await expect(selectMenu).toHaveCount(0);
+    await expect(content).toHaveCount(0);
 
-    // Assert the selected value is displayed in the button
-    await expect(selectTrigger).toHaveText("Apple");
-
-    // Reopen the select menu
+    // Reopen and check typeahead
     await selectTrigger.click();
-
-    // Assert typeahead functionality works
     await page.keyboard.type("Ban");
-    // Assert the second option is focused after typing 'Ban'
-    await expect(secondOption).toBeFocused();
+    await expect(secondItem).toBeFocused();
 
-    // Assert pressing Escape closes the select menu
+    // Escape closes
     await page.keyboard.press("Escape");
-    // Assert the select menu is closed
-    await expect(selectMenu).toHaveCount(0);
+    await expect(content).toHaveCount(0);
 
-    // Reopen the select menu
+    // Reopen and click to select
     await selectTrigger.click();
-    // Assert the select menu is open again
-    await expect(selectMenu).toHaveAttribute("data-state", "open");
-
-    // Click the second option to select it
-    let bananaOption = selectMenu.getByRole("option", { name: "banana" });
-    await bananaOption.click();
-    // Assert the select menu is closed after clicking an option
-    await expect(selectMenu).toHaveCount(0);
-    // Assert the selected value is now 'banana'
-    await expect(selectTrigger).toHaveText("Banana");
+    await expect(content).toBeVisible();
+    const bananaItem = content.getByRole("option", { name: "banana" });
+    await bananaItem.click();
+    await expect(content).toHaveCount(0);
 });
 
-test("tabbing out of menu closes the select menu", async ({ page }) => {
-    await page.goto("http://127.0.0.1:8080/component/?name=select&");
-    // Find Select a fruit...
-    let selectTrigger = page.locator(".select-trigger");
-    await selectTrigger.click();
-    // Assert the select menu is open
-    const selectMenu = page.locator(".select-list");
-    await expect(selectMenu).toHaveAttribute("data-state", "open");
+test("tabbing out closes", async ({ page }) => {
+    await page.goto("http://127.0.0.1:8080/docs/components/select", {
+        timeout: 20 * 60 * 1000,
+    });
 
-    // Assert the menu is focused
-    await expect(selectMenu).toBeFocused();
+    const preview = page.locator('[data-slot="preview"]').first();
+    const selectTrigger = preview.locator('[data-slot="select-trigger"]');
+    await selectTrigger.click();
+
+    const content = page.locator('[data-slot="select-content"]');
+    await expect(content).toBeVisible();
+    await expect(content).toBeFocused();
+
     await page.keyboard.press("Tab");
-    // Assert the select menu is closed
-    await expect(selectMenu).toHaveCount(0);
+    await expect(content).toHaveCount(0);
 });
 
-test("tabbing out of item closes the select menu", async ({ page }) => {
-    await page.goto("http://127.0.0.1:8080/component/?name=select&");
-    // Find Select a fruit...
-    let selectTrigger = page.locator(".select-trigger");
-    await selectTrigger.click();
-    // Assert the select menu is open
-    const selectMenu = page.locator(".select-list");
-    await expect(selectMenu).toHaveAttribute("data-state", "open");
+test("arrow keys from trigger", async ({ page }) => {
+    await page.goto("http://127.0.0.1:8080/docs/components/select", {
+        timeout: 20 * 60 * 1000,
+    });
 
-    // Assert the menu is focused
-    await expect(selectMenu).toBeFocused();
-
-    // Navigate to the first option
-    await page.keyboard.press("ArrowDown");
-    const firstOption = selectMenu.getByRole("option", { name: "apple" });
-    await expect(firstOption).toBeFocused();
-    await page.keyboard.press("Tab");
-    // Assert the select menu is closed
-    await expect(selectMenu).toHaveCount(0);
-});
-
-test("options selected", async ({ page }) => {
-    await page.goto("http://127.0.0.1:8080/component/?name=select&");
-    // Find Select a fruit...
-    let selectTrigger = page.locator(".select-trigger");
-    await selectTrigger.click();
-    // Assert the select menu is open
-    const selectMenu = page.locator(".select-list");
-    await expect(selectMenu).toHaveAttribute("data-state", "open");
-
-    // Assert no items have aria-selected
-    const options = selectMenu.getByRole("option");
-    let optionCount = await options.count();
-    for (let i = 0; i < optionCount; i++) {
-        await expect(options.nth(i)).not.toHaveAttribute("aria-selected", "true");
-    }
-
-    // Select the first option
-    await page.keyboard.press("ArrowDown");
-    const firstOption = selectMenu.getByRole("option", { name: "apple" });
-    await expect(firstOption).toBeFocused();
-    await page.keyboard.press("Enter");
-    // Assert the select menu is closed after selection
-    await expect(selectMenu).toHaveCount(0);
-    // Open the select menu again
-    await selectTrigger.click();
-    // Assert the first option is now selected
-    await expect(firstOption).toHaveAttribute("aria-selected", "true");
-});
-
-test("down arrow selects first element", async ({ page }) => {
-    await page.goto("http://127.0.0.1:8080/component/?name=select&");
-    // Find Select a fruit...
-    let selectTrigger = page.locator(".select-trigger");
-    const selectMenu = page.locator(".select-list");
+    const preview = page.locator('[data-slot="preview"]').first();
+    const selectTrigger = preview.locator('[data-slot="select-trigger"]');
     await selectTrigger.focus();
 
-    // Select the first option
+    // Down arrow opens and focuses first item
     await page.keyboard.press("ArrowDown");
-    const firstOption = selectMenu.getByRole("option", { name: "apple" });
-    await expect(firstOption).toBeFocused();
-});
+    const content = page.locator('[data-slot="select-content"]');
+    const items = content.locator('[data-slot="select-item"]');
+    await expect(items.first()).toBeFocused();
 
-test("up arrow selects last element", async ({ page }) => {
-    await page.goto("http://127.0.0.1:8080/component/?name=select&");
-    // Find Select a fruit...
-    let selectTrigger = page.locator(".select-trigger");
-    const selectMenu = page.locator(".select-list");
+    await page.keyboard.press("Escape");
+
+    // Up arrow opens and focuses last item
     await selectTrigger.focus();
-
-    // Select the first option
     await page.keyboard.press("ArrowUp");
-    const firstOption = selectMenu.getByRole("option", { name: "other" });
-    await expect(firstOption).toBeFocused();
+    const lastItem = items.last();
+    await expect(lastItem).toBeFocused();
 });

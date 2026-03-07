@@ -27,7 +27,7 @@ impl Fruit {
 pub fn Demo() -> Element {
     let fruits = Fruit::iter().enumerate().map(|(i, f)| {
         rsx! {
-            SelectOption::<Option<Fruit>> { index: i, value: f, text_value: "{f}",
+            SelectItem::<Option<Fruit>> { index: i, value: f, text_value: "{f}",
                 {format!("{} {f}", f.emoji())}
                 SelectItemIndicator {}
             }
@@ -38,14 +38,14 @@ pub fn Demo() -> Element {
 
         Select::<Option<Fruit>> { placeholder: "Select a fruit...",
             SelectTrigger { aria_label: "Select Trigger", width: "12rem", SelectValue {} }
-            SelectList { aria_label: "Select Demo",
+            SelectContent { aria_label: "Select Demo",
                 SelectGroup {
-                    SelectGroupLabel { "Fruits" }
+                    SelectLabel { "Fruits" }
                     {fruits}
                 }
                 SelectGroup {
-                    SelectGroupLabel { "Other" }
-                    SelectOption::<Option<Fruit>> {
+                    SelectLabel { "Other" }
+                    SelectItem::<Option<Fruit>> {
                         index: Fruit::COUNT,
                         value: None,
                         text_value: "Other",

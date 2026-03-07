@@ -81,7 +81,9 @@ pub fn SelectValue(props: SelectValueProps) -> Element {
     rsx! {
         // Add placeholder option if needed
         span {
-            "data-placeholder": ctx.value.read().is_none(),
+            "data-slot": "select-value",
+            "data-placeholder": if ctx.value.read().is_none() { "" } else { None::<&str> },
+            pointer_events: "none",
             ..props.attributes,
             {display_value}
         }

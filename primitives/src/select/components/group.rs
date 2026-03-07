@@ -1,4 +1,4 @@
-//! SelectGroup and SelectGroupLabel component implementations.
+//! SelectGroup, SelectLabel (formerly SelectGroupLabel), and SelectSeparator component implementations.
 
 use crate::{select::context::SelectListContext, use_effect, use_id_or, use_unique_id};
 use dioxus::prelude::*;
@@ -10,7 +10,7 @@ use super::super::context::{SelectContext, SelectGroupContext};
 pub struct SelectGroupProps {
     /// Whether the group is disabled
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
     /// Optional ID for the group
     #[props(default)]
@@ -24,56 +24,11 @@ pub struct SelectGroupProps {
     pub children: Element,
 }
 
-/// # SelectGroup
-///
-/// The `SelectGroup` component is used to group related options within a [`SelectList`](super::list::SelectList). It provides a way to organize options into logical sections.
-///
-/// This must be used inside a [`SelectList`](super::list::SelectList) component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::select::{
-///     Select, SelectGroup, SelectGroupLabel, SelectItemIndicator, SelectList, SelectOption,
-///     SelectTrigger, SelectValue,
-/// };
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Select::<String> {
-///             placeholder: "Select a fruit...",
-///             SelectTrigger {
-///                 aria_label: "Select Trigger",
-///                 width: "12rem",
-///                 SelectValue {}
-///             }
-///             SelectList {
-///                 aria_label: "Select Demo",
-///                 SelectGroup {
-///                     SelectGroupLabel { "Fruits" }
-///                     SelectOption::<String> {
-///                         index: 0usize,
-///                         value: "apple",
-///                         "Apple"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                     SelectOption::<String> {
-///                         index: 1usize,
-///                         value: "banana",
-///                         "Banana"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// A grouping element for select items. Has `role="group"`.
 #[component]
 pub fn SelectGroup(props: SelectGroupProps) -> Element {
     let ctx = use_context::<SelectContext>();
-    let disabled = ctx.disabled.cloned() || props.disabled.cloned();
+    let disabled = ctx.disabled || props.disabled;
 
     let labeled_by = use_signal(|| None);
 
@@ -84,25 +39,23 @@ pub fn SelectGroup(props: SelectGroupProps) -> Element {
         if render() {
             div {
                 role: "group",
-
-                // ARIA attributes
-                aria_disabled: disabled,
+                "data-slot": "select-group",
+                aria_disabled: if disabled { Some("true") } else { None },
                 aria_labelledby: labeled_by,
-
                 ..props.attributes,
                 {props.children}
             }
         } else {
-            // If we are not rendering, still render the children components
             {props.children}
         }
     }
 }
 
-/// The props for the [`SelectGroupLabel`] component
+/// The props for the [`SelectLabel`] component
 #[derive(Props, Clone, PartialEq)]
-pub struct SelectGroupLabelProps {
+pub struct SelectLabelProps {
     /// Optional ID for the label
+    #[props(default)]
     pub id: ReadSignal<Option<String>>,
 
     /// Additional attributes for the label
@@ -113,54 +66,12 @@ pub struct SelectGroupLabelProps {
     pub children: Element,
 }
 
-/// # SelectGroupLabel
-///
-/// The `SelectGroupLabel` component is used to render a label for a group of options within a [`SelectList`](super::list::SelectList).
-///
-/// This must be used inside a [`SelectGroup`](SelectGroup) component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::select::{
-///     Select, SelectGroup, SelectGroupLabel, SelectItemIndicator, SelectList, SelectOption,
-///     SelectTrigger, SelectValue,
-/// };
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Select::<String> {
-///             placeholder: "Select a fruit...",
-///             SelectTrigger {
-///                 aria_label: "Select Trigger",
-///                 width: "12rem",
-///                 SelectValue {}
-///             }
-///             SelectList {
-///                 aria_label: "Select Demo",
-///                 SelectGroup {
-///                     SelectGroupLabel { "Fruits" }
-///                     SelectOption::<String> {
-///                         index: 0usize,
-///                         value: "apple",
-///                         "Apple"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                     SelectOption::<String> {
-///                         index: 1usize,
-///                         value: "banana",
-///                         "Banana"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// Backward-compatible alias.
+pub type SelectGroupLabelProps = SelectLabelProps;
+
+/// A non-interactive label for a group of select items.
 #[component]
-pub fn SelectGroupLabel(props: SelectGroupLabelProps) -> Element {
+pub fn SelectLabel(props: SelectLabelProps) -> Element {
     let mut ctx: SelectGroupContext = use_context();
 
     let id = use_unique_id();
@@ -173,13 +84,40 @@ pub fn SelectGroupLabel(props: SelectGroupLabelProps) -> Element {
     let render = use_context::<SelectListContext>().render;
 
     rsx! {
-        if render () {
+        if render() {
             div {
-                // Set the ID for the label
+                "data-slot": "select-label",
                 id,
                 ..props.attributes,
                 {props.children}
             }
+        }
+    }
+}
+
+/// Backward-compatible alias for [`SelectLabel`].
+#[component]
+pub fn SelectGroupLabel(props: SelectLabelProps) -> Element {
+    SelectLabel(props)
+}
+
+/// Props for [`SelectSeparator`].
+#[derive(Props, Clone, PartialEq)]
+pub struct SelectSeparatorProps {
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+}
+
+/// A visual separator between select items. Has `aria-hidden`.
+#[component]
+pub fn SelectSeparator(props: SelectSeparatorProps) -> Element {
+    rsx! {
+        div {
+            "data-slot": "select-separator",
+            role: "separator",
+            aria_hidden: "true",
+            ..props.attributes,
         }
     }
 }

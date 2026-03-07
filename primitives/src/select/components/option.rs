@@ -1,4 +1,4 @@
-//! SelectOption and SelectItemIndicator component implementations.
+//! SelectItem (formerly SelectOption) and SelectItemIndicator component implementations.
 
 use crate::{
     focus::use_focus_controlled_item,
@@ -10,61 +10,54 @@ use dioxus::prelude::*;
 
 use super::super::context::{OptionState, SelectContext, SelectOptionContext};
 
-/// The props for the [`SelectOption`] component
+/// The props for the [`SelectItem`] component
 #[derive(Props, Clone, PartialEq)]
-pub struct SelectOptionProps<T: Clone + PartialEq + 'static> {
-    /// The value of the option
+pub struct SelectItemProps<T: Clone + PartialEq + 'static> {
+    /// The value of the item
     pub value: ReadSignal<T>,
 
-    /// The text value of the option used for typeahead search
+    /// The text value of the item used for typeahead search
     #[props(default)]
     pub text_value: ReadSignal<Option<String>>,
 
-    /// Whether the option is disabled
+    /// Whether the item is disabled
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
-    /// Optional ID for the option
+    /// Optional ID for the item
     #[props(default)]
     pub id: ReadSignal<Option<String>>,
 
-    /// The index of the option in the list. This is used to define the focus order for keyboard navigation.
+    /// The index of the item in the list for keyboard navigation focus order.
     pub index: ReadSignal<usize>,
 
-    /// Optional label for the option (for accessibility)
+    /// Optional label for the item (for accessibility)
     #[props(default)]
     pub aria_label: Option<String>,
 
-    /// Optional description role for the option (for accessibility)
+    /// Optional description role for the item (for accessibility)
     #[props(default)]
     pub aria_roledescription: Option<String>,
 
-    /// Additional attributes for the option element
+    /// Additional attributes for the item element
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children to render inside the option
+    /// The children to render inside the item
     pub children: Element,
 }
 
-/// # SelectOption
-///
-/// An individual selectable option within a [`SelectList`](super::list::SelectList) component. Each option represents
-/// a value that can be selected.
-///
-/// ## Value vs Text Value
-///
-/// - **`value`**: The programmatic value (e.g., `"apple"`, `"user_123"`) used internally
-/// - **`text_value`**: The text value (e.g., `"Apple"`, `"John Doe"`) used for typeahead search and displayed in the [`SelectValue`](super::value::SelectValue)
-///
-/// This must be used inside a [`SelectList`](super::list::SelectList) component.
+/// Backward-compatible alias.
+pub type SelectOptionProps<T> = SelectItemProps<T>;
+
+/// An individual selectable item within a [`SelectContent`](super::list::SelectContent).
 ///
 /// ## Example
 ///
 /// ```rust
 /// use dioxus::prelude::*;
 /// use dioxus_primitives::select::{
-///     Select, SelectGroup, SelectGroupLabel, SelectItemIndicator, SelectList, SelectOption,
+///     Select, SelectGroup, SelectLabel, SelectItemIndicator, SelectContent, SelectItem,
 ///     SelectTrigger, SelectValue,
 /// };
 /// #[component]
@@ -77,20 +70,14 @@ pub struct SelectOptionProps<T: Clone + PartialEq + 'static> {
 ///                 width: "12rem",
 ///                 SelectValue {}
 ///             }
-///             SelectList {
+///             SelectContent {
 ///                 aria_label: "Select Demo",
 ///                 SelectGroup {
-///                     SelectGroupLabel { "Fruits" }
-///                     SelectOption::<String> {
+///                     SelectLabel { "Fruits" }
+///                     SelectItem::<String> {
 ///                         index: 0usize,
 ///                         value: "apple",
 ///                         "Apple"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                     SelectOption::<String> {
-///                         index: 1usize,
-///                         value: "banana",
-///                         "Banana"
 ///                         SelectItemIndicator { "✔️" }
 ///                     }
 ///                 }
@@ -100,11 +87,8 @@ pub struct SelectOptionProps<T: Clone + PartialEq + 'static> {
 /// }
 /// ```
 #[component]
-pub fn SelectOption<T: PartialEq + Clone + 'static>(props: SelectOptionProps<T>) -> Element {
-    // Generate a unique ID for this option for accessibility
+pub fn SelectItem<T: PartialEq + Clone + 'static>(props: SelectItemProps<T>) -> Element {
     let option_id = use_unique_id();
-
-    // Use use_id_or to handle the ID
     let id = use_id_or(option_id, props.id);
 
     let index = props.index;
@@ -120,14 +104,13 @@ pub fn SelectOption<T: PartialEq + Clone + 'static>(props: SelectOptionProps<T>)
                 .or_else(|| as_any.downcast_ref::<&str>().map(|s| s.to_string()))
                 .unwrap_or_else(|| {
                     tracing::warn!(
-                        "SelectOption with non-string types requires text_value to be set"
+                        "SelectItem with non-string types requires text_value to be set"
                     );
                     String::new()
                 })
         }
     });
 
-    // Push this option to the context
     let mut ctx: SelectContext = use_context();
     use_effect(move || {
         let option_state = OptionState {
@@ -136,8 +119,6 @@ pub fn SelectOption<T: PartialEq + Clone + 'static>(props: SelectOptionProps<T>)
             text_value: text_value.cloned(),
             id: id(),
         };
-
-        // Add the option to the context's options
         ctx.options.write().push(option_state);
     });
 
@@ -147,7 +128,7 @@ pub fn SelectOption<T: PartialEq + Clone + 'static>(props: SelectOptionProps<T>)
 
     let onmounted = use_focus_controlled_item(props.index);
     let focused = move || ctx.focus_state.is_focused(index());
-    let disabled = ctx.disabled.cloned() || props.disabled.cloned();
+    let item_disabled = ctx.disabled || props.disabled;
     let selected = use_memo(move || {
         ctx.value.read().as_ref().and_then(|v| v.as_ref::<T>()) == Some(&props.value.read())
     });
@@ -163,18 +144,21 @@ pub fn SelectOption<T: PartialEq + Clone + 'static>(props: SelectOptionProps<T>)
         if render() {
             div {
                 role: "option",
+                "data-slot": "select-item",
                 id,
-                tabindex: if focused() { "0" } else { "-1" },
+                tabindex: if item_disabled { None::<&str> } else if focused() { Some("0") } else { Some("-1") },
                 onmounted,
 
-                // ARIA attributes
-                aria_selected: selected(),
-                aria_disabled: disabled,
+                "data-highlighted": if focused() { "" } else { None::<&str> },
+                "data-state": if selected() { "checked" } else { "unchecked" },
+                "data-disabled": if item_disabled { "" } else { None::<&str> },
+                aria_selected: selected() && focused(),
+                aria_disabled: if item_disabled { Some("true") } else { None },
                 aria_label: props.aria_label.clone(),
                 aria_roledescription: props.aria_roledescription.clone(),
 
                 onpointerdown: move |event| {
-                    if !disabled && &event.pointer_type() == "mouse" && event.trigger_button() == Some(MouseButton::Primary){
+                    if !item_disabled && &event.pointer_type() == "mouse" && event.trigger_button() == Some(MouseButton::Primary) {
                         ctx.set_value.call(Some(RcPartialEqValue::new(props.value.cloned())));
                         ctx.open.set(false);
                     }
@@ -183,7 +167,7 @@ pub fn SelectOption<T: PartialEq + Clone + 'static>(props: SelectOptionProps<T>)
                     did_drag.set(false);
                 },
                 ontouchend: move |_| {
-                    if !disabled && !did_drag(){
+                    if !item_disabled && !did_drag() {
                         ctx.set_value.call(Some(RcPartialEqValue::new(props.value.cloned())));
                         ctx.open.set(false);
                     }
@@ -205,60 +189,24 @@ pub fn SelectOption<T: PartialEq + Clone + 'static>(props: SelectOptionProps<T>)
     }
 }
 
+/// Backward-compatible alias for [`SelectItem`].
+#[component]
+pub fn SelectOption<T: PartialEq + Clone + 'static>(props: SelectItemProps<T>) -> Element {
+    SelectItem(props)
+}
+
 /// The props for the [`SelectItemIndicator`] component
 #[derive(Props, Clone, PartialEq)]
 pub struct SelectItemIndicatorProps {
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
     /// The children to render inside the indicator
     pub children: Element,
 }
 
-/// # SelectItemIndicator
-///
-/// The `SelectItemIndicator` component is used to render an indicator for a selected item within a [`SelectList`](super::list::SelectList). The
-/// children will only be rendered if the option is selected.
-///
-/// This must be used inside a [`SelectOption`](SelectOption) component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::select::{
-///     Select, SelectGroup, SelectGroupLabel, SelectItemIndicator, SelectList, SelectOption,
-///     SelectTrigger, SelectValue,
-/// };
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Select::<String> {
-///             placeholder: "Select a fruit...",
-///             SelectTrigger {
-///                 aria_label: "Select Trigger",
-///                 width: "12rem",
-///                 SelectValue {}
-///             }
-///             SelectList {
-///                 aria_label: "Select Demo",
-///                 SelectGroup {
-///                     SelectGroupLabel { "Fruits" }
-///                     SelectOption::<String> {
-///                         index: 0usize,
-///                         value: "apple",
-///                         "Apple"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                     SelectOption::<String> {
-///                         index: 1usize,
-///                         value: "banana",
-///                         "Banana"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// Renders only when the parent item is selected. Wraps children in `<span>` with `aria-hidden`.
 #[component]
 pub fn SelectItemIndicator(props: SelectItemIndicatorProps) -> Element {
     let ctx: SelectOptionContext = use_context();
@@ -266,6 +214,11 @@ pub fn SelectItemIndicator(props: SelectItemIndicatorProps) -> Element {
         return rsx! {};
     }
     rsx! {
-        {props.children}
+        span {
+            "data-slot": "select-item-indicator",
+            aria_hidden: "true",
+            ..props.attributes,
+            {props.children}
+        }
     }
 }

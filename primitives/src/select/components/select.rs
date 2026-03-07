@@ -27,7 +27,7 @@ pub struct SelectProps<T: Clone + PartialEq + 'static = String> {
 
     /// Whether the select is disabled
     #[props(default)]
-    pub disabled: ReadSignal<bool>,
+    pub disabled: bool,
 
     /// Name of the select for form submission
     #[props(default)]
@@ -45,24 +45,18 @@ pub struct SelectProps<T: Clone + PartialEq + 'static = String> {
     #[props(default = ReadSignal::new(Signal::new(Duration::from_millis(1000))))]
     pub typeahead_timeout: ReadSignal<Duration>,
 
-    /// Additional attributes for the select element
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
     /// The children of the Select component
     pub children: Element,
 }
 
-/// # Select
-///
-/// The `Select` component is a searchable dropdown that allows users to choose from a list of options with keyboard navigation and typeahead search functionality.
+/// No-DOM context provider for a select.
 ///
 /// ## Example
 ///
 /// ```rust
 /// use dioxus::prelude::*;
 /// use dioxus_primitives::select::{
-///     Select, SelectGroup, SelectGroupLabel, SelectItemIndicator, SelectList, SelectOption,
+///     Select, SelectGroup, SelectLabel, SelectItemIndicator, SelectContent, SelectItem,
 ///     SelectTrigger, SelectValue,
 /// };
 /// #[component]
@@ -75,17 +69,17 @@ pub struct SelectProps<T: Clone + PartialEq + 'static = String> {
 ///                 width: "12rem",
 ///                 SelectValue {}
 ///             }
-///             SelectList {
+///             SelectContent {
 ///                 aria_label: "Select Demo",
 ///                 SelectGroup {
-///                     SelectGroupLabel { "Fruits" }
-///                     SelectOption::<String> {
+///                     SelectLabel { "Fruits" }
+///                     SelectItem::<String> {
 ///                         index: 0usize,
 ///                         value: "apple",
 ///                         "Apple"
 ///                         SelectItemIndicator { "✔️" }
 ///                     }
-///                     SelectOption::<String> {
+///                     SelectItem::<String> {
 ///                         index: 1usize,
 ///                         value: "banana",
 ///                         "Banana"
@@ -97,11 +91,6 @@ pub struct SelectProps<T: Clone + PartialEq + 'static = String> {
 ///     }
 /// }
 /// ```
-///
-/// ## Styling
-///
-/// The [`Select`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates the current state of the select. Values are `open` or `closed`.
 #[component]
 pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element {
     let (value, set_value_internal) =
@@ -161,12 +150,5 @@ pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element 
         initial_focus,
     });
 
-    rsx! {
-        div {
-            // Data attributes
-            "data-state": if open() { "open" } else { "closed" },
-            ..props.attributes,
-            {props.children}
-        }
-    }
+    rsx! { {props.children} }
 }

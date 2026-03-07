@@ -15,80 +15,49 @@ pub struct SelectTriggerProps {
     pub children: Element,
 }
 
-/// # SelectTrigger
-///
-/// The trigger button for the [`Select`](super::select::Select) component which controls if the [`SelectList`](super::list::SelectList) is rendered.
-///
-/// This must be used inside a [`Select`](super::select::Select) component.
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::select::{
-///     Select, SelectGroup, SelectGroupLabel, SelectItemIndicator, SelectList, SelectOption,
-///     SelectTrigger, SelectValue,
-/// };
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         Select::<String> {
-///             placeholder: "Select a fruit...",
-///             SelectTrigger {
-///                 aria_label: "Select Trigger",
-///                 width: "12rem",
-///                 SelectValue {}
-///             }
-///             SelectList {
-///                 aria_label: "Select Demo",
-///                 SelectGroup {
-///                     SelectGroupLabel { "Fruits" }
-///                     SelectOption::<String> {
-///                         index: 0usize,
-///                         value: "apple",
-///                         "Apple"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                     SelectOption::<String> {
-///                         index: 1usize,
-///                         value: "banana",
-///                         "Banana"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
-///
-/// ## Styling
-///
-/// The [`SelectTrigger`] component defines a span with a `data-placeholder` attribute if a placeholder is set.
+/// The trigger button for the Select component. Renders as `<button>` with `role="combobox"`.
 #[component]
 pub fn SelectTrigger(props: SelectTriggerProps) -> Element {
     let mut ctx = use_context::<SelectContext>();
     let mut open = ctx.open;
+    let is_disabled = ctx.disabled;
+    let has_value = ctx.value.read().is_some();
 
     rsx! {
         button {
-            // Standard HTML attributes
-            disabled: (ctx.disabled)(),
-            type: "button",
+            "data-slot": "select-trigger",
+            r#type: "button",
+            role: "combobox",
+            disabled: is_disabled,
+            "data-state": if open() { "open" } else { "closed" },
+            "data-disabled": if is_disabled { "" } else { None::<&str> },
+            "data-placeholder": if !has_value { "" } else { None::<&str> },
+
+            aria_expanded: open(),
+            aria_controls: ctx.list_id,
+            aria_autocomplete: "none",
 
             onclick: move |_| {
-                open.toggle();
+                if !is_disabled {
+                    open.toggle();
+                }
             },
             onkeydown: move |event| {
+                if is_disabled {
+                    return;
+                }
                 match event.key() {
                     Key::ArrowUp => {
                         open.set(true);
-                        ctx.initial_focus.set(ctx.focus_state.item_count().checked_sub(1));
+                        ctx.initial_focus
+                            .set(ctx.focus_state.item_count().checked_sub(1));
                         event.prevent_default();
                         event.stop_propagation();
                     }
                     Key::ArrowDown => {
                         open.set(true);
-                        ctx.initial_focus.set((ctx.focus_state.item_count() > 0).then_some(0));
+                        ctx.initial_focus
+                            .set((ctx.focus_state.item_count() > 0).then_some(0));
                         event.prevent_default();
                         event.stop_propagation();
                     }
@@ -96,15 +65,7 @@ pub fn SelectTrigger(props: SelectTriggerProps) -> Element {
                 }
             },
 
-            // ARIA attributes
-            aria_haspopup: "listbox",
-            aria_expanded: open(),
-            aria_controls: ctx.list_id,
-
-            // Pass through other attributes
             ..props.attributes,
-
-            // Render children (options)
             {props.children}
         }
     }
