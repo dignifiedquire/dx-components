@@ -10,7 +10,7 @@ use dioxus::prelude::*;
 #[derive(Props, Clone, PartialEq)]
 pub struct SeparatorProps {
     /// Orientation of the separator. Defaults to `Horizontal`.
-    #[props(default)]
+    #[props(default = Orientation::Horizontal)]
     pub orientation: Orientation,
 
     /// Whether the separator is purely decorative. When `true`, it is removed

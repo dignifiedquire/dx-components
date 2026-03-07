@@ -7,8 +7,13 @@ use dx_icons_tabler::IconCheck;
 pub fn Demo() -> Element {
     rsx! {
         div { class: "flex items-center gap-2",
-            Checkbox { name: "disabled", disabled: true,
+            Checkbox {
+                style: "width: 1rem; height: 1rem; border-radius: 4px; border: 1px solid var(--border); padding: 0; background: transparent; cursor: not-allowed; opacity: 0.5;",
+                id: "disabled",
+                name: "disabled",
+                disabled: true,
                 CheckboxIndicator {
+                    style: "display: flex; align-items: center; justify-content: center;",
                     IconCheck { size: 14 }
                 }
             }

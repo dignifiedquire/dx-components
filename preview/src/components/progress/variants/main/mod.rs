@@ -20,6 +20,13 @@ pub fn Demo() -> Element {
     });
 
     rsx! {
-        Progress { aria_label: "Progressbar Demo", value: progress() as f64, ProgressIndicator {} }
+        Progress {
+            style: "position: relative; overflow: hidden; width: 200px; height: 0.5rem; border-radius: 9999px; background: var(--muted);",
+            aria_label: "Progressbar Demo",
+            value: progress() as f64,
+            ProgressIndicator {
+                style: "height: 100%; background: var(--foreground); transition: width 250ms ease;",
+            }
+        }
     }
 }
