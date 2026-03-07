@@ -306,8 +306,9 @@ fn use_animated_open(
     let animating = use_signal(|| false);
 
     // Show in dom is a few frames behind the open signal to allow for the animation to start.
-    // If it does start, we wait for the animation to finish before showing removing the element from the DOM.
-    let mut show_in_dom = use_signal(|| false);
+    // If it does start, we wait for the animation to finish before removing the element from the DOM.
+    // Initialize to the current open state so SSR renders correctly.
+    let mut show_in_dom = use_signal(|| *open.peek());
 
     use_effect(move || {
         let open = open.cloned();

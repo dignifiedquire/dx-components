@@ -1,8 +1,6 @@
 use dioxus::prelude::*;
 use dioxus_primitives::dioxus_attributes::attributes;
-use dioxus_primitives::dialog::{
-    self, DialogCtx, DialogDescriptionProps, DialogRootProps, DialogTitleProps,
-};
+use dioxus_primitives::dialog::{self, DialogCtx};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum SheetSide {
@@ -24,34 +22,27 @@ impl SheetSide {
     }
 }
 
-#[component]
-pub fn Sheet(props: DialogRootProps) -> Element {
-    rsx! {
-        SheetRoot {
-            id: props.id,
-            is_modal: props.is_modal,
-            open: props.open,
-            default_open: props.default_open,
-            on_open_change: props.on_open_change,
-            attributes: props.attributes,
-            {props.children}
-        }
-    }
+#[derive(Props, Clone, PartialEq)]
+pub struct SheetProps {
+    /// The controlled `open` state.
+    pub open: ReadSignal<Option<bool>>,
+    /// The default `open` state when uncontrolled.
+    #[props(default)]
+    pub default_open: bool,
+    /// Callback when the open state changes.
+    #[props(default)]
+    pub on_open_change: Callback<bool>,
+    /// The children.
+    pub children: Element,
 }
 
 #[component]
-fn SheetRoot(props: DialogRootProps) -> Element {
+pub fn Sheet(props: SheetProps) -> Element {
     rsx! {
-        document::Link { rel: "stylesheet", href: asset!("./style.css") }
         dialog::DialogRoot {
-            class: "sheet-root",
-            "data-slot": "sheet-root",
-            id: props.id,
-            is_modal: props.is_modal,
             open: props.open,
             default_open: props.default_open,
             on_open_change: props.on_open_change,
-            attributes: props.attributes,
             {props.children}
         }
     }
@@ -111,27 +102,37 @@ pub fn SheetFooter(
 }
 
 #[component]
-pub fn SheetTitle(props: DialogTitleProps) -> Element {
+pub fn SheetTitle(
+    #[props(default = ReadSignal::new(Signal::new(None)))] id: ReadSignal<Option<String>>,
+    #[props(default)] class: Option<String>,
+    #[props(extends = GlobalAttributes)] attributes: Vec<Attribute>,
+    children: Element,
+) -> Element {
     rsx! {
         dialog::DialogTitle {
-            id: props.id,
+            id,
             class: "sheet-title",
             "data-slot": "sheet-title",
-            attributes: props.attributes,
-            {props.children}
+            attributes,
+            {children}
         }
     }
 }
 
 #[component]
-pub fn SheetDescription(props: DialogDescriptionProps) -> Element {
+pub fn SheetDescription(
+    #[props(default = ReadSignal::new(Signal::new(None)))] id: ReadSignal<Option<String>>,
+    #[props(default)] class: Option<String>,
+    #[props(extends = GlobalAttributes)] attributes: Vec<Attribute>,
+    children: Element,
+) -> Element {
     rsx! {
         dialog::DialogDescription {
-            id: props.id,
+            id,
             class: "sheet-description",
             "data-slot": "sheet-description",
-            attributes: props.attributes,
-            {props.children}
+            attributes,
+            {children}
         }
     }
 }

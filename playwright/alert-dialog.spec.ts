@@ -1,53 +1,78 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('test', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/block?name=alert_dialog&variant=main&', { timeout: 20 * 60 * 1000 });
-  await page.getByRole('button', { name: 'Show Alert Dialog' }).click();
+test("test", async ({ page }) => {
+  await page.goto("http://127.0.0.1:8080/docs/components/alert_dialog", { timeout: 20 * 60 * 1000 });
 
-  // data-slot assertions
+  // Scope to the preview container
+  const preview = page.locator('[data-slot="preview"]').first();
+  await expect(preview).toBeVisible();
+
+  // Trigger button
+  const trigger = preview.locator('[data-slot="alert-dialog-trigger"]');
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAttribute("data-state", "closed");
+  await expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+
+  // Open the alert dialog
+  await trigger.click();
+
+  // Overlay
   const overlay = page.locator('[data-slot="alert-dialog-overlay"]');
-  await expect(overlay).toHaveAttribute('data-state', 'open');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toHaveAttribute("data-state", "open");
 
-  const overlayClass = await overlay.getAttribute('class');
-  expect(overlayClass).toContain('fixed');
-  expect(overlayClass).toContain('inset-0');
-  expect(overlayClass).toContain('z-50');
-
-  const content = overlay.locator('[data-slot="alert-dialog-content"]');
+  // Content
+  const content = page.locator('[data-slot="alert-dialog-content"]');
   await expect(content).toBeVisible();
+  await expect(content).toHaveAttribute("role", "alertdialog");
+  await expect(content).toHaveAttribute("aria-modal", "true");
+  await expect(content).toHaveAttribute("data-state", "open");
 
-  const contentClass = await content.getAttribute('class');
-  expect(contentClass).toContain('fixed');
-  expect(contentClass).toContain('rounded-lg');
-  expect(contentClass).toContain('border');
-  expect(contentClass).toContain('bg-background');
-
+  // Title and description
   const title = content.locator('[data-slot="alert-dialog-title"]');
-  await expect(title).toHaveText('Delete item');
+  await expect(title).toHaveText("Delete item");
 
   const description = content.locator('[data-slot="alert-dialog-description"]');
-  await expect(description).toContainText('Are you sure');
+  await expect(description).toContainText("Are you sure");
 
-  const actions = content.locator('[data-slot="alert-dialog-actions"]');
-  await expect(actions).toBeVisible();
+  // Footer with action buttons
+  const footer = content.locator('[data-slot="alert-dialog-footer"]');
+  await expect(footer).toBeVisible();
 
-  // Cancel button should be focused
-  const cancelButton = page.getByRole('button', { name: 'Cancel' });
-  await expect(cancelButton).toBeFocused();
+  // Cancel and Action buttons
+  const cancelButton = content.locator('[data-slot="alert-dialog-cancel"]');
+  await expect(cancelButton).toBeVisible();
+  await expect(cancelButton).toHaveText("Cancel");
 
-  // Tab cycles within dialog
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
-  await expect(cancelButton).toBeFocused();
+  const actionButton = content.locator('[data-slot="alert-dialog-action"]');
+  await expect(actionButton).toBeVisible();
+  await expect(actionButton).toHaveText("Delete");
+
+  // Focus should be trapped within dialog
+  await page.keyboard.press("Tab");
+  const focusedInDialog = await page.evaluate(() => {
+    const content = document.querySelector('[data-slot="alert-dialog-content"]');
+    return content?.contains(document.activeElement);
+  });
+  expect(focusedInDialog).toBe(true);
+
+  // Overlay click should NOT close (unlike regular dialog)
+  await overlay.click({ position: { x: 5, y: 5 }, force: true });
+  await expect(content).toBeVisible();
 
   // Escape should close
-  await page.keyboard.press('Escape');
+  await page.keyboard.press("Escape");
   await expect(overlay).toHaveCount(0);
 
-  // Reopen and test confirm action
-  await page.getByRole('button', { name: 'Show Alert Dialog' }).click();
-  await expect(overlay).toHaveAttribute('data-state', 'open');
-  const confirmButton = page.getByRole('button', { name: 'Delete' });
-  await confirmButton.click();
+  // Reopen and test cancel button
+  await trigger.click();
+  await expect(overlay).toBeVisible();
+  await cancelButton.click();
+  await expect(overlay).toHaveCount(0);
+
+  // Reopen and test action button
+  await trigger.click();
+  await expect(overlay).toBeVisible();
+  await actionButton.click();
   await expect(overlay).toHaveCount(0);
 });

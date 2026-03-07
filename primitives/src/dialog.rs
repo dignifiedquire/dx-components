@@ -1,26 +1,27 @@
-//! Defines the [`DialogRoot`] component and its sub-components.
+//! Dialog primitive — matches `@radix-ui/react-dialog`.
+//!
+//! A window overlaid on the primary content. Renders a modal dialog with
+//! focus trapping, escape-to-close, and overlay click-to-close.
 
 use dioxus::document;
 use dioxus::prelude::*;
-use tailwind_fuse::*;
 
 use crate::use_global_escape_listener;
 use crate::{use_animated_open, use_controlled, use_id_or, use_unique_id, FOCUS_TRAP_JS};
 
-/// Context for the [`DialogRoot`] component
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
+/// Context shared by all Dialog sub-components.
 #[derive(Clone, Copy)]
 pub struct DialogCtx {
-    #[allow(unused)]
-    open: Memo<bool>,
-    /// Callback to set the open state of the dialog.
-    #[allow(unused)]
-    set_open: Callback<bool>,
-
-    // Whether the dialog is a modal and should capture focus.
-    #[allow(unused)]
-    is_modal: ReadSignal<bool>,
-    dialog_labelledby: Signal<String>,
-    dialog_describedby: Signal<String>,
+    pub(crate) open: Memo<bool>,
+    pub(crate) set_open: Callback<bool>,
+    pub(crate) is_modal: bool,
+    pub(crate) content_id: Signal<String>,
+    pub(crate) title_id: Signal<String>,
+    pub(crate) description_id: Signal<String>,
 }
 
 impl DialogCtx {
@@ -35,218 +36,272 @@ impl DialogCtx {
     }
 }
 
-/// The props for the [`DialogRoot`] component
+// ---------------------------------------------------------------------------
+// DialogRoot
+// ---------------------------------------------------------------------------
+
+/// Props for [`DialogRoot`].
 #[derive(Props, Clone, PartialEq)]
 pub struct DialogRootProps {
-    /// The ID of the dialog root element.
-    pub id: ReadSignal<Option<String>>,
+    /// Whether the dialog is modal (traps focus, shows overlay). Defaults to `true`.
+    #[props(default = true)]
+    pub modal: bool,
 
-    /// Whether the dialog is modal. If true, it will trap focus within the dialog when open.
-    #[props(default = ReadSignal::new(Signal::new(true)))]
-    pub is_modal: ReadSignal<bool>,
-
-    /// The controlled `open` state of the dialog.
+    /// The controlled `open` state.
     pub open: ReadSignal<Option<bool>>,
 
-    /// The default `open` state of the dialog if it is not controlled.
+    /// The default `open` state when uncontrolled.
     #[props(default)]
     pub default_open: bool,
 
-    /// A callback that is called when the open state changes.
+    /// Callback when the open state changes.
     #[props(default)]
     pub on_open_change: Callback<bool>,
 
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-
-    /// Additional attributes to apply to the dialog root element.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// The children of the dialog root component.
+    /// The children of the dialog.
     pub children: Element,
 }
 
-/// # DialogRoot
+/// The root of the dialog. Manages state and provides context.
 ///
-/// The entry point for the dialog. It manages the open state of the dialog and provides context to its children. You
-/// can use it to create a backdrop for the dialog if needed. The contents will only be rendered when the dialog is open.
+/// Renders **no DOM element** — it is purely a context provider matching
+/// Radix's `Dialog.Root`.
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::dialog::{DialogContent, DialogDescription, DialogRoot, DialogTitle};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Dialog"
-///         }
-///         DialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             DialogContent {
-///                 button {
-///                     aria_label: "Close",
-///                     tabindex: if open() { "0" } else { "-1" },
-///                     onclick: move |_| open.set(false),
-///                     "×"
-///                 }
-///                 DialogTitle {
-///                     "Item information"
-///                 }
-///                 DialogDescription {
-///                     "Here is some additional information about the item."
-///                 }
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::dialog::*;
+/// rsx! {
+///     DialogRoot {
+///         DialogTrigger { "Open" }
+///         DialogOverlay {}
+///         DialogContent {
+///             DialogTitle { "Title" }
+///             DialogDescription { "Description" }
+///             DialogClose { "Close" }
 ///         }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`DialogRoot`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates if the dialog is open or closed. It can be either "open" or "closed".
 #[component]
 pub fn DialogRoot(props: DialogRootProps) -> Element {
-    let dialog_labelledby = use_unique_id();
-    let dialog_describedby = use_unique_id();
+    let content_id = use_unique_id();
+    let title_id = use_unique_id();
+    let description_id = use_unique_id();
 
     let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
 
     use_context_provider(|| DialogCtx {
         open,
         set_open,
-        is_modal: props.is_modal,
-        dialog_labelledby,
-        dialog_describedby,
+        is_modal: props.modal,
+        content_id,
+        title_id,
+        description_id,
     });
 
-    let unique_id = use_unique_id();
-    let id = use_id_or(unique_id, props.id);
+    rsx! {
+        document::Script { src: FOCUS_TRAP_JS, defer: true }
+        {props.children}
+    }
+}
 
-    let render = use_animated_open(id, open);
+// ---------------------------------------------------------------------------
+// DialogTrigger
+// ---------------------------------------------------------------------------
 
-    let class = tw_merge!(
-        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
-        props.class,
-    );
+/// Props for [`DialogTrigger`].
+#[derive(Props, Clone, PartialEq)]
+pub struct DialogTriggerProps {
+    /// Additional classes.
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// The children.
+    pub children: Element,
+}
+
+/// A button that toggles the dialog open state.
+///
+/// Matches Radix's `DialogTrigger`. Renders `<button>` with
+/// `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls`, and `data-state`.
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::dialog::*;
+/// rsx! {
+///     DialogRoot {
+///         DialogTrigger { "Open Dialog" }
+///         DialogOverlay {}
+///         DialogContent {
+///             DialogTitle { "Hello" }
+///             DialogDescription { "World" }
+///         }
+///     }
+/// };
+/// ```
+#[component]
+pub fn DialogTrigger(props: DialogTriggerProps) -> Element {
+    let ctx: DialogCtx = use_context();
+    let open = ctx.open;
+    let set_open = ctx.set_open;
 
     rsx! {
-        document::Script {
-            src: FOCUS_TRAP_JS,
-            defer: true
-        }
-        if render() {
-            div {
-                id,
-                "data-slot": "dialog-overlay",
-                class: class,
-                aria_hidden: (!open()).then_some("true"),
-                onclick: move |_| {
-                    set_open.call(false);
-                },
-                "data-state": if open() { "open" } else { "closed" },
-                ..props.attributes,
-                {props.children}
-            }
+        button {
+            r#type: "button",
+            "data-slot": "dialog-trigger",
+            "data-state": if open() { "open" } else { "closed" },
+            aria_haspopup: "dialog",
+            aria_expanded: open(),
+            aria_controls: ctx.content_id,
+            class: props.class,
+            onclick: move |_| set_open.call(!open()),
+            ..props.attributes,
+            {props.children}
         }
     }
 }
 
-/// The props for the [`DialogRoot`] component
+// ---------------------------------------------------------------------------
+// DialogOverlay
+// ---------------------------------------------------------------------------
+
+/// Props for [`DialogOverlay`].
 #[derive(Props, Clone, PartialEq)]
-pub struct DialogContentProps {
-    /// The ID of the dialog content element.
+pub struct DialogOverlayProps {
+    /// The ID of the overlay element.
     pub id: ReadSignal<Option<String>>,
 
-    /// The class to apply to the dialog content element.
+    /// Additional classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to apply to the dialog content element.
+    /// Additional attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the dialog content.
+}
+
+/// The backdrop overlay behind the dialog content.
+///
+/// Matches Radix's `DialogOverlay`. Only renders in modal mode.
+/// Clicking the overlay closes the dialog.
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::dialog::*;
+/// rsx! {
+///     DialogRoot {
+///         DialogTrigger { "Open" }
+///         DialogOverlay {}
+///         DialogContent {
+///             DialogTitle { "Title" }
+///             DialogDescription { "Desc" }
+///         }
+///     }
+/// };
+/// ```
+///
+/// ## Data Attributes
+/// - `data-state`: `"open"` or `"closed"`.
+#[component]
+pub fn DialogOverlay(props: DialogOverlayProps) -> Element {
+    let ctx: DialogCtx = use_context();
+
+    // Overlay only renders in modal mode (matching Radix)
+    if !ctx.is_modal {
+        return rsx! {};
+    }
+
+    let open = ctx.open;
+    let set_open = ctx.set_open;
+
+    let unique_id = use_unique_id();
+    let id = use_id_or(unique_id, props.id);
+    let render = use_animated_open(id, open);
+
+    if !render() {
+        return rsx! {};
+    }
+
+    rsx! {
+        div {
+            id,
+            "data-slot": "dialog-overlay",
+            "data-state": if open() { "open" } else { "closed" },
+            class: props.class,
+            onclick: move |_| set_open.call(false),
+            ..props.attributes,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DialogContent
+// ---------------------------------------------------------------------------
+
+/// Props for [`DialogContent`].
+#[derive(Props, Clone, PartialEq)]
+pub struct DialogContentProps {
+    /// The ID of the content element.
+    pub id: ReadSignal<Option<String>>,
+
+    /// Additional classes.
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// The children.
     pub children: Element,
 }
 
-/// # DialogContent
+/// The content panel of the dialog.
 ///
-/// The content of the dialog. Any interactive content in the dialog should be placed
-/// inside this component. It will trap focus within the dialog while it is open
+/// Matches Radix's `DialogContent`. Renders with `role="dialog"`,
+/// `aria-modal`, `aria-labelledby`, `aria-describedby`. Traps focus
+/// when modal and closes on Escape.
 ///
-/// This must be used inside an [`DialogRoot`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::dialog::{DialogContent, DialogDescription, DialogRoot, DialogTitle};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Dialog"
-///         }
-///         DialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             DialogContent {
-///                 button {
-///                     aria_label: "Close",
-///                     tabindex: if open() { "0" } else { "-1" },
-///                     onclick: move |_| open.set(false),
-///                     "×"
-///                 }
-///                 DialogTitle {
-///                     "Item information"
-///                 }
-///                 DialogDescription {
-///                     "Here is some additional information about the item."
-///                 }
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::dialog::*;
+/// rsx! {
+///     DialogRoot {
+///         DialogTrigger { "Open" }
+///         DialogOverlay {}
+///         DialogContent {
+///             DialogTitle { "Title" }
+///             DialogDescription { "Description" }
+///             DialogClose { "Close" }
 ///         }
 ///     }
-/// }
+/// };
 /// ```
 ///
-/// ## Styling
-///
-/// The [`DialogRoot`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates if the dialog is open or closed. It can be either "open" or "closed".
+/// ## Data Attributes
+/// - `data-state`: `"open"` or `"closed"`.
 #[component]
 pub fn DialogContent(props: DialogContentProps) -> Element {
     let ctx: DialogCtx = use_context();
     let open = ctx.open;
-    let is_modal = ctx.is_modal;
     let set_open = ctx.set_open;
+    let is_modal = ctx.is_modal;
 
-    // Add a escape key listener to the document when the dialog is open. We can't
-    // just add this to the dialog itself because it might not be focused if the user
-    // is highlighting text or interacting with another element.
+    // Escape key listener
     use_global_escape_listener(move || set_open.call(false));
 
-    let gen_id = use_unique_id();
-    let id = use_id_or(gen_id, props.id);
+    let id = use_id_or(ctx.content_id, props.id);
+    let render = use_animated_open(id, open);
+
+    // Focus trap for modal dialogs
     use_effect(move || {
-        let is_modal = is_modal();
         if !is_modal {
-            // If the dialog is not modal, we don't need to trap focus.
             return;
         }
-
         let eval = document::eval(
             r#"let id = await dioxus.recv();
             let is_open = await dioxus.recv();
@@ -264,174 +319,188 @@ pub fn DialogContent(props: DialogContentProps) -> Element {
         let _ = eval.send(open.cloned());
     });
 
-    let class = tw_merge!(
-        "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg sm:max-w-lg",
-        props.class,
-    );
+    if !render() {
+        return rsx! {};
+    }
 
     rsx! {
         div {
             id,
             "data-slot": "dialog-content",
+            "data-state": if open() { "open" } else { "closed" },
             role: "dialog",
-            aria_modal: "true",
-            aria_labelledby: ctx.dialog_labelledby,
-            aria_describedby: ctx.dialog_describedby,
-            class: class,
-            onclick: move |e| {
-                // Prevent the click event from propagating to the overlay.
-                e.stop_propagation();
-            },
+            aria_modal: if is_modal { "true" },
+            aria_labelledby: ctx.title_id,
+            aria_describedby: ctx.description_id,
+            class: props.class,
+            onclick: move |e| e.stop_propagation(),
             ..props.attributes,
             {props.children}
         }
     }
 }
 
-/// The props for the [`DialogTitle`] component
+// ---------------------------------------------------------------------------
+// DialogClose
+// ---------------------------------------------------------------------------
+
+/// Props for [`DialogClose`].
 #[derive(Props, Clone, PartialEq)]
-pub struct DialogTitleProps {
-    /// The ID of the dialog title element.
-    pub id: ReadSignal<Option<String>>,
-    /// Additional Tailwind classes to apply.
+pub struct DialogCloseProps {
+    /// Additional classes.
     #[props(default)]
     pub class: Option<String>,
-    /// Additional attributes for the dialog title element.
+
+    /// Additional attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the dialog title.
+
+    /// The children.
     pub children: Element,
 }
 
-/// # DialogTitle
+/// A button that closes the dialog.
 ///
-/// The title of the dialog. This will be used to label the dialog for accessibility purposes.
+/// Matches Radix's `DialogClose`.
 ///
-/// This must be used inside an [`DialogRoot`] component and should be placed inside an [`DialogContent`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::dialog::{DialogContent, DialogDescription, DialogRoot, DialogTitle};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Dialog"
-///         }
-///         DialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             DialogContent {
-///                 button {
-///                     aria_label: "Close",
-///                     tabindex: if open() { "0" } else { "-1" },
-///                     onclick: move |_| open.set(false),
-///                     "×"
-///                 }
-///                 DialogTitle {
-///                     "Item information"
-///                 }
-///                 DialogDescription {
-///                     "Here is some additional information about the item."
-///                 }
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::dialog::*;
+/// rsx! {
+///     DialogRoot {
+///         DialogTrigger { "Open" }
+///         DialogOverlay {}
+///         DialogContent {
+///             DialogTitle { "Title" }
+///             DialogDescription { "Desc" }
+///             DialogClose { "Close" }
 ///         }
 ///     }
-/// }
+/// };
+/// ```
+#[component]
+pub fn DialogClose(props: DialogCloseProps) -> Element {
+    let ctx: DialogCtx = use_context();
+    let set_open = ctx.set_open;
+
+    rsx! {
+        button {
+            r#type: "button",
+            "data-slot": "dialog-close",
+            class: props.class,
+            onclick: move |_| set_open.call(false),
+            ..props.attributes,
+            {props.children}
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DialogTitle
+// ---------------------------------------------------------------------------
+
+/// Props for [`DialogTitle`].
+#[derive(Props, Clone, PartialEq)]
+pub struct DialogTitleProps {
+    /// The ID of the title element.
+    pub id: ReadSignal<Option<String>>,
+
+    /// Additional classes.
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// The children.
+    pub children: Element,
+}
+
+/// The title of the dialog. Sets `aria-labelledby` on the content.
+///
+/// Matches Radix's `DialogTitle`. Renders `<h2>`.
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::dialog::*;
+/// rsx! {
+///     DialogRoot {
+///         DialogTrigger { "Open" }
+///         DialogOverlay {}
+///         DialogContent {
+///             DialogTitle { "My Title" }
+///             DialogDescription { "My Description" }
+///         }
+///     }
+/// };
 /// ```
 #[component]
 pub fn DialogTitle(props: DialogTitleProps) -> Element {
     let ctx: DialogCtx = use_context();
-    let id = use_id_or(ctx.dialog_labelledby, props.id);
-
-    let class = tw_merge!("text-lg font-semibold leading-none", props.class,);
+    let id = use_id_or(ctx.title_id, props.id);
 
     rsx! {
         h2 {
-            id: id,
+            id,
             "data-slot": "dialog-title",
-            class: class,
+            class: props.class,
             ..props.attributes,
             {props.children}
         }
     }
 }
 
-/// The props for the [`DialogDescription`] component
+// ---------------------------------------------------------------------------
+// DialogDescription
+// ---------------------------------------------------------------------------
+
+/// Props for [`DialogDescription`].
 #[derive(Props, Clone, PartialEq)]
 pub struct DialogDescriptionProps {
-    /// The ID of the dialog description element.
+    /// The ID of the description element.
     pub id: ReadSignal<Option<String>>,
-    /// Additional Tailwind classes to apply.
+
+    /// Additional classes.
     #[props(default)]
     pub class: Option<String>,
-    /// Additional attributes for the dialog description element.
+
+    /// Additional attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the dialog description.
+
+    /// The children.
     pub children: Element,
 }
 
-/// # DialogDescription
+/// The description of the dialog. Sets `aria-describedby` on the content.
 ///
-/// The description of the dialog. This will be used to describe the dialog for accessibility purposes.
+/// Matches Radix's `DialogDescription`. Renders `<p>`.
 ///
-/// This must be used inside an [`DialogRoot`] component and should be placed inside an [`DialogContent`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::dialog::{DialogContent, DialogDescription, DialogRoot, DialogTitle};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Dialog"
-///         }
-///         DialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             DialogContent {
-///                 button {
-///                     aria_label: "Close",
-///                     tabindex: if open() { "0" } else { "-1" },
-///                     onclick: move |_| open.set(false),
-///                     "×"
-///                 }
-///                 DialogTitle {
-///                     "Item information"
-///                 }
-///                 DialogDescription {
-///                     "Here is some additional information about the item."
-///                 }
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::dialog::*;
+/// rsx! {
+///     DialogRoot {
+///         DialogTrigger { "Open" }
+///         DialogOverlay {}
+///         DialogContent {
+///             DialogTitle { "Title" }
+///             DialogDescription { "Description text here." }
 ///         }
 ///     }
-/// }
+/// };
 /// ```
 #[component]
 pub fn DialogDescription(props: DialogDescriptionProps) -> Element {
     let ctx: DialogCtx = use_context();
-    let id = use_id_or(ctx.dialog_describedby, props.id);
-
-    let class = tw_merge!("text-sm text-muted-foreground", props.class,);
+    let id = use_id_or(ctx.description_id, props.id);
 
     rsx! {
         p {
-            id: id,
+            id,
             "data-slot": "dialog-description",
-            class: class,
+            class: props.class,
             ..props.attributes,
             {props.children}
         }

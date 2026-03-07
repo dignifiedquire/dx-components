@@ -1,201 +1,261 @@
-//! Defines the [`AlertDialogRoot`] component and its sub-components.
+//! AlertDialog primitive — matches `@radix-ui/react-alert-dialog`.
+//!
+//! A modal dialog that interrupts the user with important content and expects
+//! a response. Built on top of [`DialogRoot`] but always modal, with
+//! `role="alertdialog"` and no overlay-click-to-close.
 
-use crate::use_global_escape_listener;
-use crate::{use_animated_open, use_id_or, use_unique_id, FOCUS_TRAP_JS};
 use dioxus::document;
 use dioxus::prelude::*;
-use tailwind_fuse::*;
 
-#[derive(Clone)]
-struct AlertDialogCtx {
-    open: Memo<bool>,
-    set_open: Callback<bool>,
-    labelledby: String,
-    describedby: String,
-}
+use crate::dialog::{DialogCtx, DialogRoot};
+use crate::use_global_escape_listener;
+use crate::{use_animated_open, use_id_or, use_unique_id};
 
-/// The props for the [`AlertDialogRoot`] component.
+// ---------------------------------------------------------------------------
+// AlertDialogRoot
+// ---------------------------------------------------------------------------
+
+/// Props for [`AlertDialogRoot`].
 #[derive(Props, Clone, PartialEq)]
 pub struct AlertDialogRootProps {
-    /// The id of the alert dialog root element. If not provided, a unique id will be generated.
-    pub id: ReadSignal<Option<String>>,
-    /// Whether the alert dialog should be open by default. This is only used if the `open` signal is not provided.
+    /// The controlled `open` state.
+    pub open: ReadSignal<Option<bool>>,
+
+    /// The default `open` state when uncontrolled.
     #[props(default)]
     pub default_open: bool,
-    /// The open state of the alert dialog. If this is provided, it will be used to control the open state of the dialog.
-    #[props(default)]
-    pub open: ReadSignal<Option<bool>>,
-    /// Callback to handle changes in the open state of the dialog.
+
+    /// Callback when the open state changes.
     #[props(default)]
     pub on_open_change: Callback<bool>,
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-    /// Additional attributes to extend the root element.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-    /// The children of the alert dialog root element.
+
+    /// The children.
     pub children: Element,
 }
 
-/// # AlertDialogRoot
+/// The root of the alert dialog. Always modal.
 ///
-/// The entry point for the alert dialog. It manages the open state of the dialog and provides context to its children. You
-/// can use it to create a backdrop for the dialog if needed. The contents will only be rendered when the dialog is open.
+/// Wraps [`DialogRoot`] with `modal: true` (matching Radix's AlertDialog
+/// which omits the `modal` prop and forces it to `true`).
 ///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::alert_dialog::*;
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Alert Dialog"
-///         }
-///         AlertDialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             AlertDialogContent {
-///                 AlertDialogTitle { "Delete item" }
-///                 AlertDialogDescription { "Are you sure you want to delete this item? This action cannot be undone." }
-///                 AlertDialogActions {
-///                     AlertDialogCancel { "Cancel" }
-///                     AlertDialogAction {
-///                         on_click: move |_| tracing::info!("Item deleted"),
-///                         "Delete"
-///                     }
-///                 }
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::alert_dialog::*;
+/// rsx! {
+///     AlertDialogRoot {
+///         AlertDialogTrigger { "Delete" }
+///         AlertDialogOverlay {}
+///         AlertDialogContent {
+///             AlertDialogTitle { "Are you sure?" }
+///             AlertDialogDescription { "This cannot be undone." }
+///             AlertDialogCancel { "Cancel" }
+///             AlertDialogAction { "Delete" }
 ///         }
 ///     }
-/// }
+/// };
 /// ```
-///
-/// ## Styling
-///
-/// The [`AlertDialogRoot`] component defines the following data attributes you can use to control styling:
-/// - `data-state`: Indicates if the alert dialog is open or closed. It can be either "open" or "closed".
 #[component]
 pub fn AlertDialogRoot(props: AlertDialogRootProps) -> Element {
-    let labelledby = use_unique_id().to_string();
-    let describedby = use_unique_id().to_string();
-    let mut open_signal = use_signal(|| props.default_open);
-    let set_open = use_callback(move |v: bool| {
-        open_signal.set(v);
-        props.on_open_change.call(v);
-    });
-    let open = use_memo(move || (props.open)().unwrap_or_else(&*open_signal));
-    use_context_provider(|| AlertDialogCtx {
-        open,
-        set_open,
-        labelledby,
-        describedby,
-    });
-
-    let id = use_unique_id();
-    let id = use_id_or(id, props.id);
-    let render_element = use_animated_open(id, open);
-
-    let class = tw_merge!(
-        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
-        props.class,
-    );
-
     rsx! {
-        document::Script {
-            src: FOCUS_TRAP_JS,
-            defer: true
-        }
-        if render_element() {
-            div {
-                id,
-                "data-slot": "alert-dialog-overlay",
-                class: class,
-                "data-state": if open() { "open" } else { "closed" },
-                ..props.attributes,
-                {props.children}
-            }
+        DialogRoot {
+            modal: true,
+            open: props.open,
+            default_open: props.default_open,
+            on_open_change: props.on_open_change,
+            {props.children}
         }
     }
 }
 
-/// The props for the [`AlertDialogContent`] component.
-#[derive(Props, Clone, PartialEq)]
-pub struct AlertDialogContentProps {
-    /// The id of the alert dialog content element. If not provided, a unique id will be generated.
-    pub id: ReadSignal<Option<String>>,
+// ---------------------------------------------------------------------------
+// AlertDialogTrigger
+// ---------------------------------------------------------------------------
 
-    /// The class to apply to the alert dialog content element.
+/// Props for [`AlertDialogTrigger`].
+#[derive(Props, Clone, PartialEq)]
+pub struct AlertDialogTriggerProps {
+    /// Additional classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Additional attributes to extend the content element.
+    /// Additional attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the alert dialog content element.
+
+    /// The children.
     pub children: Element,
 }
 
-/// # AlertDialogContent
+/// A button that opens the alert dialog.
 ///
-/// The content of the alert dialog. Any interactive content in the dialog should be placed
-/// inside this component. It will trap focus within the dialog while it is open
+/// Matches Radix's `AlertDialogTrigger`.
 ///
-/// This must be used inside an [`AlertDialogRoot`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::alert_dialog::*;
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Alert Dialog"
-///         }
-///         AlertDialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             AlertDialogContent {
-///                 AlertDialogTitle { "Delete item" }
-///                 AlertDialogDescription { "Are you sure you want to delete this item? This action cannot be undone." }
-///                 AlertDialogActions {
-///                     AlertDialogCancel { "Cancel" }
-///                     AlertDialogAction {
-///                         on_click: move |_| tracing::info!("Item deleted"),
-///                         "Delete"
-///                     }
-///                 }
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::alert_dialog::*;
+/// rsx! {
+///     AlertDialogRoot {
+///         AlertDialogTrigger { "Delete Item" }
+///         AlertDialogOverlay {}
+///         AlertDialogContent {
+///             AlertDialogTitle { "Confirm" }
+///             AlertDialogDescription { "Are you sure?" }
+///             AlertDialogCancel { "No" }
+///             AlertDialogAction { "Yes" }
 ///         }
 ///     }
-/// }
+/// };
 /// ```
 #[component]
-pub fn AlertDialogContent(props: AlertDialogContentProps) -> Element {
-    let ctx: AlertDialogCtx = use_context();
-
+pub fn AlertDialogTrigger(props: AlertDialogTriggerProps) -> Element {
+    let ctx: DialogCtx = use_context();
     let open = ctx.open;
     let set_open = ctx.set_open;
 
-    // Add a escape key listener to the document when the dialog is open. We can't
-    // just add this to the dialog itself because it might not be focused if the user
-    // is highlighting text or interacting with another element.
+    rsx! {
+        button {
+            r#type: "button",
+            "data-slot": "alert-dialog-trigger",
+            "data-state": if open() { "open" } else { "closed" },
+            aria_haspopup: "dialog",
+            aria_expanded: open(),
+            class: props.class,
+            onclick: move |_| set_open.call(!open()),
+            ..props.attributes,
+            {props.children}
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AlertDialogOverlay
+// ---------------------------------------------------------------------------
+
+/// Props for [`AlertDialogOverlay`].
+#[derive(Props, Clone, PartialEq)]
+pub struct AlertDialogOverlayProps {
+    /// The ID of the overlay element.
+    pub id: ReadSignal<Option<String>>,
+
+    /// Additional classes.
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+}
+
+/// The backdrop overlay behind the alert dialog.
+///
+/// Unlike [`DialogOverlay`](crate::dialog::DialogOverlay), clicking the
+/// overlay does **not** close the alert dialog (matching Radix's behavior
+/// where `onPointerDownOutside` is prevented).
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::alert_dialog::*;
+/// rsx! {
+///     AlertDialogRoot {
+///         AlertDialogTrigger { "Open" }
+///         AlertDialogOverlay {}
+///         AlertDialogContent {
+///             AlertDialogTitle { "Title" }
+///             AlertDialogDescription { "Desc" }
+///             AlertDialogCancel { "Cancel" }
+///             AlertDialogAction { "OK" }
+///         }
+///     }
+/// };
+/// ```
+///
+/// ## Data Attributes
+/// - `data-state`: `"open"` or `"closed"`.
+#[component]
+pub fn AlertDialogOverlay(props: AlertDialogOverlayProps) -> Element {
+    let ctx: DialogCtx = use_context();
+    let open = ctx.open;
+
+    let unique_id = use_unique_id();
+    let id = use_id_or(unique_id, props.id);
+    let render = use_animated_open(id, open);
+
+    if !render() {
+        return rsx! {};
+    }
+
+    // No onclick handler — alert dialog overlay does NOT close on click
+    rsx! {
+        div {
+            id,
+            "data-slot": "alert-dialog-overlay",
+            "data-state": if open() { "open" } else { "closed" },
+            class: props.class,
+            ..props.attributes,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AlertDialogContent
+// ---------------------------------------------------------------------------
+
+/// Props for [`AlertDialogContent`].
+#[derive(Props, Clone, PartialEq)]
+pub struct AlertDialogContentProps {
+    /// The ID of the content element.
+    pub id: ReadSignal<Option<String>>,
+
+    /// Additional classes.
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// The children.
+    pub children: Element,
+}
+
+/// The content panel of the alert dialog.
+///
+/// Matches Radix's `AlertDialogContent`. Uses `role="alertdialog"` instead
+/// of `role="dialog"`. Traps focus and closes on Escape.
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::alert_dialog::*;
+/// rsx! {
+///     AlertDialogRoot {
+///         AlertDialogTrigger { "Open" }
+///         AlertDialogOverlay {}
+///         AlertDialogContent {
+///             AlertDialogTitle { "Confirm deletion" }
+///             AlertDialogDescription { "This action cannot be undone." }
+///             AlertDialogCancel { "Cancel" }
+///             AlertDialogAction { "Delete" }
+///         }
+///     }
+/// };
+/// ```
+///
+/// ## Data Attributes
+/// - `data-state`: `"open"` or `"closed"`.
+#[component]
+pub fn AlertDialogContent(props: AlertDialogContentProps) -> Element {
+    let ctx: DialogCtx = use_context();
+    let open = ctx.open;
+    let set_open = ctx.set_open;
+
+    // Escape key listener
     use_global_escape_listener(move || set_open.call(false));
 
     let gen_id = use_unique_id();
     let id = use_id_or(gen_id, props.id);
+    let render = use_animated_open(id, open);
+
+    // Focus trap (always modal)
     use_effect(move || {
         let eval = document::eval(
             r#"let id = await dioxus.recv();
@@ -214,370 +274,307 @@ pub fn AlertDialogContent(props: AlertDialogContentProps) -> Element {
         let _ = eval.send(open.cloned());
     });
 
-    let class = tw_merge!(
-        "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg sm:max-w-lg",
-        props.class,
-    );
+    if !render() {
+        return rsx! {};
+    }
 
     rsx! {
         div {
             id,
             "data-slot": "alert-dialog-content",
+            "data-state": if open() { "open" } else { "closed" },
             role: "alertdialog",
             aria_modal: "true",
-            aria_labelledby: ctx.labelledby.clone(),
-            aria_describedby: ctx.describedby.clone(),
-            class: class,
+            aria_labelledby: ctx.title_id,
+            aria_describedby: ctx.description_id,
+            class: props.class,
             ..props.attributes,
             {props.children}
         }
     }
 }
 
-/// The props for the [`AlertDialogTitle`] component.
+// ---------------------------------------------------------------------------
+// AlertDialogTitle
+// ---------------------------------------------------------------------------
+
+/// Props for [`AlertDialogTitle`].
 #[derive(Props, Clone, PartialEq)]
 pub struct AlertDialogTitleProps {
-    /// Additional Tailwind classes to apply.
+    /// The ID of the title element.
+    pub id: ReadSignal<Option<String>>,
+
+    /// Additional classes.
     #[props(default)]
     pub class: Option<String>,
-    /// Additional attributes to extend the title element.
+
+    /// Additional attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the title element.
+
+    /// The children.
     pub children: Element,
 }
 
-/// # AlertDialogTitle
+/// The title of the alert dialog. Sets `aria-labelledby` on the content.
 ///
-/// The title of the alert dialog. This will be used to label the dialog for accessibility purposes.
+/// Matches Radix's `AlertDialogTitle`. Renders `<h2>`.
 ///
-/// This must be used inside an [`AlertDialogRoot`] component and should be placed inside an [`AlertDialogContent`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::alert_dialog::*;
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Alert Dialog"
-///         }
-///         AlertDialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             AlertDialogContent {
-///                 AlertDialogTitle { "Delete item" }
-///                 AlertDialogDescription { "Are you sure you want to delete this item? This action cannot be undone." }
-///                 AlertDialogActions {
-///                     AlertDialogCancel { "Cancel" }
-///                     AlertDialogAction {
-///                         on_click: move |_| tracing::info!("Item deleted"),
-///                         "Delete"
-///                     }
-///                 }
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::alert_dialog::*;
+/// rsx! {
+///     AlertDialogRoot {
+///         AlertDialogTrigger { "Open" }
+///         AlertDialogOverlay {}
+///         AlertDialogContent {
+///             AlertDialogTitle { "Confirm" }
+///             AlertDialogDescription { "Are you sure?" }
+///             AlertDialogCancel { "No" }
+///             AlertDialogAction { "Yes" }
 ///         }
 ///     }
-/// }
+/// };
 /// ```
 #[component]
 pub fn AlertDialogTitle(props: AlertDialogTitleProps) -> Element {
-    let ctx: AlertDialogCtx = use_context();
-    let class = tw_merge!("text-lg font-semibold leading-none", props.class);
+    let ctx: DialogCtx = use_context();
+    let id = use_id_or(ctx.title_id, props.id);
+
     rsx! {
-        h2 { id: ctx.labelledby.clone(), "data-slot": "alert-dialog-title", class: class, ..props.attributes, {props.children} }
+        h2 {
+            id,
+            "data-slot": "alert-dialog-title",
+            class: props.class,
+            ..props.attributes,
+            {props.children}
+        }
     }
 }
 
-/// The props for the [`AlertDialogDescription`] component.
+// ---------------------------------------------------------------------------
+// AlertDialogDescription
+// ---------------------------------------------------------------------------
+
+/// Props for [`AlertDialogDescription`].
 #[derive(Props, Clone, PartialEq)]
 pub struct AlertDialogDescriptionProps {
-    /// Additional Tailwind classes to apply.
+    /// The ID of the description element.
+    pub id: ReadSignal<Option<String>>,
+
+    /// Additional classes.
     #[props(default)]
     pub class: Option<String>,
-    /// Additional attributes to extend the description element.
+
+    /// Additional attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the description element.
+
+    /// The children.
     pub children: Element,
 }
 
-/// # AlertDialogDescription
+/// The description of the alert dialog. Sets `aria-describedby` on the content.
 ///
-/// The description of the alert dialog. This will be used to describe the dialog for accessibility purposes.
+/// Matches Radix's `AlertDialogDescription`. Renders `<p>`.
 ///
-/// This must be used inside an [`AlertDialogRoot`] component and should be placed inside an [`AlertDialogContent`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::alert_dialog::*;
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Alert Dialog"
-///         }
-///         AlertDialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             AlertDialogContent {
-///                 AlertDialogTitle { "Delete item" }
-///                 AlertDialogDescription { "Are you sure you want to delete this item? This action cannot be undone." }
-///                 AlertDialogActions {
-///                     AlertDialogCancel { "Cancel" }
-///                     AlertDialogAction {
-///                         on_click: move |_| tracing::info!("Item deleted"),
-///                         "Delete"
-///                     }
-///                 }
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::alert_dialog::*;
+/// rsx! {
+///     AlertDialogRoot {
+///         AlertDialogTrigger { "Open" }
+///         AlertDialogOverlay {}
+///         AlertDialogContent {
+///             AlertDialogTitle { "Title" }
+///             AlertDialogDescription { "Description text." }
+///             AlertDialogCancel { "Cancel" }
+///             AlertDialogAction { "OK" }
 ///         }
 ///     }
-/// }
+/// };
 /// ```
 #[component]
 pub fn AlertDialogDescription(props: AlertDialogDescriptionProps) -> Element {
-    let ctx: AlertDialogCtx = use_context();
-    let class = tw_merge!("text-sm text-muted-foreground", props.class);
+    let ctx: DialogCtx = use_context();
+    let id = use_id_or(ctx.description_id, props.id);
+
     rsx! {
-        p { id: ctx.describedby.clone(), "data-slot": "alert-dialog-description", class: class, ..props.attributes, {props.children} }
+        p {
+            id,
+            "data-slot": "alert-dialog-description",
+            class: props.class,
+            ..props.attributes,
+            {props.children}
+        }
     }
 }
 
-/// The props for the [`AlertDialogActions`] component.
-#[derive(Props, Clone, PartialEq)]
-pub struct AlertDialogActionsProps {
-    /// Additional Tailwind classes to apply.
-    #[props(default)]
-    pub class: Option<String>,
-    /// Additional attributes to extend the actions element.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-    /// The children of the actions element.
-    pub children: Element,
-}
+// ---------------------------------------------------------------------------
+// AlertDialogAction
+// ---------------------------------------------------------------------------
 
-/// # AlertDialogActions
-///
-/// The actions of the alert dialog. This will be used to group the actions.
-///
-/// This must be used inside an [`AlertDialogRoot`] component and should be placed inside an [`AlertDialogContent`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::alert_dialog::*;
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Alert Dialog"
-///         }
-///         AlertDialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             AlertDialogContent {
-///                 AlertDialogTitle { "Delete item" }
-///                 AlertDialogDescription { "Are you sure you want to delete this item? This action cannot be undone." }
-///                 AlertDialogActions {
-///                     AlertDialogCancel { "Cancel" }
-///                     AlertDialogAction {
-///                         on_click: move |_| tracing::info!("Item deleted"),
-///                         "Delete"
-///                     }
-///                 }
-///             }
-///         }
-///     }
-/// }
-/// ```
-#[component]
-pub fn AlertDialogActions(props: AlertDialogActionsProps) -> Element {
-    let class = tw_merge!(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
-        props.class
-    );
-    rsx! {
-        div { "data-slot": "alert-dialog-actions", class: class, ..props.attributes, {props.children} }
-    }
-}
-
-/// The props for the [`AlertDialogAction`] component.
+/// Props for [`AlertDialogAction`].
 #[derive(Props, Clone, PartialEq)]
 pub struct AlertDialogActionProps {
-    /// The click event handler for the action button.
-    #[props(default)]
-    pub on_click: Option<EventHandler<MouseEvent>>,
-    /// Additional Tailwind classes to apply.
+    /// Additional classes.
     #[props(default)]
     pub class: Option<String>,
-    /// Additional attributes to extend the action button element.
+
+    /// Additional attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the action button.
+
+    /// The children.
     pub children: Element,
 }
 
-/// # AlertDialogAction
+/// An action button that closes the alert dialog.
 ///
-/// An action button for the alert dialog. In addition to running the `on_click` callback, it will also close the dialog when clicked.
+/// Matches Radix's `AlertDialogAction` (wraps `DialogPrimitive.Close`).
 ///
-/// This must be used inside an [`AlertDialogRoot`] component and should be placed inside an [`AlertDialogContent`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::alert_dialog::*;
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Alert Dialog"
-///         }
-///         AlertDialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             AlertDialogContent {
-///                 AlertDialogTitle { "Delete item" }
-///                 AlertDialogDescription { "Are you sure you want to delete this item? This action cannot be undone." }
-///                 AlertDialogActions {
-///                     AlertDialogCancel { "Cancel" }
-///                     AlertDialogAction {
-///                         on_click: move |_| tracing::info!("Item deleted"),
-///                         "Delete"
-///                     }
-///                 }
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::alert_dialog::*;
+/// rsx! {
+///     AlertDialogRoot {
+///         AlertDialogTrigger { "Open" }
+///         AlertDialogOverlay {}
+///         AlertDialogContent {
+///             AlertDialogTitle { "Confirm" }
+///             AlertDialogDescription { "Are you sure?" }
+///             AlertDialogCancel { "No" }
+///             AlertDialogAction { "Yes, do it" }
 ///         }
 ///     }
-/// }
+/// };
 /// ```
 #[component]
 pub fn AlertDialogAction(props: AlertDialogActionProps) -> Element {
-    let ctx: AlertDialogCtx = use_context();
-    let open = ctx.open;
+    let ctx: DialogCtx = use_context();
     let set_open = ctx.set_open;
-    let user_on_click = props.on_click;
-    let on_click = use_callback(move |evt: MouseEvent| {
-        set_open.call(false);
-        if let Some(cb) = &user_on_click {
-            cb.call(evt.clone());
-        }
-    });
-    let class = tw_merge!(props.class);
+
     rsx! {
         button {
+            r#type: "button",
             "data-slot": "alert-dialog-action",
-            class: class,
-            tabindex: if open() { "0" } else { "-1" },
-            type: "button",
-            onclick: on_click,
+            class: props.class,
+            onclick: move |_| set_open.call(false),
             ..props.attributes,
             {props.children}
         }
     }
 }
 
-/// The props for the [`AlertDialogCancel`] component.
+// ---------------------------------------------------------------------------
+// AlertDialogCancel
+// ---------------------------------------------------------------------------
+
+/// Props for [`AlertDialogCancel`].
 #[derive(Props, Clone, PartialEq)]
 pub struct AlertDialogCancelProps {
-    /// The click event handler for the cancel button.
-    #[props(default)]
-    pub on_click: Option<EventHandler<MouseEvent>>,
-    /// Additional Tailwind classes to apply.
+    /// Additional classes.
     #[props(default)]
     pub class: Option<String>,
-    /// Additional attributes to extend the cancel button element.
+
+    /// Additional attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-    /// The children of the cancel button.
+
+    /// The children.
     pub children: Element,
 }
 
-/// # AlertDialogCancel
+/// A cancel button that closes the alert dialog.
 ///
-/// An cancel button for the alert dialog. In addition to running the `on_click` callback, it will also close the dialog when clicked.
+/// Matches Radix's `AlertDialogCancel` (wraps `DialogPrimitive.Close`).
 ///
-/// This must be used inside an [`AlertDialogRoot`] component and should be placed inside an [`AlertDialogContent`] component.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::alert_dialog::*;
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     let mut open = use_signal(|| false);
-///
-///     rsx! {
-///         button {
-///             onclick: move |_| open.set(true),
-///             "Show Alert Dialog"
-///         }
-///         AlertDialogRoot {
-///             open: open(),
-///             on_open_change: move |v| open.set(v),
-///             AlertDialogContent {
-///                 AlertDialogTitle { "Delete item" }
-///                 AlertDialogDescription { "Are you sure you want to delete this item? This action cannot be undone." }
-///                 AlertDialogActions {
-///                     AlertDialogCancel { "Cancel" }
-///                     AlertDialogAction {
-///                         on_click: move |_| tracing::info!("Item deleted"),
-///                         "Delete"
-///                     }
-///                 }
-///             }
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::alert_dialog::*;
+/// rsx! {
+///     AlertDialogRoot {
+///         AlertDialogTrigger { "Open" }
+///         AlertDialogOverlay {}
+///         AlertDialogContent {
+///             AlertDialogTitle { "Confirm" }
+///             AlertDialogDescription { "Are you sure?" }
+///             AlertDialogCancel { "Cancel" }
+///             AlertDialogAction { "OK" }
 ///         }
 ///     }
-/// }
+/// };
 /// ```
 #[component]
 pub fn AlertDialogCancel(props: AlertDialogCancelProps) -> Element {
-    let ctx: AlertDialogCtx = use_context();
-    let open = ctx.open;
+    let ctx: DialogCtx = use_context();
     let set_open = ctx.set_open;
-    let user_on_click = props.on_click;
-    let on_click = use_callback(move |evt: MouseEvent| {
-        set_open.call(false);
-        if let Some(cb) = &user_on_click {
-            cb.call(evt.clone());
-        }
-    });
 
-    let class = tw_merge!(props.class);
     rsx! {
         button {
+            r#type: "button",
             "data-slot": "alert-dialog-cancel",
-            class: class,
-            tabindex: if open() { "0" } else { "-1" },
-            type: "button",
-            onclick: on_click,
+            class: props.class,
+            onclick: move |_| set_open.call(false),
             ..props.attributes,
             {props.children}
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// AlertDialogFooter (layout helper, matches shadcn)
+// ---------------------------------------------------------------------------
+
+/// Props for [`AlertDialogFooter`].
+#[derive(Props, Clone, PartialEq)]
+pub struct AlertDialogFooterProps {
+    /// Additional classes.
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Additional attributes.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// The children.
+    pub children: Element,
+}
+
+/// A layout container for alert dialog action buttons.
+///
+/// This is a convenience component (matching shadcn's `AlertDialogFooter`)
+/// for laying out `AlertDialogCancel` and `AlertDialogAction` buttons.
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::alert_dialog::*;
+/// rsx! {
+///     AlertDialogRoot {
+///         AlertDialogTrigger { "Open" }
+///         AlertDialogOverlay {}
+///         AlertDialogContent {
+///             AlertDialogTitle { "Confirm" }
+///             AlertDialogDescription { "Are you sure?" }
+///             AlertDialogFooter {
+///                 AlertDialogCancel { "Cancel" }
+///                 AlertDialogAction { "OK" }
+///             }
+///         }
+///     }
+/// };
+/// ```
+#[component]
+pub fn AlertDialogFooter(props: AlertDialogFooterProps) -> Element {
+    rsx! {
+        div {
+            "data-slot": "alert-dialog-footer",
+            class: props.class,
+            ..props.attributes,
+            {props.children}
+        }
+    }
+}
+
+/// Backward compatibility alias.
+pub use AlertDialogFooter as AlertDialogActions;

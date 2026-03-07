@@ -1,50 +1,66 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('test', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/block?name=dialog&variant=main&', { timeout: 20 * 60 * 1000 });
-  await page.getByRole('button', { name: 'Show Dialog' }).click();
+test("test", async ({ page }) => {
+  await page.goto("http://127.0.0.1:8080/docs/components/dialog", { timeout: 20 * 60 * 1000 });
 
-  // data-slot assertions
+  // Scope to the preview container
+  const preview = page.locator('[data-slot="preview"]').first();
+  await expect(preview).toBeVisible();
+
+  // Trigger button
+  const trigger = preview.locator('[data-slot="dialog-trigger"]');
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAttribute("data-state", "closed");
+  await expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+
+  // Open the dialog
+  await trigger.click();
+
+  // Overlay
   const overlay = page.locator('[data-slot="dialog-overlay"]');
-  await expect(overlay).toHaveAttribute('data-state', 'open');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toHaveAttribute("data-state", "open");
 
-  const overlayClass = await overlay.getAttribute('class');
-  expect(overlayClass).toContain('fixed');
-  expect(overlayClass).toContain('inset-0');
-  expect(overlayClass).toContain('z-50');
-  expect(overlayClass).toContain('bg-black/50');
-
-  const content = overlay.locator('[data-slot="dialog-content"]');
+  // Content
+  const content = page.locator('[data-slot="dialog-content"]');
   await expect(content).toBeVisible();
+  await expect(content).toHaveAttribute("role", "dialog");
+  await expect(content).toHaveAttribute("aria-modal", "true");
+  await expect(content).toHaveAttribute("data-state", "open");
 
-  const contentClass = await content.getAttribute('class');
-  expect(contentClass).toContain('fixed');
-  expect(contentClass).toContain('rounded-lg');
-  expect(contentClass).toContain('border');
-  expect(contentClass).toContain('bg-background');
-  expect(contentClass).toContain('shadow-lg');
-
+  // Title and description
   const title = content.locator('[data-slot="dialog-title"]');
-  await expect(title).toHaveText('Item information');
+  await expect(title).toHaveText("Edit profile");
 
   const description = content.locator('[data-slot="dialog-description"]');
-  await expect(description).toHaveText('Here is some additional information about the item.');
+  await expect(description).toContainText("Make changes to your profile");
 
-  // Focus trap: close button should be focused
-  const closeButton = content.getByRole('button');
-  await expect(closeButton).toBeFocused();
+  // Close button
+  const closeButton = content.locator('[data-slot="dialog-close"]');
+  await expect(closeButton).toBeVisible();
 
-  // Tab should keep focus within dialog
-  await page.keyboard.press('Tab');
-  await expect(closeButton).toBeFocused();
+  // Tab should keep focus within dialog (focus trap)
+  await page.keyboard.press("Tab");
+  // Focus should stay within the dialog content
+  const focusedInDialog = await page.evaluate(() => {
+    const content = document.querySelector('[data-slot="dialog-content"]');
+    return content?.contains(document.activeElement);
+  });
+  expect(focusedInDialog).toBe(true);
 
   // Escape should close the dialog
-  await page.keyboard.press('Escape');
+  await page.keyboard.press("Escape");
   await expect(overlay).toHaveCount(0);
 
-  // Reopen and test click close
-  await page.getByRole('button', { name: 'Show Dialog' }).click();
-  await expect(overlay).toHaveAttribute('data-state', 'open');
+  // Reopen and test close button
+  await trigger.click();
+  await expect(overlay).toBeVisible();
   await closeButton.click();
+  await expect(overlay).toHaveCount(0);
+
+  // Reopen and test overlay click to close
+  await trigger.click();
+  await expect(overlay).toBeVisible();
+  await overlay.click({ position: { x: 5, y: 5 } });
   await expect(overlay).toHaveCount(0);
 });
