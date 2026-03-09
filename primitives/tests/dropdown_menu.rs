@@ -178,10 +178,7 @@ fn item_attributes() {
             DropdownMenuRoot {
                 open: true,
                 DropdownMenuContent {
-                    DropdownMenuItem {
-                        index: 0usize,
-                        "Edit"
-                    }
+                    DropdownMenuItem { "Edit" }
                 }
             }
         }
@@ -207,7 +204,6 @@ fn item_disabled() {
                 open: true,
                 DropdownMenuContent {
                     DropdownMenuItem {
-                        index: 0usize,
                         disabled: true,
                         "Disabled"
                     }
@@ -224,6 +220,136 @@ fn item_disabled() {
     assert!(
         html.contains(r#"aria-disabled="true""#),
         "disabled item has aria-disabled: {html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// DropdownMenuCheckboxItem
+// ---------------------------------------------------------------------------
+
+#[test]
+fn checkbox_item_checked() {
+    fn App() -> Element {
+        rsx! {
+            DropdownMenuRoot {
+                open: true,
+                DropdownMenuContent {
+                    DropdownMenuCheckboxItem {
+                        checked: true,
+                        "Show Toolbar"
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="dropdown-menu-checkbox-item""#),
+        "checkbox item has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"role="menuitemcheckbox""#),
+        "checkbox item has role: {html}"
+    );
+    assert!(
+        html.contains("aria-checked=true"),
+        "checkbox item is checked: {html}"
+    );
+    assert!(
+        html.contains("Show Toolbar"),
+        "checkbox item has children: {html}"
+    );
+}
+
+#[test]
+fn checkbox_item_unchecked() {
+    fn App() -> Element {
+        rsx! {
+            DropdownMenuRoot {
+                open: true,
+                DropdownMenuContent {
+                    DropdownMenuCheckboxItem {
+                        checked: false,
+                        "Show Toolbar"
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains("aria-checked=false"),
+        "checkbox item is unchecked: {html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// DropdownMenuRadioGroup + DropdownMenuRadioItem
+// ---------------------------------------------------------------------------
+
+#[test]
+fn radio_group_attributes() {
+    fn App() -> Element {
+        rsx! {
+            DropdownMenuRoot {
+                open: true,
+                DropdownMenuContent {
+                    DropdownMenuRadioGroup {
+                        DropdownMenuRadioItem { value: "a".to_string(), "Option A" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="dropdown-menu-radio-group""#),
+        "radio group has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"role="group""#),
+        "radio group has role=group: {html}"
+    );
+}
+
+#[test]
+fn radio_item_attributes() {
+    fn App() -> Element {
+        let selected = use_signal(|| Some("a".to_string()));
+        rsx! {
+            DropdownMenuRoot {
+                open: true,
+                DropdownMenuContent {
+                    DropdownMenuRadioGroup {
+                        value: selected,
+                        DropdownMenuRadioItem { value: "a".to_string(), "Option A" }
+                        DropdownMenuRadioItem { value: "b".to_string(), "Option B" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="dropdown-menu-radio-item""#),
+        "radio item has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"role="menuitemradio""#),
+        "radio item has role: {html}"
+    );
+    // First item should be checked
+    assert!(
+        html.contains("aria-checked=true"),
+        "selected radio item is checked: {html}"
+    );
+    assert!(
+        html.contains("aria-checked=false"),
+        "unselected radio item is unchecked: {html}"
     );
 }
 
@@ -292,7 +418,7 @@ fn group_attributes() {
                 open: true,
                 DropdownMenuContent {
                     DropdownMenuGroup {
-                        DropdownMenuItem { index: 0usize, "Item" }
+                        DropdownMenuItem { "Item" }
                     }
                 }
             }
@@ -322,7 +448,6 @@ fn shortcut_attributes() {
                 open: true,
                 DropdownMenuContent {
                     DropdownMenuItem {
-                        index: 0usize,
                         "Edit"
                         DropdownMenuShortcut { "⌘E" }
                     }
@@ -337,6 +462,140 @@ fn shortcut_attributes() {
         "shortcut has data-slot: {html}"
     );
     assert!(html.contains("⌘E"), "shortcut has children: {html}");
+}
+
+// ---------------------------------------------------------------------------
+// DropdownMenuSub
+// ---------------------------------------------------------------------------
+
+#[test]
+fn sub_renders_no_dom() {
+    fn App() -> Element {
+        rsx! {
+            DropdownMenuRoot {
+                open: true,
+                DropdownMenuContent {
+                    DropdownMenuSub {
+                        span { "sentinel" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(html.contains("sentinel"), "sub renders children: {html}");
+}
+
+#[test]
+fn sub_trigger_attributes() {
+    fn App() -> Element {
+        rsx! {
+            DropdownMenuRoot {
+                open: true,
+                DropdownMenuContent {
+                    DropdownMenuSub {
+                        DropdownMenuSubTrigger { "More" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="dropdown-menu-sub-trigger""#),
+        "sub-trigger has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"role="menuitem""#),
+        "sub-trigger has role=menuitem: {html}"
+    );
+    assert!(
+        html.contains(r#"aria-haspopup="menu""#),
+        "sub-trigger has aria-haspopup: {html}"
+    );
+    assert!(
+        html.contains(r#"data-state="closed""#),
+        "sub-trigger shows closed: {html}"
+    );
+}
+
+#[test]
+fn sub_content_renders_when_open() {
+    fn App() -> Element {
+        rsx! {
+            DropdownMenuRoot {
+                open: true,
+                DropdownMenuContent {
+                    DropdownMenuSub {
+                        open: true,
+                        DropdownMenuSubTrigger { "More" }
+                        DropdownMenuSubContent {
+                            DropdownMenuItem { "Sub Item" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="dropdown-menu-sub-content""#),
+        "sub-content has data-slot: {html}"
+    );
+    assert!(
+        html.contains("Sub Item"),
+        "sub-content has children: {html}"
+    );
+}
+
+#[test]
+fn sub_content_hidden_when_closed() {
+    fn App() -> Element {
+        rsx! {
+            DropdownMenuRoot {
+                open: true,
+                DropdownMenuContent {
+                    DropdownMenuSub {
+                        DropdownMenuSubContent {
+                            DropdownMenuItem { "Sub Item" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        !html.contains(r#"data-slot="dropdown-menu-sub-content""#),
+        "sub-content not rendered when closed: {html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// DropdownMenuPortal
+// ---------------------------------------------------------------------------
+
+#[test]
+fn portal_passes_children_through() {
+    fn App() -> Element {
+        rsx! {
+            DropdownMenuRoot {
+                open: true,
+                DropdownMenuPortal {
+                    DropdownMenuContent {
+                        DropdownMenuItem { "Item" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(html.contains("Item"), "portal renders children: {html}");
 }
 
 // ---------------------------------------------------------------------------
@@ -369,24 +628,24 @@ fn trigger_aria_controls_links_to_content() {
                 open: true,
                 DropdownMenuTrigger { "Open" }
                 DropdownMenuContent {
-                    DropdownMenuItem { index: 0usize, "Item" }
+                    DropdownMenuItem { "Item" }
                 }
             }
         }
     }
 
     let html = render(App);
-    // Extract content id from data-slot="dropdown-menu-content"
-    let content_id_start = html.find(r#"data-slot="dropdown-menu-content""#).unwrap();
-    let before_content = &html[..content_id_start];
-    // Find the id attribute before data-slot
-    let id_prefix = r#"id=""#;
-    let id_start = before_content.rfind(id_prefix).unwrap() + id_prefix.len();
-    let id_end = before_content[id_start..].find('"').unwrap() + id_start;
-    let content_id = &before_content[id_start..id_end];
+    // Extract aria-controls value from trigger
+    let controls_prefix = r#"aria-controls=""#;
+    let controls_start = html.find(controls_prefix).unwrap() + controls_prefix.len();
+    let controls_end = html[controls_start..].find('"').unwrap() + controls_start;
+    let controls_id = &html[controls_start..controls_end];
 
+    // The content element should have this as its id
+    let expected_id_attr = format!(r#"id="{controls_id}""#);
+    let expected_slot = r#"data-slot="dropdown-menu-content""#;
     assert!(
-        html.contains(&format!(r#"aria-controls="{content_id}""#)),
+        html.contains(&expected_id_attr) && html.contains(expected_slot),
         "trigger aria-controls matches content id: {html}"
     );
 }

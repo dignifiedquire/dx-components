@@ -165,10 +165,7 @@ fn item_attributes() {
             ContextMenuRoot {
                 open: true,
                 ContextMenuContent {
-                    ContextMenuItem {
-                        index: 0usize,
-                        "Edit"
-                    }
+                    ContextMenuItem { "Edit" }
                 }
             }
         }
@@ -194,7 +191,6 @@ fn item_disabled() {
                 open: true,
                 ContextMenuContent {
                     ContextMenuItem {
-                        index: 0usize,
                         disabled: true,
                         "Disabled"
                     }
@@ -211,6 +207,78 @@ fn item_disabled() {
     assert!(
         html.contains(r#"aria-disabled="true""#),
         "disabled item has aria-disabled: {html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// ContextMenuCheckboxItem
+// ---------------------------------------------------------------------------
+
+#[test]
+fn checkbox_item_attributes() {
+    fn App() -> Element {
+        rsx! {
+            ContextMenuRoot {
+                open: true,
+                ContextMenuContent {
+                    ContextMenuCheckboxItem {
+                        checked: true,
+                        "Show Toolbar"
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="context-menu-checkbox-item""#),
+        "checkbox item has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"role="menuitemcheckbox""#),
+        "checkbox item has role: {html}"
+    );
+    assert!(
+        html.contains("aria-checked=true"),
+        "checkbox item is checked: {html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// ContextMenuRadioGroup + ContextMenuRadioItem
+// ---------------------------------------------------------------------------
+
+#[test]
+fn radio_group_and_item() {
+    fn App() -> Element {
+        let selected = use_signal(|| Some("a".to_string()));
+        rsx! {
+            ContextMenuRoot {
+                open: true,
+                ContextMenuContent {
+                    ContextMenuRadioGroup {
+                        value: selected,
+                        ContextMenuRadioItem { value: "a".to_string(), "A" }
+                        ContextMenuRadioItem { value: "b".to_string(), "B" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="context-menu-radio-group""#),
+        "radio group has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"role="menuitemradio""#),
+        "radio item has role: {html}"
+    );
+    assert!(
+        html.contains("aria-checked=true"),
+        "selected radio item is checked: {html}"
     );
 }
 
@@ -279,7 +347,7 @@ fn group_attributes() {
                 open: true,
                 ContextMenuContent {
                     ContextMenuGroup {
-                        ContextMenuItem { index: 0usize, "Item" }
+                        ContextMenuItem { "Item" }
                     }
                 }
             }
@@ -309,7 +377,6 @@ fn shortcut_attributes() {
                 open: true,
                 ContextMenuContent {
                     ContextMenuItem {
-                        index: 0usize,
                         "Edit"
                         ContextMenuShortcut { "⌘E" }
                     }
@@ -324,6 +391,63 @@ fn shortcut_attributes() {
         "shortcut has data-slot: {html}"
     );
     assert!(html.contains("⌘E"), "shortcut has children: {html}");
+}
+
+// ---------------------------------------------------------------------------
+// ContextMenuSub
+// ---------------------------------------------------------------------------
+
+#[test]
+fn sub_trigger_and_content() {
+    fn App() -> Element {
+        rsx! {
+            ContextMenuRoot {
+                open: true,
+                ContextMenuContent {
+                    ContextMenuSub {
+                        open: true,
+                        ContextMenuSubTrigger { "More" }
+                        ContextMenuSubContent {
+                            ContextMenuItem { "Sub Item" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="context-menu-sub-trigger""#),
+        "sub-trigger has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"data-slot="context-menu-sub-content""#),
+        "sub-content has data-slot: {html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// ContextMenuPortal
+// ---------------------------------------------------------------------------
+
+#[test]
+fn portal_passes_through() {
+    fn App() -> Element {
+        rsx! {
+            ContextMenuRoot {
+                open: true,
+                ContextMenuPortal {
+                    ContextMenuContent {
+                        ContextMenuItem { "Item" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(html.contains("Item"), "portal renders children: {html}");
 }
 
 // ---------------------------------------------------------------------------

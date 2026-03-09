@@ -13,27 +13,24 @@ pub fn Demo() -> Element {
                 ContextMenuGroup {
                     ContextMenuLabel { "Actions" }
                     ContextMenuItem {
-                        index: 0usize,
                         "Back"
                         ContextMenuShortcut { "⌘[" }
                     }
                     ContextMenuItem {
-                        index: 1usize,
                         disabled: true,
                         "Forward"
                         ContextMenuShortcut { "⌘]" }
                     }
                     ContextMenuItem {
-                        index: 2usize,
                         "Reload"
                         ContextMenuShortcut { "⌘R" }
                     }
                 }
                 ContextMenuSeparator {}
-                ContextMenuItem { index: 3usize, "More Tools" }
+                ContextMenuItem { "More Tools" }
                 ContextMenuSeparator {}
-                ContextMenuItem { index: 4usize, "Show Bookmarks Bar" }
-                ContextMenuItem { index: 5usize, "Show Full URLs" }
+                ContextMenuItem { "Show Bookmarks Bar" }
+                ContextMenuItem { "Show Full URLs" }
             }
         }
     }

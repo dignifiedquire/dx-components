@@ -226,7 +226,7 @@ fn TeamSwitcher(teams: &'static [Team]) -> Element {
                         }
                         for (idx , team) in teams.iter().enumerate() {
                             DropdownMenuItem {
-                                index: idx,
+
                                 on_select: move |_| active_team.set(idx),
                                 Icon {}
                                 {team.name}
@@ -237,7 +237,7 @@ fn TeamSwitcher(teams: &'static [Team]) -> Element {
                         }
                         Separator { decorative: true }
                         DropdownMenuItem {
-                            index: teams.len(),
+
                             on_select: move |_| {},
                             Icon {}
                             div { style: "opacity:0.7; font-weight:500;", "Add team" }
@@ -317,20 +317,17 @@ fn NavProjects(projects: &'static [Project]) -> Element {
                             }
                             DropdownMenuContent {
                                 DropdownMenuItem {
-                                    index: 0usize,
                                     on_select: move |_| {},
                                     Icon {}
                                     span { "View Project" }
                                 }
                                 DropdownMenuItem {
-                                    index: 1usize,
                                     on_select: move |_| {},
                                     Icon {}
                                     span { "Share Project" }
                                 }
                                 Separator { decorative: true }
                                 DropdownMenuItem {
-                                    index: 2usize,
                                     on_select: move |_| {},
                                     Icon {}
                                     span { "Delete Project" }
@@ -392,33 +389,28 @@ fn NavUser() -> Element {
                         }
                         Separator { decorative: true }
                         DropdownMenuItem {
-                            index: 0usize,
                             on_select: move |_| {},
                             Icon {}
                             "Upgrade to Pro"
                         }
                         Separator { decorative: true }
                         DropdownMenuItem {
-                            index: 1usize,
                             on_select: move |_| {},
                             Icon {}
                             "Account"
                         }
                         DropdownMenuItem {
-                            index: 2usize,
                             on_select: move |_| {},
                             Icon {}
                             "Billing"
                         }
                         DropdownMenuItem {
-                            index: 3usize,
                             on_select: move |_| {},
                             Icon {}
                             "Notifications"
                         }
                         Separator { decorative: true }
                         DropdownMenuItem {
-                            index: 4usize,
                             on_select: move |_| {},
                             Icon {}
                             "Log out"

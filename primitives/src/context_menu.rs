@@ -1,32 +1,73 @@
-//! ContextMenu primitive — matches Radix UI ContextMenu structure.
+//! ContextMenu primitive — matches Radix UI ContextMenu + shadcn exports.
 //!
-//! - [`ContextMenuRoot`] (aliased as [`ContextMenu`]): No DOM, pure context provider
-//! - [`ContextMenuTrigger`]: Span element that opens menu on right-click
-//! - [`ContextMenuContent`]: Menu container with `role="menu"`, positioned at click coordinates
-//! - [`ContextMenuItem`]: Individual item with `role="menuitem"`
-//! - [`ContextMenuSeparator`]: Visual separator with `role="separator"`
-//! - [`ContextMenuLabel`]: Non-interactive label
-//! - [`ContextMenuGroup`]: Grouping element with `role="group"`
-//! - [`ContextMenuShortcut`]: Keyboard shortcut hint
+//! Thin wrapper over shared `menu` base. Root, Trigger, and Content are custom;
+//! all other components are re-exported from `menu.rs`.
+//!
+//! ## Exports (15, matching shadcn)
+//!
+//! - [`ContextMenu`] / [`ContextMenuRoot`]
+//! - [`ContextMenuTrigger`]
+//! - [`ContextMenuContent`] (wrapper adding position styling)
+//! - [`ContextMenuItem`] (re-export)
+//! - [`ContextMenuCheckboxItem`] (re-export)
+//! - [`ContextMenuRadioGroup`] (re-export)
+//! - [`ContextMenuRadioItem`] (re-export)
+//! - [`ContextMenuItemIndicator`] (re-export)
+//! - [`ContextMenuSeparator`] (re-export)
+//! - [`ContextMenuLabel`] (re-export)
+//! - [`ContextMenuGroup`] (re-export)
+//! - [`ContextMenuShortcut`] (re-export)
+//! - [`ContextMenuSub`] (re-export)
+//! - [`ContextMenuSubTrigger`] (re-export)
+//! - [`ContextMenuSubContent`] (re-export)
+//! - [`ContextMenuPortal`] (re-export)
 
-use crate::{
-    focus::{use_focus_controlled_item, use_focus_provider, FocusState},
-    use_animated_open, use_controlled, use_unique_id,
-};
+use crate::menu::MenuCtx;
+use crate::{merge_attributes, use_controlled, use_unique_id};
 use dioxus::prelude::*;
+use dioxus_attributes::attributes;
 
 // ---------------------------------------------------------------------------
-// Context
+// Re-exports from menu base (13 components)
+// ---------------------------------------------------------------------------
+
+/// Checkbox menu item — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuCheckboxItem as ContextMenuCheckboxItem;
+/// Grouping element — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuGroup as ContextMenuGroup;
+/// Menu item — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuItem as ContextMenuItem;
+/// Indicator for checkbox/radio items — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuItemIndicator as ContextMenuItemIndicator;
+/// Non-interactive label — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuLabel as ContextMenuLabel;
+/// Portal pass-through — re-export.
+pub use crate::menu::MenuPortal as ContextMenuPortal;
+/// Radio group — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuRadioGroup as ContextMenuRadioGroup;
+/// Radio item — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuRadioItem as ContextMenuRadioItem;
+/// Visual separator — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuSeparator as ContextMenuSeparator;
+/// Keyboard shortcut hint — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuShortcut as ContextMenuShortcut;
+/// Sub-menu context provider — re-export.
+pub use crate::menu::MenuSub as ContextMenuSub;
+/// Sub-menu content — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuSubContent as ContextMenuSubContent;
+/// Sub-menu trigger — re-export with context-menu data-slot prefix.
+pub use crate::menu::MenuSubTrigger as ContextMenuSubTrigger;
+
+// ---------------------------------------------------------------------------
+// Internal context
 // ---------------------------------------------------------------------------
 
 #[derive(Clone, Copy)]
-struct ContextMenuCtx {
-    open: Memo<bool>,
+struct ContextMenuInternalCtx {
     set_open: Callback<bool>,
     disabled: bool,
-    focus: FocusState,
     position: Signal<(i32, i32)>,
-    content_id: Signal<String>,
+    trigger_id: Signal<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -52,10 +93,6 @@ pub struct ContextMenuRootProps {
     #[props(default)]
     pub disabled: bool,
 
-    /// Whether focus should loop when reaching the end.
-    #[props(default = ReadSignal::new(Signal::new(true)))]
-    pub roving_loop: ReadSignal<bool>,
-
     /// Children (should include [`ContextMenuTrigger`] and [`ContextMenuContent`]).
     pub children: Element,
 }
@@ -74,8 +111,8 @@ pub struct ContextMenuRootProps {
 ///         ContextMenuRoot {
 ///             ContextMenuTrigger { "Right click here" }
 ///             ContextMenuContent {
-///                 ContextMenuItem { index: 0usize, "Edit" }
-///                 ContextMenuItem { index: 1usize, "Delete" }
+///                 ContextMenuItem { "Edit" }
+///                 ContextMenuItem { "Delete" }
 ///             }
 ///         }
 ///     }
@@ -84,25 +121,24 @@ pub struct ContextMenuRootProps {
 #[component]
 pub fn ContextMenuRoot(props: ContextMenuRootProps) -> Element {
     let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
+    let trigger_id = use_unique_id();
     let content_id = use_unique_id();
-    let position = use_signal(|| (0, 0));
-    let focus = use_focus_provider(props.roving_loop);
+    let position = use_signal(|| (0i32, 0i32));
 
-    let ctx = use_context_provider(|| ContextMenuCtx {
+    let set_open_cb = set_open;
+    use_context_provider(|| MenuCtx {
         open,
-        set_open,
-        disabled: props.disabled,
-        focus,
-        position,
+        on_close: Callback::new(move |()| set_open_cb.call(false)),
         content_id,
+        trigger_id,
+        slot_prefix: "context-menu",
     });
 
-    // Sync focus state with open state
-    use_effect(move || {
-        let focused = focus.any_focused();
-        if *ctx.open.peek() != focused {
-            (ctx.set_open)(focused);
-        }
+    use_context_provider(|| ContextMenuInternalCtx {
+        set_open,
+        disabled: props.disabled,
+        position,
+        trigger_id,
     });
 
     rsx! { {props.children} }
@@ -134,24 +170,26 @@ pub struct ContextMenuTriggerProps {
 /// Opens the context menu on right-click (`oncontextmenu`).
 #[component]
 pub fn ContextMenuTrigger(props: ContextMenuTriggerProps) -> Element {
-    let mut ctx: ContextMenuCtx = use_context();
+    let ctx: MenuCtx = use_context();
+    let mut internal: ContextMenuInternalCtx = use_context();
 
     let is_open = (ctx.open)();
 
     rsx! {
         span {
+            id: internal.trigger_id,
             "data-slot": "context-menu-trigger",
             "data-state": if is_open { "open" } else { "closed" },
-            "data-disabled": if ctx.disabled { "true" } else { "" },
+            "data-disabled": if internal.disabled { "true" } else { "" },
             oncontextmenu: move |event: Event<MouseData>| {
-                if ctx.disabled {
+                if internal.disabled {
                     return;
                 }
-                ctx.position.set((
+                internal.position.set((
                     event.data().client_coordinates().x as i32,
                     event.data().client_coordinates().y as i32,
                 ));
-                ctx.set_open.call(true);
+                internal.set_open.call(true);
                 event.prevent_default();
             },
             ..props.attributes,
@@ -161,251 +199,43 @@ pub fn ContextMenuTrigger(props: ContextMenuTriggerProps) -> Element {
 }
 
 // ---------------------------------------------------------------------------
-// ContextMenuContent
+// ContextMenuContent (wrapper adding position styling)
 // ---------------------------------------------------------------------------
 
 /// Props for [`ContextMenuContent`].
 #[derive(Props, Clone, PartialEq)]
 pub struct ContextMenuContentProps {
+    /// Additional CSS classes.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes for the content element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// Children (should include [`ContextMenuItem`] components).
+    /// Children (should include menu items).
     pub children: Element,
 }
 
-/// The menu content container. Has `role="menu"`, positioned at click coordinates.
+/// The menu content container, positioned at click coordinates.
+///
+/// Wraps `MenuContent` with `position: fixed` at the right-click location.
 #[component]
 pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
-    let mut ctx: ContextMenuCtx = use_context();
-    let id = ctx.content_id;
-    let position = ctx.position;
+    let internal: ContextMenuInternalCtx = use_context();
+    let (x, y) = (internal.position)();
 
-    let render = use_animated_open(id, ctx.open);
-
-    rsx! {
-        if render() {
-            div {
-                id,
-                role: "menu",
-                "data-slot": "context-menu-content",
-                "data-state": if (ctx.open)() { "open" } else { "closed" },
-                aria_orientation: "vertical",
-                position: "fixed",
-                left: "{position().0}px",
-                top: "{position().1}px",
-                onkeydown: move |event: Event<KeyboardData>| {
-                    match event.key() {
-                        Key::Escape => {
-                            ctx.set_open.call(false);
-                            event.prevent_default();
-                        }
-                        Key::ArrowDown => {
-                            ctx.focus.focus_next();
-                            event.prevent_default();
-                        }
-                        Key::ArrowUp => {
-                            ctx.focus.focus_prev();
-                            event.prevent_default();
-                        }
-                        Key::Home => {
-                            ctx.focus.focus_first();
-                            event.prevent_default();
-                        }
-                        Key::End => {
-                            ctx.focus.focus_last();
-                            event.prevent_default();
-                        }
-                        _ => {}
-                    }
-                },
-                onpointerdown: move |event| {
-                    event.prevent_default();
-                    event.stop_propagation();
-                },
-                ..props.attributes,
-                {props.children}
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// ContextMenuItem
-// ---------------------------------------------------------------------------
-
-/// Props for [`ContextMenuItem`].
-#[derive(Props, Clone, PartialEq)]
-pub struct ContextMenuItemProps {
-    /// The index of the item for keyboard navigation.
-    pub index: ReadSignal<usize>,
-
-    /// Whether the item is disabled.
-    #[props(default)]
-    pub disabled: bool,
-
-    /// Called when the item is selected (click or Enter/Space).
-    #[props(default)]
-    pub on_select: EventHandler<()>,
-
-    /// Additional attributes for the item element.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// Children of the item.
-    pub children: Element,
-}
-
-/// A menu item. Has `role="menuitem"`.
-#[component]
-pub fn ContextMenuItem(props: ContextMenuItemProps) -> Element {
-    let mut ctx: ContextMenuCtx = use_context();
-
-    let item_disabled = props.disabled || ctx.disabled;
-    let focused = move || ctx.focus.is_focused((props.index)());
-    let onmounted = use_focus_controlled_item(props.index);
+    let pos_attrs = attributes!(div {
+        position: "fixed",
+        left: format!("{x}px"),
+        top: format!("{y}px"),
+    });
+    let combined = merge_attributes(vec![pos_attrs, props.attributes]);
 
     rsx! {
-        div {
-            role: "menuitem",
-            "data-slot": "context-menu-item",
-            "data-disabled": if item_disabled { "true" } else { "" },
-            "data-highlighted": if focused() { "" } else { None::<&str> },
-            aria_disabled: if item_disabled { Some("true") } else { None },
-            tabindex: if focused() { "0" } else { "-1" },
-            onmounted,
-            onclick: move |e: Event<MouseData>| {
-                e.stop_propagation();
-                if !item_disabled {
-                    props.on_select.call(());
-                    ctx.set_open.call(false);
-                }
-            },
-            onkeydown: move |event: Event<KeyboardData>| {
-                let key = event.key();
-                if key == Key::Enter || key == Key::Character(" ".to_string()) {
-                    if !item_disabled {
-                        props.on_select.call(());
-                        ctx.set_open.call(false);
-                    }
-                    event.prevent_default();
-                    event.stop_propagation();
-                }
-            },
-            onblur: move |_| {
-                if focused() {
-                    ctx.focus.blur();
-                }
-            },
-            ..props.attributes,
-            {props.children}
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// ContextMenuSeparator
-// ---------------------------------------------------------------------------
-
-/// Props for [`ContextMenuSeparator`].
-#[derive(Props, Clone, PartialEq)]
-pub struct ContextMenuSeparatorProps {
-    /// Additional attributes.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-}
-
-/// A visual separator between menu items. Has `role="separator"`.
-#[component]
-pub fn ContextMenuSeparator(props: ContextMenuSeparatorProps) -> Element {
-    rsx! {
-        div {
-            role: "separator",
-            "data-slot": "context-menu-separator",
-            aria_orientation: "horizontal",
-            ..props.attributes,
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// ContextMenuLabel
-// ---------------------------------------------------------------------------
-
-/// Props for [`ContextMenuLabel`].
-#[derive(Props, Clone, PartialEq)]
-pub struct ContextMenuLabelProps {
-    /// Additional attributes.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// Children.
-    pub children: Element,
-}
-
-/// A non-interactive label within the menu.
-#[component]
-pub fn ContextMenuLabel(props: ContextMenuLabelProps) -> Element {
-    rsx! {
-        div {
-            "data-slot": "context-menu-label",
-            ..props.attributes,
-            {props.children}
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// ContextMenuGroup
-// ---------------------------------------------------------------------------
-
-/// Props for [`ContextMenuGroup`].
-#[derive(Props, Clone, PartialEq)]
-pub struct ContextMenuGroupProps {
-    /// Additional attributes.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// Children.
-    pub children: Element,
-}
-
-/// A grouping element for menu items. Has `role="group"`.
-#[component]
-pub fn ContextMenuGroup(props: ContextMenuGroupProps) -> Element {
-    rsx! {
-        div {
-            role: "group",
-            "data-slot": "context-menu-group",
-            ..props.attributes,
-            {props.children}
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// ContextMenuShortcut
-// ---------------------------------------------------------------------------
-
-/// Props for [`ContextMenuShortcut`].
-#[derive(Props, Clone, PartialEq)]
-pub struct ContextMenuShortcutProps {
-    /// Additional attributes.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// Children (the shortcut text).
-    pub children: Element,
-}
-
-/// A keyboard shortcut hint displayed alongside a menu item.
-#[component]
-pub fn ContextMenuShortcut(props: ContextMenuShortcutProps) -> Element {
-    rsx! {
-        span {
-            "data-slot": "context-menu-shortcut",
-            ..props.attributes,
+        crate::menu::MenuContent {
+            class: props.class,
+            extra_attributes: combined,
             {props.children}
         }
     }

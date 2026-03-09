@@ -38,6 +38,7 @@ pub mod focus_scope;
 pub mod hover_card;
 pub mod icon;
 pub mod label;
+pub(crate) mod menu;
 pub mod menubar;
 #[cfg(feature = "router")]
 pub mod navbar;

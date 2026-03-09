@@ -3,12 +3,8 @@ import { test, expect } from "@playwright/test";
 test("test", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/menubar", { timeout: 20 * 60 * 1000 });
 
-  // Scope to the preview container
-  const preview = page.locator('[data-slot="preview"]').first();
-  await expect(preview).toBeVisible();
-
   // Menubar root
-  const menubar = preview.locator('[data-slot="menubar"]');
+  const menubar = page.locator('[data-slot="menubar"]').first();
   await expect(menubar).toBeVisible();
   await expect(menubar).toHaveAttribute("role", "menubar");
 

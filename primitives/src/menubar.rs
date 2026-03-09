@@ -1,44 +1,118 @@
-//! Menubar primitive — matches Radix UI Menubar structure.
+//! Menubar primitive — matches Radix UI Menubar + shadcn exports.
 //!
-//! - [`MenubarRoot`] (aliased as [`Menubar`]): `<div role="menubar">` container
-//! - [`MenubarMenu`]: No DOM, context provider for a single menu
-//! - [`MenubarTrigger`]: Button that opens/closes a menu, `role="menuitem"`
-//! - [`MenubarContent`]: Menu container with `role="menu"`
-//! - [`MenubarItem`]: Individual item with `role="menuitem"`
-//! - [`MenubarSeparator`]: Visual separator with `role="separator"`
-//! - [`MenubarLabel`]: Non-interactive label
-//! - [`MenubarGroup`]: Grouping element with `role="group"`
-//! - [`MenubarShortcut`]: Keyboard shortcut hint
+//! Custom Root, Menu, Trigger, and Content; all other components re-exported
+//! from the shared `menu` base.
+//!
+//! ## Exports (16, matching shadcn)
+//!
+//! - [`Menubar`] / [`MenubarRoot`]
+//! - [`MenubarMenu`]
+//! - [`MenubarTrigger`]
+//! - [`MenubarContent`] (wrapper with arrow key menu switching)
+//! - [`MenubarItem`] (re-export)
+//! - [`MenubarCheckboxItem`] (re-export)
+//! - [`MenubarRadioGroup`] (re-export)
+//! - [`MenubarRadioItem`] (re-export)
+//! - [`MenubarItemIndicator`] (re-export)
+//! - [`MenubarSeparator`] (re-export)
+//! - [`MenubarLabel`] (re-export)
+//! - [`MenubarGroup`] (re-export)
+//! - [`MenubarShortcut`] (re-export)
+//! - [`MenubarSub`] (re-export)
+//! - [`MenubarSubTrigger`] (re-export)
+//! - [`MenubarSubContent`] (re-export)
+//! - [`MenubarPortal`] (re-export)
 
-use crate::{
-    focus::{use_focus_controlled_item, use_focus_entry, use_focus_provider, FocusState},
-    use_animated_open, use_unique_id,
-};
+use std::rc::Rc;
+
+use crate::direction::Orientation;
+use crate::menu::MenuCtx;
+use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
+use crate::{merge_attributes, use_unique_id};
 use dioxus::prelude::*;
+use dioxus_attributes::attributes;
 
 // ---------------------------------------------------------------------------
-// Root-level context
+// Re-exports from menu base (13 components)
 // ---------------------------------------------------------------------------
 
-#[derive(Clone, Copy)]
-struct MenubarCtx {
-    open_menu: Signal<Option<usize>>,
-    disabled: bool,
-    focus: FocusState,
+/// Checkbox menu item — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuCheckboxItem as MenubarCheckboxItem;
+/// Grouping element — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuGroup as MenubarGroup;
+/// Menu item — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuItem as MenubarItem;
+/// Indicator for checkbox/radio items — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuItemIndicator as MenubarItemIndicator;
+/// Non-interactive label — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuLabel as MenubarLabel;
+/// Portal pass-through — re-export.
+pub use crate::menu::MenuPortal as MenubarPortal;
+/// Radio group — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuRadioGroup as MenubarRadioGroup;
+/// Radio item — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuRadioItem as MenubarRadioItem;
+/// Visual separator — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuSeparator as MenubarSeparator;
+/// Keyboard shortcut hint — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuShortcut as MenubarShortcut;
+/// Sub-menu context provider — re-export.
+pub use crate::menu::MenuSub as MenubarSub;
+/// Sub-menu content — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuSubContent as MenubarSubContent;
+/// Sub-menu trigger — re-export with menubar data-slot prefix.
+pub use crate::menu::MenuSubTrigger as MenubarSubTrigger;
+
+// ---------------------------------------------------------------------------
+// Internal contexts
+// ---------------------------------------------------------------------------
+
+/// A registered menu in the menubar (for arrow key menu switching).
+#[derive(Clone)]
+struct RegisteredMenu {
+    menu_id: String,
+    trigger_element: Signal<Option<Rc<MountedData>>>,
 }
 
-// ---------------------------------------------------------------------------
-// Menu-level context
-// ---------------------------------------------------------------------------
-
+/// Root-level context shared among all MenubarMenu/Trigger/Content.
 #[derive(Clone, Copy)]
-struct MenubarMenuCtx {
-    index: ReadSignal<usize>,
-    is_open: Memo<bool>,
+struct MenubarInternalCtx {
+    /// Which menu is currently open (by menu_id), or None.
+    open_menu_id: Signal<Option<String>>,
     disabled: bool,
-    focus: FocusState,
-    trigger_id: Signal<String>,
-    content_id: Signal<String>,
+    /// Ordered list of registered menus (for ArrowLeft/Right switching).
+    menus: Signal<Vec<RegisteredMenu>>,
+}
+
+impl MenubarInternalCtx {
+    /// Navigate to the prev/next menu. `delta` is -1 for prev, +1 for next.
+    fn navigate(&mut self, delta: i32) {
+        let menus = self.menus.read();
+        if menus.is_empty() {
+            return;
+        }
+        let current_id = (self.open_menu_id)();
+        let current_idx = current_id
+            .as_ref()
+            .and_then(|id| menus.iter().position(|m| m.menu_id == *id))
+            .unwrap_or(0);
+        let new_idx = ((current_idx as i32 + delta).rem_euclid(menus.len() as i32)) as usize;
+        let new_menu = &menus[new_idx];
+        self.open_menu_id.set(Some(new_menu.menu_id.clone()));
+        // Focus the new trigger
+        if let Some(el) = (new_menu.trigger_element)() {
+            spawn(async move {
+                _ = el.set_focus(true).await;
+            });
+        }
+    }
+}
+
+/// Per-menu context for trigger ↔ content communication.
+#[derive(Clone, Copy)]
+struct MenubarMenuInternalCtx {
+    menu_id: Signal<String>,
+    trigger_element: Signal<Option<Rc<MountedData>>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -52,9 +126,9 @@ pub struct MenubarRootProps {
     #[props(default)]
     pub disabled: bool,
 
-    /// Whether focus should loop when reaching the end.
-    #[props(default = ReadSignal::new(Signal::new(true)))]
-    pub roving_loop: ReadSignal<bool>,
+    /// Additional CSS classes.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the menubar element.
     #[props(extends = GlobalAttributes)]
@@ -78,18 +152,18 @@ pub struct MenubarRootProps {
 /// fn Demo() -> Element {
 ///     rsx! {
 ///         MenubarRoot {
-///             MenubarMenu { index: 0usize,
+///             MenubarMenu {
 ///                 MenubarTrigger { "File" }
 ///                 MenubarContent {
-///                     MenubarItem { index: 0usize, "New" }
-///                     MenubarItem { index: 1usize, "Open" }
+///                     MenubarItem { "New" }
+///                     MenubarItem { "Open" }
 ///                 }
 ///             }
-///             MenubarMenu { index: 1usize,
+///             MenubarMenu {
 ///                 MenubarTrigger { "Edit" }
 ///                 MenubarContent {
-///                     MenubarItem { index: 0usize, "Cut" }
-///                     MenubarItem { index: 1usize, "Copy" }
+///                     MenubarItem { "Cut" }
+///                     MenubarItem { "Copy" }
 ///                 }
 ///             }
 ///         }
@@ -98,34 +172,39 @@ pub struct MenubarRootProps {
 /// ```
 #[component]
 pub fn MenubarRoot(props: MenubarRootProps) -> Element {
-    let open_menu = use_signal(|| None::<usize>);
-    let focus = use_focus_provider(props.roving_loop);
-
-    let mut ctx = use_context_provider(|| MenubarCtx {
-        open_menu,
+    use_context_provider(|| MenubarInternalCtx {
+        open_menu_id: Signal::new(None),
         disabled: props.disabled,
-        focus,
+        menus: Signal::new(Vec::new()),
     });
 
-    // Sync focus with open menu
-    use_effect(move || {
-        let index = ctx.focus.current_focus();
-        if ctx.open_menu.peek().is_some() {
-            ctx.open_menu.set(index);
-        }
-    });
+    let children = props.children;
+    let class = props.class;
+    let user_attrs = props.attributes;
+    let disabled = props.disabled;
 
     rsx! {
-        div {
-            role: "menubar",
-            "data-slot": "menubar",
-            "data-disabled": if props.disabled { "true" } else { "" },
-            tabindex: if !ctx.focus.any_focused() { "0" } else { "-1" },
-            onfocus: move |_| {
-                ctx.focus.set_focus(Some(ctx.focus.recent_focus_or_default()));
+        RovingFocusGroup {
+            orientation: Signal::new(Some(Orientation::Horizontal)),
+            r#loop: Signal::new(true),
+            r#as: {
+                let children = children.clone();
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                move |roving_attrs: Vec<Attribute>| {
+                    let bar_attrs = attributes!(div {
+                        role: "menubar",
+                        "data-slot": "menubar",
+                        "data-disabled": if disabled { Some("true") } else { None },
+                        class: class.clone(),
+                    });
+                    let merged = merge_attributes(vec![roving_attrs, bar_attrs, user_attrs.clone()]);
+
+                    rsx! {
+                        div { ..merged, {children.clone()} }
+                    }
+                }
             },
-            ..props.attributes,
-            {props.children}
         }
     }
 }
@@ -137,15 +216,12 @@ pub fn Menubar(props: MenubarRootProps) -> Element {
 }
 
 // ---------------------------------------------------------------------------
-// MenubarMenu (no DOM — pure context provider)
+// MenubarMenu (no DOM — per-menu context provider)
 // ---------------------------------------------------------------------------
 
 /// Props for [`MenubarMenu`].
 #[derive(Props, Clone, PartialEq)]
 pub struct MenubarMenuProps {
-    /// The index of this menu in the menubar (for keyboard navigation between triggers).
-    pub index: ReadSignal<usize>,
-
     /// Whether this menu is disabled.
     #[props(default)]
     pub disabled: bool,
@@ -157,31 +233,55 @@ pub struct MenubarMenuProps {
 /// No-DOM context provider for a single menu within the menubar.
 #[component]
 pub fn MenubarMenu(props: MenubarMenuProps) -> Element {
-    let ctx: MenubarCtx = use_context();
-
-    let is_open = use_memo(move || (ctx.open_menu)() == Some((props.index)()));
-    let focus = use_focus_provider(ctx.focus.roving_loop);
+    let mut bar_ctx: MenubarInternalCtx = use_context();
+    let menu_id = use_unique_id();
     let trigger_id = use_unique_id();
     let content_id = use_unique_id();
+    let trigger_element: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
 
-    let mut menu_ctx = use_context_provider(|| MenubarMenuCtx {
-        index: props.index,
-        is_open,
-        disabled: props.disabled,
-        focus,
-        trigger_id,
+    let is_open = use_memo(move || {
+        (bar_ctx.open_menu_id)()
+            .as_ref()
+            .is_some_and(|id| id == &(menu_id)())
+    });
+
+    let mut open_menu_sig = bar_ctx.open_menu_id;
+    let on_close = Callback::new(move |()| {
+        open_menu_sig.set(None);
+    });
+
+    // Provide MenuCtx for the shared menu base components (MenuItem, etc.)
+    use_context_provider(|| MenuCtx {
+        open: is_open,
+        on_close,
         content_id,
+        trigger_id,
+        slot_prefix: "menubar",
     });
 
-    // Blur items when menu closes
+    use_context_provider(|| MenubarMenuInternalCtx {
+        menu_id,
+        trigger_element,
+    });
+
+    // Register this menu in the menubar's list
+    let menu_id_str = (menu_id)();
     use_effect(move || {
-        if !is_open() {
-            menu_ctx.focus.blur();
-        }
+        let entry = RegisteredMenu {
+            menu_id: menu_id_str.clone(),
+            trigger_element,
+        };
+        bar_ctx.menus.write().push(entry);
     });
 
-    // Register this menu as a focus entry at the menubar level
-    use_focus_entry(ctx.focus, props.index);
+    // Unregister on drop
+    let menu_id_cleanup = (menu_id)();
+    use_drop(move || {
+        bar_ctx
+            .menus
+            .write()
+            .retain(|m| m.menu_id != menu_id_cleanup);
+    });
 
     rsx! { {props.children} }
 }
@@ -193,6 +293,10 @@ pub fn MenubarMenu(props: MenubarMenuProps) -> Element {
 /// Props for [`MenubarTrigger`].
 #[derive(Props, Clone, PartialEq)]
 pub struct MenubarTriggerProps {
+    /// Additional CSS classes.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes for the trigger element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -202,349 +306,148 @@ pub struct MenubarTriggerProps {
 }
 
 /// The trigger button for a menu. Has `role="menuitem"`, `aria-haspopup="menu"`.
+///
+/// Wrapped in `RovingFocusGroupItem` for horizontal keyboard navigation.
 #[component]
 pub fn MenubarTrigger(props: MenubarTriggerProps) -> Element {
-    let mut ctx: MenubarCtx = use_context();
-    let menu_ctx: MenubarMenuCtx = use_context();
-    let onmounted = crate::focus::use_focus_control(ctx.focus, menu_ctx.index);
+    let mut bar_ctx: MenubarInternalCtx = use_context();
+    let ctx: MenuCtx = use_context();
+    let mut menu_ctx: MenubarMenuInternalCtx = use_context();
 
-    let disabled = ctx.disabled || menu_ctx.disabled;
-    let is_open = menu_ctx.is_open;
-    let index = menu_ctx.index;
-
-    let is_focused = move || {
-        ctx.focus.current_focus() == Some((menu_ctx.index)()) && !menu_ctx.focus.any_focused()
-    };
+    let disabled = bar_ctx.disabled;
+    let is_open = ctx.open;
+    let trigger_id = ctx.trigger_id;
+    let content_id = ctx.content_id;
+    let menu_id = menu_ctx.menu_id;
+    let class = props.class;
+    let user_attrs = props.attributes;
+    let children = props.children;
 
     rsx! {
-        button {
-            id: menu_ctx.trigger_id,
-            r#type: "button",
-            role: "menuitem",
-            "data-slot": "menubar-trigger",
-            "data-state": if is_open() { "open" } else { "closed" },
-            "data-highlighted": if is_focused() { "" } else { None::<&str> },
-            "data-disabled": if disabled { "true" } else { "" },
-            disabled: disabled,
-            aria_haspopup: "menu",
-            aria_expanded: is_open(),
-            aria_controls: if is_open() { Some(menu_ctx.content_id.cloned()) } else { None },
-            tabindex: if is_focused() { "0" } else { "-1" },
-            onmounted,
-            onpointerup: move |_| {
-                if !disabled {
-                    let new_open = if is_open() { None } else { Some((index)()) };
-                    ctx.open_menu.set(new_open);
-                    ctx.focus.set_focus(Some((index)()));
-                }
-            },
-            onmouseenter: move |_| {
-                if !disabled && (ctx.open_menu)().is_some() {
-                    ctx.focus.set_focus(Some((index)()));
-                }
-            },
-            onkeydown: move |event: Event<KeyboardData>| {
-                if disabled {
-                    return;
-                }
-                match event.key() {
-                    Key::ArrowDown => {
-                        if !is_open() {
-                            ctx.open_menu.set(Some((index)()));
+        RovingFocusGroupItem {
+            focusable: !disabled,
+            r#as: {
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                let children = children.clone();
+                move |slot_props: RovingFocusSlotProps| {
+                    let trigger_attrs = attributes!(button {
+                        id: trigger_id,
+                        r#type: "button",
+                        role: "menuitem",
+                        "data-slot": "menubar-trigger",
+                        "data-state": if is_open() { "open" } else { "closed" },
+                        "data-disabled": if disabled { Some("true") } else { None },
+                        disabled: disabled,
+                        aria_haspopup: "menu",
+                        aria_expanded: is_open(),
+                        aria_controls: if is_open() { Some(content_id.cloned()) } else { None },
+                        class: class.clone(),
+                    });
+                    let merged = merge_attributes(vec![slot_props.attributes, trigger_attrs, user_attrs.clone()]);
+
+                    rsx! {
+                        button {
+                            onmounted: move |e: MountedEvent| {
+                                slot_props.on_mounted.call(e.clone());
+                                menu_ctx.trigger_element.set(Some(e.data()));
+                            },
+                            onfocus: move |e| slot_props.on_focus.call(e),
+                            onmousedown: move |e| slot_props.on_mousedown.call(e),
+                            onpointerup: move |_| {
+                                if !disabled {
+                                    if is_open() {
+                                        bar_ctx.open_menu_id.set(None);
+                                    } else {
+                                        bar_ctx.open_menu_id.set(Some((menu_id)()));
+                                    }
+                                }
+                            },
+                            onmouseenter: move |_| {
+                                // Switch to this menu if another is already open
+                                if !disabled && (bar_ctx.open_menu_id)().is_some() && !is_open() {
+                                    bar_ctx.open_menu_id.set(Some((menu_id)()));
+                                }
+                            },
+                            onkeydown: move |event: Event<KeyboardData>| {
+                                if disabled {
+                                    slot_props.on_keydown.call(event);
+                                    return;
+                                }
+                                match event.key() {
+                                    Key::ArrowDown => {
+                                        if !is_open() {
+                                            bar_ctx.open_menu_id.set(Some((menu_id)()));
+                                        }
+                                        event.prevent_default();
+                                    }
+                                    key if key == Key::Enter || key == Key::Character(" ".to_string()) => {
+                                        if is_open() {
+                                            bar_ctx.open_menu_id.set(None);
+                                        } else {
+                                            bar_ctx.open_menu_id.set(Some((menu_id)()));
+                                        }
+                                        event.prevent_default();
+                                    }
+                                    _ => {
+                                        // Let RovingFocusGroup handle ArrowLeft/Right
+                                        slot_props.on_keydown.call(event);
+                                    }
+                                }
+                            },
+                            ..merged,
+                            {children.clone()}
                         }
-                        event.prevent_default();
                     }
-                    Key::ArrowLeft => {
-                        ctx.focus.focus_prev();
-                        event.prevent_default();
-                    }
-                    Key::ArrowRight => {
-                        ctx.focus.focus_next();
-                        event.prevent_default();
-                    }
-                    Key::Home => {
-                        ctx.focus.focus_first();
-                        event.prevent_default();
-                    }
-                    Key::End => {
-                        ctx.focus.focus_last();
-                        event.prevent_default();
-                    }
-                    key if key == Key::Enter || key == Key::Character(" ".to_string()) => {
-                        let new_open = if is_open() { None } else { Some((index)()) };
-                        ctx.open_menu.set(new_open);
-                        event.prevent_default();
-                    }
-                    _ => {}
                 }
             },
-            onblur: move |_| {
-                if is_focused() {
-                    ctx.focus.set_focus(None);
-                    ctx.open_menu.set(None);
-                }
-            },
-            ..props.attributes,
-            {props.children}
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// MenubarContent
+// MenubarContent (wrapper with arrow key menu switching)
 // ---------------------------------------------------------------------------
 
 /// Props for [`MenubarContent`].
 #[derive(Props, Clone, PartialEq)]
 pub struct MenubarContentProps {
+    /// Additional CSS classes.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes for the content element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// Children (should include [`MenubarItem`] components).
+    /// Children (should include menu items).
     pub children: Element,
 }
 
-/// The menu content container. Has `role="menu"`, `aria-labelledby` linking to trigger.
+/// Menu content for a menubar menu.
+///
+/// Wraps `MenuContent` with ArrowLeft/Right handlers for switching between menus.
 #[component]
 pub fn MenubarContent(props: MenubarContentProps) -> Element {
-    let mut ctx: MenubarCtx = use_context();
-    let mut menu_ctx: MenubarMenuCtx = use_context();
-    let id = menu_ctx.content_id;
+    let mut bar_ctx: MenubarInternalCtx = use_context();
 
-    let render = use_animated_open(id, menu_ctx.is_open);
-
-    rsx! {
-        if render() {
-            div {
-                id,
-                role: "menu",
-                "data-slot": "menubar-content",
-                "data-state": if (menu_ctx.is_open)() { "open" } else { "closed" },
-                aria_orientation: "vertical",
-                aria_labelledby: menu_ctx.trigger_id.cloned(),
-                onkeydown: move |event: Event<KeyboardData>| {
-                    match event.key() {
-                        Key::Escape => {
-                            ctx.open_menu.set(None);
-                            event.prevent_default();
-                        }
-                        Key::ArrowDown => {
-                            menu_ctx.focus.focus_next();
-                            event.prevent_default();
-                        }
-                        Key::ArrowUp => {
-                            menu_ctx.focus.focus_prev();
-                            event.prevent_default();
-                        }
-                        Key::ArrowLeft => {
-                            ctx.focus.focus_prev();
-                            event.prevent_default();
-                        }
-                        Key::ArrowRight => {
-                            ctx.focus.focus_next();
-                            event.prevent_default();
-                        }
-                        Key::Home => {
-                            menu_ctx.focus.focus_first();
-                            event.prevent_default();
-                        }
-                        Key::End => {
-                            menu_ctx.focus.focus_last();
-                            event.prevent_default();
-                        }
-                        _ => {}
-                    }
-                },
-                onpointerdown: move |event| {
-                    event.prevent_default();
-                    event.stop_propagation();
-                },
-                ..props.attributes,
-                {props.children}
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// MenubarItem
-// ---------------------------------------------------------------------------
-
-/// Props for [`MenubarItem`].
-#[derive(Props, Clone, PartialEq)]
-pub struct MenubarItemProps {
-    /// The index of the item for keyboard navigation within this menu.
-    pub index: ReadSignal<usize>,
-
-    /// Whether the item is disabled.
-    #[props(default)]
-    pub disabled: bool,
-
-    /// Called when the item is selected (click or Enter/Space).
-    #[props(default)]
-    pub on_select: EventHandler<()>,
-
-    /// Additional attributes for the item element.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// Children of the item.
-    pub children: Element,
-}
-
-/// A menu item. Has `role="menuitem"`.
-#[component]
-pub fn MenubarItem(props: MenubarItemProps) -> Element {
-    let mut ctx: MenubarCtx = use_context();
-    let mut menu_ctx: MenubarMenuCtx = use_context();
-
-    let item_disabled = props.disabled || ctx.disabled || menu_ctx.disabled;
-    let focused = move || menu_ctx.focus.is_focused((props.index)()) && (menu_ctx.is_open)();
-    let onmounted = use_focus_controlled_item(props.index);
+    let on_escape = Callback::new(move |()| {
+        bar_ctx.open_menu_id.set(None);
+    });
+    let on_arrow_left = Callback::new(move |()| {
+        bar_ctx.navigate(-1);
+    });
+    let on_arrow_right = Callback::new(move |()| {
+        bar_ctx.navigate(1);
+    });
 
     rsx! {
-        div {
-            role: "menuitem",
-            "data-slot": "menubar-item",
-            "data-disabled": if item_disabled { "true" } else { "" },
-            "data-highlighted": if focused() { "" } else { None::<&str> },
-            aria_disabled: if item_disabled { Some("true") } else { None },
-            tabindex: if focused() { "0" } else { "-1" },
-            onmounted,
-            onclick: move |e: Event<MouseData>| {
-                e.stop_propagation();
-                if !item_disabled {
-                    props.on_select.call(());
-                    ctx.open_menu.set(None);
-                }
-            },
-            onkeydown: move |event: Event<KeyboardData>| {
-                let key = event.key();
-                if key == Key::Enter || key == Key::Character(" ".to_string()) {
-                    if !item_disabled {
-                        props.on_select.call(());
-                        ctx.open_menu.set(None);
-                    }
-                    event.prevent_default();
-                    event.stop_propagation();
-                }
-            },
-            onblur: move |_| {
-                if focused() {
-                    menu_ctx.focus.blur();
-                    ctx.focus.set_focus(None);
-                    ctx.open_menu.set(None);
-                }
-            },
-            ..props.attributes,
-            {props.children}
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// MenubarSeparator
-// ---------------------------------------------------------------------------
-
-/// Props for [`MenubarSeparator`].
-#[derive(Props, Clone, PartialEq)]
-pub struct MenubarSeparatorProps {
-    /// Additional attributes.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-}
-
-/// A visual separator between menu items. Has `role="separator"`.
-#[component]
-pub fn MenubarSeparator(props: MenubarSeparatorProps) -> Element {
-    rsx! {
-        div {
-            role: "separator",
-            "data-slot": "menubar-separator",
-            aria_orientation: "horizontal",
-            ..props.attributes,
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// MenubarLabel
-// ---------------------------------------------------------------------------
-
-/// Props for [`MenubarLabel`].
-#[derive(Props, Clone, PartialEq)]
-pub struct MenubarLabelProps {
-    /// Additional attributes.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// Children.
-    pub children: Element,
-}
-
-/// A non-interactive label within a menu.
-#[component]
-pub fn MenubarLabel(props: MenubarLabelProps) -> Element {
-    rsx! {
-        div {
-            "data-slot": "menubar-label",
-            ..props.attributes,
-            {props.children}
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// MenubarGroup
-// ---------------------------------------------------------------------------
-
-/// Props for [`MenubarGroup`].
-#[derive(Props, Clone, PartialEq)]
-pub struct MenubarGroupProps {
-    /// Additional attributes.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// Children.
-    pub children: Element,
-}
-
-/// A grouping element for menu items. Has `role="group"`.
-#[component]
-pub fn MenubarGroup(props: MenubarGroupProps) -> Element {
-    rsx! {
-        div {
-            role: "group",
-            "data-slot": "menubar-group",
-            ..props.attributes,
-            {props.children}
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// MenubarShortcut
-// ---------------------------------------------------------------------------
-
-/// Props for [`MenubarShortcut`].
-#[derive(Props, Clone, PartialEq)]
-pub struct MenubarShortcutProps {
-    /// Additional attributes.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
-
-    /// Children (the shortcut text).
-    pub children: Element,
-}
-
-/// A keyboard shortcut hint displayed alongside a menu item.
-#[component]
-pub fn MenubarShortcut(props: MenubarShortcutProps) -> Element {
-    rsx! {
-        span {
-            "data-slot": "menubar-shortcut",
-            ..props.attributes,
+        crate::menu::MenuContent {
+            class: props.class,
+            on_escape_override: on_escape,
+            on_arrow_left: on_arrow_left,
+            on_arrow_right: on_arrow_right,
+            extra_attributes: props.attributes,
             {props.children}
         }
     }

@@ -47,7 +47,6 @@ fn menu_renders_no_dom_element() {
         rsx! {
             MenubarRoot {
                 MenubarMenu {
-                    index: 0usize,
                     span { "inner" }
                 }
             }
@@ -76,7 +75,6 @@ fn trigger_attributes() {
         rsx! {
             MenubarRoot {
                 MenubarMenu {
-                    index: 0usize,
                     MenubarTrigger { "File" }
                 }
             }
@@ -114,7 +112,6 @@ fn trigger_disabled() {
             MenubarRoot {
                 disabled: true,
                 MenubarMenu {
-                    index: 0usize,
                     MenubarTrigger { "File" }
                 }
             }
@@ -142,7 +139,6 @@ fn content_hidden_when_closed() {
         rsx! {
             MenubarRoot {
                 MenubarMenu {
-                    index: 0usize,
                     MenubarTrigger { "File" }
                     MenubarContent {
                         p { "Hidden" }
@@ -169,7 +165,6 @@ fn item_has_menuitem_role() {
         rsx! {
             MenubarRoot {
                 MenubarMenu {
-                    index: 0usize,
                     MenubarTrigger { "File" }
                 }
             }
@@ -193,7 +188,9 @@ fn separator_attributes() {
     fn App() -> Element {
         rsx! {
             MenubarRoot {
-                MenubarSeparator {}
+                MenubarMenu {
+                    MenubarSeparator {}
+                }
             }
         }
     }
@@ -218,7 +215,9 @@ fn label_attributes() {
     fn App() -> Element {
         rsx! {
             MenubarRoot {
-                MenubarLabel { "Actions" }
+                MenubarMenu {
+                    MenubarLabel { "Actions" }
+                }
             }
         }
     }
@@ -240,8 +239,10 @@ fn group_attributes() {
     fn App() -> Element {
         rsx! {
             MenubarRoot {
-                MenubarGroup {
-                    span { "items" }
+                MenubarMenu {
+                    MenubarGroup {
+                        span { "items" }
+                    }
                 }
             }
         }
@@ -267,7 +268,9 @@ fn shortcut_attributes() {
     fn App() -> Element {
         rsx! {
             MenubarRoot {
-                MenubarShortcut { "⌘N" }
+                MenubarMenu {
+                    MenubarShortcut { "⌘N" }
+                }
             }
         }
     }
@@ -314,7 +317,6 @@ fn trigger_has_aria_controls_when_open() {
         rsx! {
             MenubarRoot {
                 MenubarMenu {
-                    index: 0usize,
                     MenubarTrigger { "File" }
                 }
             }
@@ -325,5 +327,227 @@ fn trigger_has_aria_controls_when_open() {
     assert!(
         html.contains("aria-expanded=false"),
         "trigger has aria-expanded when closed: {html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// MenubarCheckboxItem
+// ---------------------------------------------------------------------------
+
+#[test]
+fn checkbox_item_checked() {
+    fn App() -> Element {
+        rsx! {
+            MenubarRoot {
+                MenubarMenu {
+                    MenubarCheckboxItem {
+                        checked: true,
+                        "Show Toolbar"
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="menubar-checkbox-item""#),
+        "checkbox item has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"role="menuitemcheckbox""#),
+        "checkbox item has role=menuitemcheckbox: {html}"
+    );
+    assert!(
+        html.contains("aria-checked=true"),
+        "checkbox item has aria-checked=true: {html}"
+    );
+}
+
+#[test]
+fn checkbox_item_unchecked() {
+    fn App() -> Element {
+        rsx! {
+            MenubarRoot {
+                MenubarMenu {
+                    MenubarCheckboxItem {
+                        checked: false,
+                        "Show Toolbar"
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains("aria-checked=false"),
+        "unchecked has aria-checked=false: {html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// MenubarRadioGroup / MenubarRadioItem
+// ---------------------------------------------------------------------------
+
+#[test]
+fn radio_group_attributes() {
+    fn App() -> Element {
+        rsx! {
+            MenubarRoot {
+                MenubarMenu {
+                    MenubarRadioGroup {
+                        value: "a",
+                        span { "radios" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="menubar-radio-group""#),
+        "radio group has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"role="group""#),
+        "radio group has role=group: {html}"
+    );
+}
+
+#[test]
+fn radio_item_attributes() {
+    fn App() -> Element {
+        rsx! {
+            MenubarRoot {
+                MenubarMenu {
+                    MenubarRadioGroup {
+                        value: "opt-a",
+                        MenubarRadioItem {
+                            value: "opt-a",
+                            "Option A"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="menubar-radio-item""#),
+        "radio item has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"role="menuitemradio""#),
+        "radio item has role=menuitemradio: {html}"
+    );
+    assert!(
+        html.contains("aria-checked=true"),
+        "selected radio item has aria-checked=true: {html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// MenubarSub / SubTrigger / SubContent
+// ---------------------------------------------------------------------------
+
+#[test]
+fn sub_renders_no_dom() {
+    fn App() -> Element {
+        rsx! {
+            MenubarRoot {
+                MenubarMenu {
+                    MenubarSub {
+                        span { "sub-inner" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains("sub-inner"),
+        "sub children should render: {html}"
+    );
+}
+
+#[test]
+fn sub_trigger_attributes() {
+    fn App() -> Element {
+        rsx! {
+            MenubarRoot {
+                MenubarMenu {
+                    MenubarSub {
+                        MenubarSubTrigger { "More options" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="menubar-sub-trigger""#),
+        "sub trigger has data-slot: {html}"
+    );
+    assert!(
+        html.contains(r#"role="menuitem""#),
+        "sub trigger has role=menuitem: {html}"
+    );
+    assert!(
+        html.contains(r#"aria-haspopup="menu""#),
+        "sub trigger has aria-haspopup: {html}"
+    );
+}
+
+#[test]
+fn sub_content_hidden_when_closed() {
+    fn App() -> Element {
+        rsx! {
+            MenubarRoot {
+                MenubarMenu {
+                    MenubarSub {
+                        MenubarSubTrigger { "More" }
+                        MenubarSubContent {
+                            p { "Should not render" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        !html.contains(r#"data-slot="menubar-sub-content""#),
+        "sub content not rendered when closed: {html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// MenubarPortal
+// ---------------------------------------------------------------------------
+
+#[test]
+fn portal_passes_children_through() {
+    fn App() -> Element {
+        rsx! {
+            MenubarRoot {
+                MenubarMenu {
+                    MenubarPortal {
+                        span { "portal-child" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains("portal-child"),
+        "portal should render children: {html}"
     );
 }
