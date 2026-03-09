@@ -5,19 +5,26 @@
 
 pub mod accordion;
 pub mod alert;
+pub mod aspect_ratio;
+pub mod avatar;
 pub mod badge;
 pub mod button;
 pub mod calendar;
 pub mod card;
+pub mod checkbox;
 pub mod collapsible;
 pub mod date_picker;
 pub mod drag_and_drop_list;
 pub mod input;
 pub mod kbd;
+pub mod label;
 pub mod navbar;
+pub mod progress;
 pub mod radio_group;
+pub mod separator;
 pub mod skeleton;
 pub mod spinner;
+pub mod switch;
 pub mod table;
 pub mod tabs;
 pub mod textarea;

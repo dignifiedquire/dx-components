@@ -1,5 +1,5 @@
+use crate::components::progress::component::Progress;
 use dioxus::prelude::*;
-use dioxus_primitives::progress::{Progress, ProgressIndicator};
 
 #[component]
 pub fn Demo() -> Element {
@@ -21,12 +21,9 @@ pub fn Demo() -> Element {
 
     rsx! {
         Progress {
-            style: "position: relative; overflow: hidden; width: 200px; height: 0.5rem; border-radius: 9999px; background: var(--muted);",
+            class: "w-[200px]",
             aria_label: "Progressbar Demo",
             value: progress() as f64,
-            ProgressIndicator {
-                style: "height: 100%; background: var(--foreground); transition: width 250ms ease;",
-            }
         }
     }
 }

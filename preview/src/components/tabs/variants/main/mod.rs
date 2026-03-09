@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use dioxus_primitives::button::Button;
-use dioxus_primitives::label::Label;
+use crate::components::label::component::Label;
 
 use super::super::component::*;
 

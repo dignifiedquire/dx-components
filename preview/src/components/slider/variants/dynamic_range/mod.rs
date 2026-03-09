@@ -1,7 +1,7 @@
 use super::super::component::*;
+use crate::components::label::component::Label;
+use crate::components::switch::component::Switch;
 use dioxus::prelude::*;
-use dioxus_primitives::label::Label;
-use dioxus_primitives::switch::{Switch, SwitchThumb};
 
 #[component]
 pub fn Demo() -> Element {
@@ -24,9 +24,8 @@ pub fn Demo() -> Element {
 
     rsx! {
         div {
-            style: "margin-bottom: 15px; display: flex; gap: 10px;",
+            class: "mb-4 flex items-center gap-2",
             Switch {
-                id: "mode-switch",
                 checked: percentage_mode(),
                 on_checked_change: move |new_checked| {
                     percentage_mode.set(new_checked);
@@ -36,7 +35,6 @@ pub fn Demo() -> Element {
                         }
                     }
                 },
-                SwitchThumb {}
             }
             Label {
                 html_for: "mode-switch",
@@ -45,7 +43,7 @@ pub fn Demo() -> Element {
         }
 
         div {
-            style: "margin-bottom: 15px; font-size: 16px; font-weight: bold;",
+            class: "mb-4 text-base font-bold",
             "{formatted_value}"
         }
 

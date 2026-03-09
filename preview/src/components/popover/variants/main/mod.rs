@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use dioxus_primitives::label::Label;
+use crate::components::label::component::Label;
 use dioxus_primitives::popover::*;
 
 #[component]

@@ -1,1 +1,1 @@
-pub use dioxus_primitives::label::*;
+pub use dioxus_components::label::*;

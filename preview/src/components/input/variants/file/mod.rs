@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use dioxus_primitives::label::Label;
+use crate::components::label::component::Label;
 
 #[component]
 pub fn Demo() -> Element {

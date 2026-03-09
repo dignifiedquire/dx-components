@@ -1,2 +1,1 @@
-pub use dioxus_primitives::direction::Orientation;
-pub use dioxus_primitives::separator::*;
+pub use dioxus_components::separator::*;

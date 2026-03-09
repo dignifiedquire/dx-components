@@ -1,1 +1,1 @@
-pub use dioxus_primitives::avatar::*;
+pub use dioxus_components::avatar::*;
