@@ -1,17 +1,13 @@
-use dioxus::prelude::*;
 use crate::components::label::component::Label;
-use dioxus_primitives::popover::*;
+use crate::components::popover::component::*;
+use dioxus::prelude::*;
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        PopoverRoot {
-            PopoverTrigger {
-                class: "inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground",
-                "Open popover"
-            }
+        Popover {
+            PopoverTrigger { "Open popover" }
             PopoverContent {
-                class: "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden",
                 div { class: "grid gap-4",
                     div { class: "grid gap-2",
                         h4 { class: "font-medium leading-none", "Dimensions" }

@@ -1,1 +1,1 @@
-pub use dioxus_primitives::dropdown_menu::*;
+pub use dioxus_components::dropdown_menu::*;

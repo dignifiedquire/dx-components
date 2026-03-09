@@ -2,12 +2,12 @@ use dioxus::prelude::*;
 
 use dioxus_primitives::{
     date_picker::{self, DatePickerInputProps, DatePickerProps, DateRangePickerProps},
-    popover::PopoverTriggerProps,
+    popover::{PopoverRoot, PopoverTriggerProps},
     ContentAlign,
 };
 
 use super::super::calendar::*;
-use super::super::popover::*;
+use super::super::popover::component::{PopoverContent, PopoverTrigger};
 
 #[component]
 pub fn DatePicker(props: DatePickerProps) -> Element {

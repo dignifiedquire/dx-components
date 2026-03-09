@@ -1,1 +1,1 @@
-pub use dioxus_primitives::tooltip::*;
+pub use dioxus_components::tooltip::*;

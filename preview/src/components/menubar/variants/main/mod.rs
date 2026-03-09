@@ -1,13 +1,10 @@
+use crate::components::menubar::component::*;
 use dioxus::prelude::*;
-use dioxus_primitives::menubar::{
-    MenubarContent, MenubarGroup, MenubarItem, MenubarLabel, MenubarMenu, MenubarRoot,
-    MenubarSeparator, MenubarShortcut, MenubarTrigger,
-};
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        MenubarRoot {
+        Menubar {
             MenubarMenu {
                 MenubarTrigger { "File" }
                 MenubarContent {

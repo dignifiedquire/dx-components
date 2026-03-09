@@ -1,13 +1,10 @@
+use crate::components::dropdown_menu::component::*;
 use dioxus::prelude::*;
-use dioxus_primitives::dropdown_menu::{
-    DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel,
-    DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger,
-};
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        DropdownMenuRoot {
+        DropdownMenu {
             DropdownMenuTrigger { "Open" }
             DropdownMenuContent {
                 DropdownMenuLabel { "My Account" }

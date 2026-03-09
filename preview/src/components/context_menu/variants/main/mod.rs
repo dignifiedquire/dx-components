@@ -1,13 +1,10 @@
+use crate::components::context_menu::component::*;
 use dioxus::prelude::*;
-use dioxus_primitives::context_menu::{
-    ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuRoot,
-    ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger,
-};
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        ContextMenuRoot {
+        ContextMenu {
             ContextMenuTrigger { "Right click here" }
             ContextMenuContent {
                 ContextMenuGroup {

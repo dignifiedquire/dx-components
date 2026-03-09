@@ -1,1 +1,1 @@
-pub use dioxus_primitives::popover::*;
+pub use dioxus_components::popover::*;
