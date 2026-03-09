@@ -2280,7 +2280,6 @@ dependencies = [
  "lazy-js-bundle 0.6.2",
  "num-integer",
  "regex-lite",
- "tailwind_fuse",
  "time",
  "tracing",
 ]

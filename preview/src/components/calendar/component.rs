@@ -1,4 +1,4 @@
-pub use dioxus_primitives::calendar::*;
+pub use dioxus_components::calendar::*;
 
 use dioxus::prelude::*;
 

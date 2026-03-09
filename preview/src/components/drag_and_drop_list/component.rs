@@ -1,4 +1,4 @@
-pub use dioxus_primitives::drag_and_drop_list::*;
+pub use dioxus_components::drag_and_drop_list::*;
 
 use dioxus::prelude::*;
 

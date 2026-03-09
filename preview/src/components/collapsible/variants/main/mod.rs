@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use dioxus_primitives::collapsible::{Collapsible, CollapsibleContent, CollapsibleTrigger};
+use dioxus_components::collapsible::{Collapsible, CollapsibleContent, CollapsibleTrigger};
 
 #[component]
 pub fn Demo() -> Element {

@@ -1,6 +1,6 @@
+use super::super::component::*;
 use crate::Route;
 use dioxus::prelude::*;
-use dioxus_primitives::navbar::*;
 
 #[component]
 pub fn Demo() -> Element {

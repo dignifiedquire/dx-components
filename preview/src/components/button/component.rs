@@ -1,1 +1,1 @@
-pub use dioxus_primitives::button::*;
+pub use dioxus_components::button::*;

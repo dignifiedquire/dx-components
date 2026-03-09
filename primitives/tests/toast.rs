@@ -101,10 +101,7 @@ fn toast_renders_title_and_description() {
     }
 
     let html = render(App);
-    assert!(
-        html.contains("Hello Title"),
-        "toast renders title: {html}"
-    );
+    assert!(html.contains("Hello Title"), "toast renders title: {html}");
     assert!(
         html.contains("Hello Description"),
         "toast renders description: {html}"

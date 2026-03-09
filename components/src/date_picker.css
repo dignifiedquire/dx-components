@@ -1,0 +1,46 @@
+/* Date picker root */
+[data-slot="date-picker"],
+[data-slot="date-range-picker"] {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Date picker input */
+[data-slot="date-picker-input"] {
+  display: flex;
+  width: fit-content;
+  min-width: 150px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  gap: 0.25rem;
+}
+
+/* Date segment */
+[data-slot="date-picker-segment"] {
+  caret-color: transparent;
+}
+
+[data-slot="date-picker-segment"][no-date="true"] {
+  color: hsl(var(--muted-foreground));
+}
+
+[data-slot="date-picker-segment"]:focus-visible {
+  border-radius: 0.25rem;
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  outline: none;
+}
+
+/* Date separator */
+[data-slot="date-picker-separator"] {
+  caret-color: transparent;
+  color: hsl(var(--muted-foreground));
+  padding: 0;
+}

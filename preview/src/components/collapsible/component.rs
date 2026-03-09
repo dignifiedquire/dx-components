@@ -1,1 +1,1 @@
-pub use dioxus_primitives::collapsible::*;
+pub use dioxus_components::collapsible::*;

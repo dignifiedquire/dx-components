@@ -1,5 +1,4 @@
-use dioxus_primitives::drag_and_drop_list::*;
-use super::super::component::example_items;
+use super::super::component::*;
 use dioxus::prelude::*;
 
 #[component]
