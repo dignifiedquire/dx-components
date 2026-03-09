@@ -29,13 +29,11 @@ pub fn Demo() -> Element {
         rsx! {
             SelectItem::<Option<Fruit>> { index: i, value: f, text_value: "{f}",
                 {format!("{} {f}", f.emoji())}
-                SelectItemIndicator {}
             }
         }
     });
 
     rsx! {
-
         Select::<Option<Fruit>> { placeholder: "Select a fruit...",
             SelectTrigger { aria_label: "Select Trigger", width: "12rem", SelectValue {} }
             SelectContent { aria_label: "Select Demo",
@@ -50,7 +48,6 @@ pub fn Demo() -> Element {
                         value: None,
                         text_value: "Other",
                         "Other"
-                        SelectItemIndicator {}
                     }
                 }
             }
