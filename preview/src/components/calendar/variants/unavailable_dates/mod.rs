@@ -2,8 +2,6 @@ use super::super::component::*;
 use dioxus::prelude::*;
 use time::{ext::NumericalDuration, macros::date, Date, UtcDateTime};
 
-use dioxus_primitives::calendar::DateRange;
-
 #[component]
 pub fn Demo() -> Element {
     let mut selected_range = use_signal(|| None::<DateRange>);

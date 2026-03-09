@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 
+pub use dioxus_primitives::calendar::DateRange;
 use dioxus_primitives::{
     date_picker::{self, DatePickerInputProps, DatePickerProps, DateRangePickerProps},
     popover::{PopoverRoot, PopoverTriggerProps},

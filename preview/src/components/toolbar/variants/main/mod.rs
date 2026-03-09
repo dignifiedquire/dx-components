@@ -1,7 +1,5 @@
-use dioxus::prelude::*;
-use dioxus_primitives::toggle_group::ToggleGroupItem;
-
 use super::super::component::*;
+use dioxus::prelude::*;
 
 #[component]
 pub fn Demo() -> Element {

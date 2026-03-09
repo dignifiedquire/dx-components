@@ -6,7 +6,7 @@
 
 use dioxus::prelude::*;
 pub use dioxus_primitives::direction::{Direction, Orientation};
-pub use dioxus_primitives::toggle_group::ToggleGroupType;
+pub use dioxus_primitives::toggle_group::{ToggleGroupItem, ToggleGroupType};
 use dioxus_primitives::toolbar as primitives;
 use tailwind_fuse::*;
 

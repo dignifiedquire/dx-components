@@ -1,6 +1,6 @@
 use super::super::component::*;
+use crate::components::button::component::Button;
 use dioxus::prelude::*;
-use dioxus_primitives::button::Button;
 
 #[component]
 pub fn Demo() -> Element {

@@ -13,3 +13,4 @@ dx_icons_lucide = "0.1.0"
 [dev-dependencies]
 dioxus-ssr = "0.7.0"
 regex-lite = "0.1"
+time = { version = "0.3.44", features = ["std", "macros"] }

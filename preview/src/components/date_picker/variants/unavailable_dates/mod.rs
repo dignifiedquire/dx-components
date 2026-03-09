@@ -1,7 +1,5 @@
 use super::super::component::*;
 use dioxus::prelude::*;
-
-use dioxus_primitives::calendar::DateRange;
 use time::{ext::NumericalDuration, UtcDateTime};
 
 #[component]

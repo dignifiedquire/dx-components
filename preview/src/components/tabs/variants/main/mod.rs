@@ -1,8 +1,7 @@
-use dioxus::prelude::*;
-use dioxus_primitives::button::Button;
-use crate::components::label::component::Label;
-
 use super::super::component::*;
+use crate::components::button::component::Button;
+use crate::components::label::component::Label;
+use dioxus::prelude::*;
 
 #[component]
 pub fn Demo() -> Element {
