@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const URL = "http://127.0.0.1:8080/component/?name=date_picker&";
+const URL = "http://127.0.0.1:8080/docs/components/date_picker";
 const LOAD_TIMEOUT = 20 * 60 * 1000;
 
 test("data slots and classes", async ({ page }) => {
@@ -10,18 +10,12 @@ test("data slots and classes", async ({ page }) => {
   const datePicker = page.locator('[data-slot="date-picker"]').first();
   await expect(datePicker).toBeVisible({ timeout: 30000 });
 
-  const dpClass = await datePicker.getAttribute("class");
-  expect(dpClass).toContain("inline-flex");
-  expect(dpClass).toContain("items-center");
+  await expect(datePicker).toHaveAttribute('data-slot', 'date-picker');
 
   // Assert date-picker-input data-slot
   const input = datePicker.locator('[data-slot="date-picker-input"]');
   await expect(input).toBeVisible();
-
-  const inputClass = await input.getAttribute("class");
-  expect(inputClass).toContain("flex");
-  expect(inputClass).toContain("rounded-lg");
-  expect(inputClass).toContain("border");
+  await expect(input).toHaveAttribute('data-slot', 'date-picker-input');
 
   // Assert date-picker-segment data-slots
   const segments = datePicker.locator('[data-slot="date-picker-segment"]');

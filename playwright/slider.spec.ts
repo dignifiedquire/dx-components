@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('basic slider structure and keyboard navigation', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/block?name=slider&variant=main&', { timeout: 20 * 60 * 1000 });
+  await page.goto('http://127.0.0.1:8080/component/block/slider/main', { timeout: 20 * 60 * 1000 });
 
   // Root: data-slot, rendered as span, data-orientation
   const slider = page.locator('[data-slot="slider"]');
@@ -69,7 +69,7 @@ test('basic slider structure and keyboard navigation', async ({ page }) => {
 });
 
 test('dynamic min/max', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/block?name=slider&variant=dynamic_range&', { timeout: 20 * 60 * 1000 });
+  await page.goto('http://127.0.0.1:8080/component/block/slider/dynamic_range', { timeout: 20 * 60 * 1000 });
   const slider = page.locator('[data-slot="slider"]');
   const thumb = slider.locator('[data-slot="slider-thumb"]');
 

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('test', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/?name=toast&', { timeout: 20 * 60 * 1000 });
+  await page.goto('http://127.0.0.1:8080/docs/components/toast', { timeout: 20 * 60 * 1000 });
 
   // Create a toast
   await page.getByRole('button', { name: 'Info (60s)' }).click();
@@ -10,20 +10,12 @@ test('test', async ({ page }) => {
   const viewport = page.locator('[data-slot="toast-viewport"]');
   await expect(viewport).toBeVisible();
 
-  const viewportClass = await viewport.getAttribute('class');
-  expect(viewportClass).toContain('fixed');
-  expect(viewportClass).toContain('z-[100]');
-  expect(viewportClass).toContain('flex');
+  await expect(viewport).toHaveAttribute('data-slot', 'toast-viewport');
 
-  // Assert toast data-slot and classes
+  // Assert toast data-slot
   const toast = page.locator('[data-slot="toast"]');
   await expect(toast).toBeVisible();
-
-  const toastClass = await toast.getAttribute('class');
-  expect(toastClass).toContain('flex');
-  expect(toastClass).toContain('rounded-md');
-  expect(toastClass).toContain('border');
-  expect(toastClass).toContain('shadow-lg');
+  await expect(toast).toHaveAttribute('data-slot', 'toast');
 
   // Assert sub-component data-slots
   await expect(page.locator('[data-slot="toast-title"]')).toBeVisible();

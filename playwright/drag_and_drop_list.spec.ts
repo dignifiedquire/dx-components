@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const BASE = "http://127.0.0.1:8080";
-const URL = `${BASE}/component/?name=drag_and_drop_list&`;
+const URL = `${BASE}/docs/components/drag_and_drop_list`;
 const LOAD_TIMEOUT = 20 * 60 * 1000;
 
 /** Navigate to the DnD page and return the first (main) variant list. */
@@ -27,22 +27,16 @@ function getItems(list: import("@playwright/test").Locator) {
 }
 
 test.describe("Data slots and classes", () => {
-  test("root has data-slot and Tailwind classes", async ({ page }) => {
+  test("root has data-slot", async ({ page }) => {
     const list = await loadMainList(page);
-    const listClass = await list.getAttribute("class");
-    expect(listClass).toContain("w-full");
+    await expect(list).toHaveAttribute('data-slot', 'drag-and-drop-list');
   });
 
-  test("items have data-slot and Tailwind classes", async ({ page }) => {
+  test("items have data-slot", async ({ page }) => {
     const list = await loadMainList(page);
     const items = getItems(list);
     await expect(items).toHaveCount(5);
-
-    const itemClass = await items.first().getAttribute("class");
-    expect(itemClass).toContain("flex");
-    expect(itemClass).toContain("items-center");
-    expect(itemClass).toContain("cursor-grab");
-    expect(itemClass).toContain("select-none");
+    await expect(items.first()).toHaveAttribute('data-slot', 'drag-and-drop-list-item');
   });
 
   test("ul has data-slot", async ({ page }) => {

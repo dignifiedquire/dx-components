@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('test', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/component/?name=button&', { timeout: 20 * 60 * 1000 });
+  await page.goto('http://127.0.0.1:8080/docs/components/button', { timeout: 20 * 60 * 1000 });
 
   // All variant buttons should be visible
   await expect(page.getByRole('button', { name: 'Default' })).toBeVisible();
