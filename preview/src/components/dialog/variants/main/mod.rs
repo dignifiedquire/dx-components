@@ -1,5 +1,4 @@
 use dioxus::prelude::*;
-use dioxus_primitives::button::{Button, ButtonVariant};
 use dioxus_primitives::dialog::*;
 use dioxus_primitives::label::Label;
 

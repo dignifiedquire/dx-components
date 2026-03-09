@@ -1,10 +1,7 @@
 use dioxus::prelude::*;
 use dioxus_primitives::toast as toast;
 
-pub use dioxus_primitives::toast::{
-    ToastOptions, ToastProps, ToastProviderProps, ToastPropsWithOwner, ToastType, Toasts,
-    consume_toast, use_toast,
-};
+pub use dioxus_primitives::toast::{ToastOptions, ToastProviderProps, use_toast};
 
 /// Styled ToastProvider that imports the toast stylesheet.
 #[component]
@@ -20,6 +17,3 @@ pub fn ToastProvider(props: ToastProviderProps) -> Element {
         }
     }
 }
-
-/// Re-export the Toast component from the primitive.
-pub use toast::Toast;

@@ -1,5 +1,3 @@
-pub use dioxus_primitives::date_picker::*;
-
 use dioxus::prelude::*;
 
 use dioxus_primitives::{

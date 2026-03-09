@@ -1,1 +1,1 @@
-pub use dioxus_primitives::progress::*;
+// Variants import directly from dioxus_primitives.

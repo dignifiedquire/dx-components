@@ -1,1 +1,1 @@
-pub use dioxus_primitives::checkbox::*;
+// Variants import directly from dioxus_primitives.

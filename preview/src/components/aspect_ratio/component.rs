@@ -1,1 +1,1 @@
-pub use dioxus_primitives::aspect_ratio::*;
+// Variants import directly from dioxus_primitives.

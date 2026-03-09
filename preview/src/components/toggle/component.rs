@@ -1,1 +1,1 @@
-pub use dioxus_primitives::toggle::*;
+// Variants import directly from dioxus_primitives.

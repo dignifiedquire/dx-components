@@ -1,1 +1,1 @@
-pub use dioxus_primitives::dialog::*;
+// Variants import directly from dioxus_primitives.

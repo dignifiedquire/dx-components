@@ -1,1 +1,1 @@
-pub use dioxus_primitives::hover_card::*;
+// Variants import directly from dioxus_primitives.

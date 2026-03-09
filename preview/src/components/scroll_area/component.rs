@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use dioxus_primitives::scroll_area as scroll_area;
 
-pub use dioxus_primitives::scroll_area::{ScrollAreaProps, ScrollDirection, ScrollType};
+pub use dioxus_primitives::scroll_area::{ScrollAreaProps, ScrollDirection};
 
 /// Styled ScrollArea with position:relative applied by default.
 #[component]
