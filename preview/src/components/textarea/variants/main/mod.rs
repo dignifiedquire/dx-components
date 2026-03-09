@@ -22,7 +22,6 @@ pub fn Demo() -> Element {
                 Label { html_for: "default", "Default" }
                 Textarea {
                     id: "default",
-                    variant: TextareaVariant::Default,
                     placeholder: "Enter your description",
                     value: description,
                     oninput: move |e: FormEvent| description.set(e.value()),

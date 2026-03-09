@@ -21,7 +21,6 @@ pub fn Demo() -> Element {
                 Label { html_for: "outline", "Outline" }
                 Textarea {
                     id: "outline",
-                    variant: TextareaVariant::Outline,
                     placeholder: "Enter your description",
                     value: description,
                     oninput: move |e: FormEvent| description.set(e.value()),

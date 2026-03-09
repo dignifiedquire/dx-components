@@ -22,7 +22,6 @@ pub fn Demo() -> Element {
                 Label { html_for: "fade", "Fade" }
                 Textarea {
                     id: "fade",
-                    variant: TextareaVariant::Fade,
                     placeholder: "Enter your description",
                     value: description,
                     oninput: move |e: FormEvent| description.set(e.value()),
