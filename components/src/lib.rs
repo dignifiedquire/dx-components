@@ -48,6 +48,7 @@ pub mod table;
 pub mod tabs;
 pub mod textarea;
 pub mod toast;
+pub mod toggle;
 pub mod toggle_group;
 pub mod toolbar;
 pub mod tooltip;

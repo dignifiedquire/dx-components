@@ -600,9 +600,6 @@
   .w-72 {
     width: calc(var(--spacing) * 72);
   }
-  .w-80 {
-    width: calc(var(--spacing) * 80);
-  }
   .w-auto {
     width: auto;
   }
@@ -796,9 +793,6 @@
   }
   .justify-center {
     justify-content: center;
-  }
-  .justify-end {
-    justify-content: flex-end;
   }
   .justify-start {
     justify-content: flex-start;
@@ -2178,11 +2172,6 @@
   .data-\[orientation\=horizontal\]\:flex-col {
     &[data-orientation="horizontal"] {
       flex-direction: column;
-    }
-  }
-  .data-\[orientation\=horizontal\]\:flex-row {
-    &[data-orientation="horizontal"] {
-      flex-direction: row;
     }
   }
   .data-\[orientation\=vertical\]\:h-auto {

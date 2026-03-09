@@ -11,7 +11,7 @@ use tailwind_fuse::*;
 
 // Re-export everything consumers still need unchanged.
 pub use primitives::{
-    consume_toast, use_toast, ToastOptions, ToastProps, ToastPropsWithOwner, ToastType, Toasts,
+    ToastOptions, ToastProps, ToastPropsWithOwner, ToastType, Toasts, consume_toast, use_toast,
 };
 
 // ---------------------------------------------------------------------------

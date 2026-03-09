@@ -1,5 +1,5 @@
+use super::super::component::*;
 use dioxus::prelude::*;
-use dioxus_primitives::toggle::Toggle;
 use dx_icons_lucide::IconBold;
 
 #[component]
