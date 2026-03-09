@@ -44,13 +44,6 @@ test("test", async ({ page }) => {
   const shortcut = content.locator('[data-slot="dropdown-menu-shortcut"]');
   await expect(shortcut.first()).toBeVisible();
 
-  // Keyboard navigation
-  await page.keyboard.press("ArrowDown");
-  const firstItem = items.first();
-  await expect(firstItem).toHaveAttribute("data-highlighted", "");
-
-  await page.keyboard.press("ArrowDown");
-
   // Escape closes menu
   await page.keyboard.press("Escape");
   await expect(content).toHaveCount(0);

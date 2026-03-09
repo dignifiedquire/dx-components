@@ -20,10 +20,11 @@ pub fn Demo() -> Element {
     });
 
     rsx! {
-        Progress {
-            class: "w-[200px]",
-            aria_label: "Progressbar Demo",
-            value: progress() as f64,
+        div { class: "w-48",
+            Progress {
+                aria_label: "Progressbar Demo",
+                value: progress() as f64,
+            }
         }
     }
 }

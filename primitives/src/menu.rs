@@ -6,7 +6,7 @@
 use crate::direction::Orientation;
 use crate::merge_attributes;
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
-use crate::{use_controlled, use_id_or, use_presence, use_unique_id};
+use crate::{use_controlled, use_global_escape_listener, use_id_or, use_presence, use_unique_id};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 
@@ -119,6 +119,23 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
     let ctx: MenuCtx = use_context();
     let id = use_id_or(ctx.content_id, props.id);
     let mut presence = use_presence(ctx.open, id);
+
+    // Document-level Escape listener so the menu closes even when
+    // focus is not inside the content div.
+    {
+        let on_close = ctx.on_close;
+        let on_escape_override = props.on_escape_override;
+        let open = ctx.open;
+        use_global_escape_listener(move || {
+            if *open.peek() {
+                if let Some(on_esc) = on_escape_override {
+                    on_esc.call(());
+                } else {
+                    on_close.call(());
+                }
+            }
+        });
+    }
 
     if !presence.is_present() && !props.force_mount {
         return rsx! {};

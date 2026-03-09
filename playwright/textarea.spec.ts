@@ -3,7 +3,9 @@ import { test, expect } from '@playwright/test';
 test('textarea renders with correct data-slot and classes', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/textarea', { timeout: 20 * 60 * 1000 });
 
-  const textarea = page.locator('[data-slot="textarea"]');
+  // Scope to first preview block
+  const preview = page.locator('[data-slot="preview"]').first();
+  const textarea = preview.locator('[data-slot="textarea"]').first();
   await expect(textarea).toBeVisible();
 
   // data-slot
@@ -24,5 +26,5 @@ test('textarea accepts input', async ({ page }) => {
 
   const textarea = page.locator('[data-slot="textarea"]').first();
   await textarea.fill('Hello World');
-  await expect(page.locator('#textarea-message')).toContainText('Hello World');
+  await expect(page.locator('#textarea-message').first()).toContainText('Hello World');
 });

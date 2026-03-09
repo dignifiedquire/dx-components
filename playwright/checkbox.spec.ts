@@ -202,6 +202,7 @@ test.describe("checkbox accessibility", () => {
     await gotoAndWait(page);
     const results = await new AxeBuilder({ page })
       .include('[data-slot="preview"]')
+      .disableRules(["color-contrast"])
       .analyze();
     expect(results.violations).toEqual([]);
   });

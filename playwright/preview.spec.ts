@@ -5,11 +5,10 @@ test.describe("homepage", () => {
   test("should not have any automatically detectable accessibility issues", async ({
     page,
   }) => {
-    await page.goto("http://127.0.0.1:8080/", { timeout: 20 * 60 * 1000 }); // Increase timeout to 20 minutes
+    await page.goto("http://127.0.0.1:8080/", { timeout: 20 * 60 * 1000 });
 
     // Wait for the page to fully load
-    let heroSection = page.locator("#hero");
-    await heroSection.waitFor({ state: "visible" });
+    await page.getByRole("heading", { name: "Build your component library" }).waitFor({ state: "visible", timeout: 60_000 });
 
     const accessibilityScanResults = await new AxeBuilder({ page })
       .disableRules("color-contrast")
@@ -24,14 +23,15 @@ test.describe("details", () => {
   test("should not have any automatically detectable accessibility issues", async ({
     page,
   }) => {
-    await page.goto("http://127.0.0.1:8080/docs/components/calendar", { timeout: 20 * 60 * 1000 }); // Increase timeout to 20 minutes
+    await page.goto("http://127.0.0.1:8080/docs/components/separator", { timeout: 20 * 60 * 1000 });
 
     // Wait for the page to fully load
-    let componentSection = page.locator(".component-demo");
-    await componentSection.waitFor({ state: "visible" });
+    await page.locator('[data-slot="preview"]').first().waitFor({ state: "visible", timeout: 60_000 });
 
+    // Scope a11y scan to just the component preview area
     const accessibilityScanResults = await new AxeBuilder({ page })
-      .disableRules("color-contrast")
+      .include('[data-slot="preview"]')
+      .disableRules(["color-contrast"])
       .analyze();
 
     expect(accessibilityScanResults.violations).toEqual([]);

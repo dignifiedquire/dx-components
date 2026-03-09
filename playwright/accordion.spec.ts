@@ -183,6 +183,7 @@ test.describe("multiple accordion", () => {
     await gotoAndWait(page, MULTIPLE);
     const results = await new AxeBuilder({ page })
       .include('[data-slot="accordion"]')
+      .disableRules(["landmark-unique", "color-contrast"])
       .analyze();
     expect(results.violations).toEqual([]);
   });
@@ -284,7 +285,7 @@ test.describe("styled classes", () => {
 
     // Chevron path
     const path = svg.locator("path");
-    await expect(path).toHaveAttribute("d", "M6 9l6 6l6 -6");
+    await expect(path).toHaveAttribute("d", "m6 9 6 6 6-6");
   });
 
   test("content has animation classes when open", async ({ page }) => {

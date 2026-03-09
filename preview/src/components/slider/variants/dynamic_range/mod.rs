@@ -26,6 +26,7 @@ pub fn Demo() -> Element {
         div {
             class: "mb-4 flex items-center gap-2",
             Switch {
+                aria_label: "Percentage",
                 checked: percentage_mode(),
                 on_checked_change: move |new_checked| {
                     percentage_mode.set(new_checked);

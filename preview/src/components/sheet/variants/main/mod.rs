@@ -60,9 +60,8 @@ pub fn Demo() -> Element {
                 SheetFooter {
                     Button { "Save changes" }
                     SheetClose {
-                        as: |attributes| rsx! {
-                            Button { variant: ButtonVariant::Outline, attributes, "Cancel" }
-                        },
+                        class: "inline-flex h-9 items-center justify-center gap-2 rounded-md border bg-background px-4 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground",
+                        "Cancel"
                     }
                 }
             }

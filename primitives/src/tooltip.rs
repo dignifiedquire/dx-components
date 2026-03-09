@@ -17,7 +17,7 @@ use dioxus_attributes::attributes;
 pub(crate) struct TooltipCtx {
     pub(crate) open: Memo<bool>,
     pub(crate) set_open: Callback<bool>,
-    pub(crate) disabled: bool,
+    pub(crate) disabled: Signal<bool>,
     pub(crate) content_id: Signal<String>,
 }
 
@@ -71,10 +71,15 @@ pub fn TooltipRoot(props: TooltipRootProps) -> Element {
     let content_id = use_unique_id();
     let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
 
+    let mut disabled_signal = use_signal(|| props.disabled);
+    if *disabled_signal.peek() != props.disabled {
+        disabled_signal.set(props.disabled);
+    }
+
     use_context_provider(|| TooltipCtx {
         open,
         set_open,
-        disabled: props.disabled,
+        disabled: disabled_signal,
         content_id,
     });
 
@@ -119,25 +124,25 @@ pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
     let ctx: TooltipCtx = use_context();
 
     let handle_pointer_enter = move |_: Event<PointerData>| {
-        if !ctx.disabled {
+        if !(ctx.disabled)() {
             ctx.set_open.call(true);
         }
     };
 
     let handle_pointer_leave = move |_: Event<PointerData>| {
-        if !ctx.disabled {
+        if !(ctx.disabled)() {
             ctx.set_open.call(false);
         }
     };
 
     let handle_focus = move |_: Event<FocusData>| {
-        if !ctx.disabled {
+        if !(ctx.disabled)() {
             ctx.set_open.call(true);
         }
     };
 
     let handle_blur = move |_: Event<FocusData>| {
-        if !ctx.disabled {
+        if !(ctx.disabled)() {
             ctx.set_open.call(false);
         }
     };
