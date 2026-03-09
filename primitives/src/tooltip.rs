@@ -4,7 +4,7 @@
 //! - [`TooltipTrigger`]: Button element that shows/hides tooltip on hover/focus
 //! - [`TooltipContent`]: The tooltip content, rendered with `role="tooltip"`
 
-use crate::{merge_attributes, use_animated_open, use_controlled, use_unique_id};
+use crate::{merge_attributes, use_controlled, use_id_or, use_presence, use_unique_id};
 use crate::{ContentAlign, ContentSide};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
@@ -185,6 +185,13 @@ pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
 /// Props for [`TooltipContent`].
 #[derive(Props, Clone, PartialEq)]
 pub struct TooltipContentProps {
+    /// The ID of the content element.
+    pub id: ReadSignal<Option<String>>,
+
+    /// When true, the content is always rendered in the DOM.
+    #[props(default)]
+    pub force_mount: bool,
+
     /// Side of the trigger to place the tooltip (default: Top).
     #[props(default = ContentSide::Top)]
     pub side: ContentSide,
@@ -192,6 +199,10 @@ pub struct TooltipContentProps {
     /// Alignment relative to the trigger (default: Center).
     #[props(default = ContentAlign::Center)]
     pub align: ContentAlign,
+
+    /// Additional classes.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the tooltip content element.
     #[props(extends = GlobalAttributes)]
@@ -207,22 +218,25 @@ pub struct TooltipContentProps {
 #[component]
 pub fn TooltipContent(props: TooltipContentProps) -> Element {
     let ctx: TooltipCtx = use_context();
-    let id = ctx.content_id;
+    let id = use_id_or(ctx.content_id, props.id);
+    let mut presence = use_presence(ctx.open, id);
 
-    let render = use_animated_open(id, ctx.open);
+    if !presence.is_present() && !props.force_mount {
+        return rsx! {};
+    }
 
     rsx! {
-        if render() {
-            div {
-                id,
-                role: "tooltip",
-                "data-slot": "tooltip-content",
-                "data-state": if ctx.open.cloned() { "open" } else { "closed" },
-                "data-side": props.side.as_str(),
-                "data-align": props.align.as_str(),
-                ..props.attributes,
-                {props.children}
-            }
+        div {
+            id,
+            role: "tooltip",
+            "data-slot": "tooltip-content",
+            "data-state": presence.data_state(),
+            "data-side": props.side.as_str(),
+            "data-align": props.align.as_str(),
+            class: props.class,
+            onanimationend: move |_| presence.on_animation_end(),
+            ..props.attributes,
+            {props.children}
         }
     }
 }

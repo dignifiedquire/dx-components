@@ -7,7 +7,7 @@ use dioxus::document;
 use dioxus::prelude::*;
 
 use crate::use_global_escape_listener;
-use crate::{use_animated_open, use_controlled, use_id_or, use_unique_id, FOCUS_TRAP_JS};
+use crate::{use_controlled, use_id_or, use_presence, use_unique_id, FOCUS_TRAP_JS};
 
 // ---------------------------------------------------------------------------
 // Context
@@ -175,6 +175,10 @@ pub struct DialogOverlayProps {
     /// The ID of the overlay element.
     pub id: ReadSignal<Option<String>>,
 
+    /// When true, the overlay is always rendered in the DOM.
+    #[props(default)]
+    pub force_mount: bool,
+
     /// Additional classes.
     #[props(default)]
     pub class: Option<String>,
@@ -220,9 +224,9 @@ pub fn DialogOverlay(props: DialogOverlayProps) -> Element {
 
     let unique_id = use_unique_id();
     let id = use_id_or(unique_id, props.id);
-    let render = use_animated_open(id, open);
+    let mut presence = use_presence(open, id);
 
-    if !render() {
+    if !presence.is_present() && !props.force_mount {
         return rsx! {};
     }
 
@@ -230,9 +234,10 @@ pub fn DialogOverlay(props: DialogOverlayProps) -> Element {
         div {
             id,
             "data-slot": "dialog-overlay",
-            "data-state": if open() { "open" } else { "closed" },
+            "data-state": presence.data_state(),
             class: props.class,
             onclick: move |_| set_open.call(false),
+            onanimationend: move |_| presence.on_animation_end(),
             ..props.attributes,
         }
     }
@@ -247,6 +252,10 @@ pub fn DialogOverlay(props: DialogOverlayProps) -> Element {
 pub struct DialogContentProps {
     /// The ID of the content element.
     pub id: ReadSignal<Option<String>>,
+
+    /// When true, the content is always rendered in the DOM.
+    #[props(default)]
+    pub force_mount: bool,
 
     /// Additional classes.
     #[props(default)]
@@ -295,7 +304,7 @@ pub fn DialogContent(props: DialogContentProps) -> Element {
     use_global_escape_listener(move || set_open.call(false));
 
     let id = use_id_or(ctx.content_id, props.id);
-    let render = use_animated_open(id, open);
+    let mut presence = use_presence(open, id);
 
     // Focus trap for modal dialogs
     use_effect(move || {
@@ -319,7 +328,7 @@ pub fn DialogContent(props: DialogContentProps) -> Element {
         let _ = eval.send(open.cloned());
     });
 
-    if !render() {
+    if !presence.is_present() && !props.force_mount {
         return rsx! {};
     }
 
@@ -327,13 +336,14 @@ pub fn DialogContent(props: DialogContentProps) -> Element {
         div {
             id,
             "data-slot": "dialog-content",
-            "data-state": if open() { "open" } else { "closed" },
+            "data-state": presence.data_state(),
             role: "dialog",
             aria_modal: if is_modal { "true" },
             aria_labelledby: ctx.title_id,
             aria_describedby: ctx.description_id,
             class: props.class,
             onclick: move |e| e.stop_propagation(),
+            onanimationend: move |_| presence.on_animation_end(),
             ..props.attributes,
             {props.children}
         }

@@ -4,7 +4,7 @@
 //! - [`HoverCardTrigger`]: Anchor element that shows/hides card on hover/focus
 //! - [`HoverCardContent`]: The card content, visible on hover
 
-use crate::{use_animated_open, use_controlled, use_unique_id};
+use crate::{use_controlled, use_id_or, use_presence, use_unique_id};
 use crate::{ContentAlign, ContentSide};
 use dioxus::prelude::*;
 
@@ -155,6 +155,13 @@ pub fn HoverCardTrigger(props: HoverCardTriggerProps) -> Element {
 /// Props for [`HoverCardContent`].
 #[derive(Props, Clone, PartialEq)]
 pub struct HoverCardContentProps {
+    /// The ID of the content element.
+    pub id: ReadSignal<Option<String>>,
+
+    /// When true, the content is always rendered in the DOM.
+    #[props(default)]
+    pub force_mount: bool,
+
     /// Side of the trigger to place the hover card (default: Bottom).
     #[props(default = ContentSide::Bottom)]
     pub side: ContentSide,
@@ -162,6 +169,10 @@ pub struct HoverCardContentProps {
     /// Alignment relative to the trigger (default: Center).
     #[props(default = ContentAlign::Center)]
     pub align: ContentAlign,
+
+    /// Additional classes.
+    #[props(default)]
+    pub class: Option<String>,
 
     /// Additional attributes for the hover card content element.
     #[props(extends = GlobalAttributes)]
@@ -178,7 +189,8 @@ pub struct HoverCardContentProps {
 #[component]
 pub fn HoverCardContent(props: HoverCardContentProps) -> Element {
     let ctx: HoverCardCtx = use_context();
-    let id = ctx.content_id;
+    let id = use_id_or(ctx.content_id, props.id);
+    let mut presence = use_presence(ctx.open, id);
 
     let handle_pointer_enter = move |_: Event<PointerData>| {
         ctx.set_open.call(true);
@@ -188,21 +200,23 @@ pub fn HoverCardContent(props: HoverCardContentProps) -> Element {
         ctx.set_open.call(false);
     };
 
-    let render = use_animated_open(id, ctx.open);
+    if !presence.is_present() && !props.force_mount {
+        return rsx! {};
+    }
 
     rsx! {
-        if render() {
-            div {
-                id,
-                "data-slot": "hover-card-content",
-                "data-state": if ctx.open.cloned() { "open" } else { "closed" },
-                "data-side": props.side.as_str(),
-                "data-align": props.align.as_str(),
-                onpointerenter: handle_pointer_enter,
-                onpointerleave: handle_pointer_leave,
-                ..props.attributes,
-                {props.children}
-            }
+        div {
+            id,
+            "data-slot": "hover-card-content",
+            "data-state": presence.data_state(),
+            "data-side": props.side.as_str(),
+            "data-align": props.align.as_str(),
+            class: props.class,
+            onpointerenter: handle_pointer_enter,
+            onpointerleave: handle_pointer_leave,
+            onanimationend: move |_| presence.on_animation_end(),
+            ..props.attributes,
+            {props.children}
         }
     }
 }

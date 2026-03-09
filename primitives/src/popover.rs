@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 
 use crate::use_global_escape_listener;
 use crate::{
-    use_animated_open, use_controlled, use_id_or, use_unique_id, ContentAlign, ContentSide,
+    use_controlled, use_id_or, use_presence, use_unique_id, ContentAlign, ContentSide,
     FOCUS_TRAP_JS,
 };
 
@@ -167,6 +167,10 @@ pub struct PopoverContentProps {
     /// The ID of the content element.
     pub id: ReadSignal<Option<String>>,
 
+    /// When true, the content is always rendered in the DOM.
+    #[props(default)]
+    pub force_mount: bool,
+
     /// Side of the trigger to place the popover.
     #[props(default = ContentSide::Bottom)]
     pub side: ContentSide,
@@ -220,7 +224,7 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
     let is_modal = ctx.is_modal;
 
     let id = use_id_or(ctx.content_id, props.id);
-    let render = use_animated_open(id, open);
+    let mut presence = use_presence(open, id);
 
     // Escape key listener
     use_global_escape_listener(move || set_open.call(false));
@@ -247,7 +251,7 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
         let _ = eval.send(open.cloned());
     });
 
-    if !render() {
+    if !presence.is_present() && !props.force_mount {
         return rsx! {};
     }
 
@@ -255,12 +259,13 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
         div {
             id,
             "data-slot": "popover-content",
-            "data-state": if open() { "open" } else { "closed" },
+            "data-state": presence.data_state(),
             "data-side": props.side.as_str(),
             "data-align": props.align.as_str(),
             role: "dialog",
             aria_modal: if is_modal { "true" },
             class: props.class,
+            onanimationend: move |_| presence.on_animation_end(),
             ..props.attributes,
             {props.children}
         }

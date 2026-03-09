@@ -3,12 +3,8 @@ import { test, expect } from "@playwright/test";
 test("test", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/alert_dialog", { timeout: 20 * 60 * 1000 });
 
-  // Scope to the preview container
-  const preview = page.locator('[data-slot="preview"]').first();
-  await expect(preview).toBeVisible();
-
   // Trigger button
-  const trigger = preview.locator('[data-slot="alert-dialog-trigger"]');
+  const trigger = page.locator('[data-slot="alert-dialog-trigger"]');
   await expect(trigger).toBeVisible();
   await expect(trigger).toHaveAttribute("data-state", "closed");
   await expect(trigger).toHaveAttribute("aria-haspopup", "dialog");

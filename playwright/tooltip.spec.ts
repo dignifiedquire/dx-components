@@ -3,12 +3,8 @@ import { test, expect } from "@playwright/test";
 test("test", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/tooltip", { timeout: 20 * 60 * 1000 });
 
-  // Scope to the preview container
-  const preview = page.locator('[data-slot="preview"]').first();
-  await expect(preview).toBeVisible();
-
   // Trigger is a button with correct attributes
-  const trigger = preview.locator('[data-slot="tooltip-trigger"]');
+  const trigger = page.locator('[data-slot="tooltip-trigger"]');
   await expect(trigger).toBeVisible();
   await expect(trigger).toHaveAttribute("data-state", "closed");
 

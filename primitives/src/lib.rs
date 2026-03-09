@@ -299,6 +299,9 @@ fn use_global_keydown_listener(key: &'static str, on_escape: impl FnMut() + Clon
     });
 }
 
+// Deprecated: use `use_presence` instead. This legacy hook will be removed
+// once all remaining consumers (navbar, menubar, context_menu, dropdown_menu,
+// select) are migrated in Phase 2e/2f.
 fn use_animated_open(
     id: impl Readable<Target = String> + Copy + 'static,
     open: impl Readable<Target = bool> + Copy + 'static,
