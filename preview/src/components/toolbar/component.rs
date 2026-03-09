@@ -1,1 +1,1 @@
-pub use dioxus_primitives::toolbar::*;
+pub use dioxus_components::toolbar::*;

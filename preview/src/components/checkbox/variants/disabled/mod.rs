@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use dioxus_primitives::checkbox::{Checkbox, CheckboxIndicator};
 use dioxus_primitives::label::Label;
-use dx_icons_tabler::IconCheck;
+use dx_icons_lucide::IconCheck;
 
 #[component]
 pub fn Demo() -> Element {

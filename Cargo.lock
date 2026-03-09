@@ -1812,7 +1812,7 @@ dependencies = [
  "dioxus",
  "dioxus-primitives 0.0.1",
  "dioxus-ssr",
- "dx_icons_tabler",
+ "dx_icons_lucide",
  "regex-lite",
  "tailwind_fuse",
 ]
@@ -2628,10 +2628,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
-name = "dx_icons_tabler"
+name = "dx_icons_lucide"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa4cb8fbeb938130c3bf5d85403d1af109e0babce7fcf245b1f29517600ee6a4"
+checksum = "4e7bd82310ecd827a53f983ee5290f576eb58fc9982d2047d986ce921f57fbef"
 dependencies = [
  "dioxus",
  "serde_json",
@@ -5967,7 +5967,7 @@ dependencies = [
  "dioxus-components",
  "dioxus-i18n",
  "dioxus-primitives 0.0.1",
- "dx_icons_tabler",
+ "dx_icons_lucide",
  "pulldown-cmark",
  "strum",
  "syntect",

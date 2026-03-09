@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use dioxus_primitives::toggle::Toggle;
-use dx_icons_tabler::IconItalic;
+use dx_icons_lucide::IconItalic;
 
 #[component]
 pub fn Demo() -> Element {

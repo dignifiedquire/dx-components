@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use dx_icons_tabler::{IconCheck, IconChevronDown, IconChevronUp, IconCopy};
+use dx_icons_lucide::{IconCheck, IconChevronDown, IconChevronUp, IconCopy};
 
 use crate::components::tabs::component::{Tabs, TabsContent, TabsList, TabsTrigger};
 use crate::{ComponentType, HighlightedCode, THEME_CSS};

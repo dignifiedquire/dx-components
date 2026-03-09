@@ -8,7 +8,7 @@ description = "Styled UI components matching shadcn/ui, built on dioxus-primitiv
 dioxus-primitives = { path = "../primitives" }
 dioxus = { workspace = true }
 tailwind_fuse = { workspace = true }
-dx_icons_tabler = "0.1.0"
+dx_icons_lucide = "0.1.0"
 
 [dev-dependencies]
 dioxus-ssr = "0.7.0"

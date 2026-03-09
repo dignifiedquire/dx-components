@@ -1,6 +1,6 @@
 use super::super::component::*;
 use dioxus::prelude::*;
-use dx_icons_tabler::IconMail;
+use dx_icons_lucide::IconMail;
 
 #[component]
 pub fn Demo() -> Element {

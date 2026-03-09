@@ -1,1 +1,1 @@
-pub use dioxus_primitives::toggle_group::*;
+pub use dioxus_components::toggle_group::*;

@@ -144,9 +144,9 @@ fn trigger_chevron() {
         "chevron should have exact shadcn classes"
     );
 
-    // Chevron path (tabler renders as absolute commands)
+    // Chevron path (lucide renders with spaces)
     assert!(
-        html.contains(r#"d="M6 9l6 6l6 -6""#),
+        html.contains(r#"d="m6 9 6 6 6-6""#),
         "should have chevron down path"
     );
 }
@@ -285,7 +285,7 @@ fn full_snapshot() {
 
     // 3 triggers with chevrons
     assert_eq!(
-        html.matches(r#"d="M6 9l6 6l6 -6""#).count(),
+        html.matches(r#"d="m6 9 6 6 6-6""#).count(),
         3,
         "should have 3 chevrons"
     );

@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use dx_icons_tabler::{IconMoon, IconSun};
+use dx_icons_lucide::{IconMoon, IconSun};
 
 use crate::theme;
 

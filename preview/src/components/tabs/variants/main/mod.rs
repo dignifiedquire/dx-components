@@ -1,7 +1,8 @@
 use dioxus::prelude::*;
 use dioxus_primitives::button::Button;
 use dioxus_primitives::label::Label;
-use dioxus_primitives::tabs::{Tabs, TabsContent, TabsList, TabsTrigger};
+
+use super::super::component::*;
 
 #[component]
 pub fn Demo() -> Element {

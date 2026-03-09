@@ -1,1 +1,1 @@
-pub use dioxus_primitives::tabs::*;
+pub use dioxus_components::tabs::*;

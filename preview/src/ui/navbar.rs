@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use dx_icons_tabler::{IconBrandGithub, IconMenu2};
+use dx_icons_lucide::{IconGithub, IconMenu};
 
 use crate::components;
 use crate::components::sheet::component::*;
@@ -21,7 +21,7 @@ pub(crate) fn Navbar() -> Element {
                     class: "lg:hidden inline-flex items-center justify-center rounded-md p-2 mr-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors",
                     aria_label: "Toggle navigation",
                     onclick: move |_| mobile_open.set(Some(true)),
-                    IconMenu2 { size: 20 }
+                    IconMenu { size: 20 }
                 }
                 // Brand
                 Link { to: Route::home(), class: "flex items-center gap-2 mr-6 no-underline",
@@ -51,7 +51,7 @@ pub(crate) fn Navbar() -> Element {
                         to: "https://github.com/DioxusLabs/components",
                         class: "inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors",
                         aria_label: "GitHub",
-                        IconBrandGithub { size: 20 }
+                        IconGithub { size: 20 }
                     }
                     DarkModeToggle {}
                     LanguageSelect {}

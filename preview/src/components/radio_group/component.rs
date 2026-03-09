@@ -1,1 +1,1 @@
-pub use dioxus_primitives::radio_group::*;
+pub use dioxus_components::radio_group::*;
