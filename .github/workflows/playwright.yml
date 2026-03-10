@@ -12,6 +12,7 @@ on:
       - primitives/**/Cargo.toml
       - components/**/*.rs
       - components/**/Cargo.toml
+      - playwright/**
       - .github/**
       - Cargo.toml
 
@@ -27,6 +28,7 @@ on:
       - primitives/**/Cargo.toml
       - components/**/*.rs
       - components/**/Cargo.toml
+      - playwright/**
       - .github/**
       - Cargo.toml
 
