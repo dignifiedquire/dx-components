@@ -5,9 +5,9 @@
 [data-slot="drag-and-drop-list-instructions"],
 [data-slot="drag-and-drop-list-announcer"] {
   position: absolute;
+  overflow: hidden;
   width: 1px;
   height: 1px;
-  overflow: hidden;
   clip: rect(0, 0, 0, 0);
 }
 

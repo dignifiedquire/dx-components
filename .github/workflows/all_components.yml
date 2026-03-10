@@ -68,8 +68,9 @@ jobs:
           dx components add button,separator,sheet,tooltip --path ..
           # Add all components
           dx components add --all --path .. --force
-          # Switch to the local version of dioxus-primitives
+          # Switch to the local versions of dioxus-primitives and dioxus-components
           cargo add dioxus-primitives --path ../primitives
+          cargo add dioxus-components --path ../components
           # Make sure it still builds
           cargo check --all-features
   add-each-component:
@@ -116,8 +117,9 @@ jobs:
             fi
             # Add the component
             dx components add "$file" --path ..
-            # Switch to the local version of dioxus-primitives
+            # Switch to the local versions of dioxus-primitives and dioxus-components
             cargo add dioxus-primitives --path ../primitives
+            cargo add dioxus-components --path ../components
             # Make sure it still builds
             cargo check --all-features
             # Undo changes

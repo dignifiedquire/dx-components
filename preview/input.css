@@ -1,6 +1,9 @@
 @import "tailwindcss";
+
 @config "./tailwind.config.js";
+
 @source "../components/src";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -12,6 +15,7 @@
   from {
     height: 0;
   }
+
   to {
     height: var(--radix-accordion-content-height);
   }
@@ -21,6 +25,7 @@
   from {
     height: var(--radix-accordion-content-height);
   }
+
   to {
     height: 0;
   }
@@ -30,6 +35,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
