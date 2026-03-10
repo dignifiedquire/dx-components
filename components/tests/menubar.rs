@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn menubar_root_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Menubar {
                 "Menu content"
@@ -21,7 +22,7 @@ fn menubar_root_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== menubar_root_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="menubar""#));
@@ -32,7 +33,8 @@ fn menubar_root_classes() {
 
 #[test]
 fn menubar_trigger_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Menubar {
                 MenubarMenu {
@@ -42,7 +44,7 @@ fn menubar_trigger_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== menubar_trigger_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="menubar-trigger""#));
@@ -52,7 +54,8 @@ fn menubar_trigger_classes() {
 
 #[test]
 fn menubar_consumer_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Menubar {
                 class: "my-custom-bar",
@@ -61,14 +64,15 @@ fn menubar_consumer_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("my-custom-bar"));
 }
 
 #[test]
 fn menubar_trigger_state_closed() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Menubar {
                 MenubarMenu {
@@ -78,7 +82,7 @@ fn menubar_trigger_state_closed() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-state="closed""#));
     assert!(html.contains(r#"aria-haspopup="menu""#));

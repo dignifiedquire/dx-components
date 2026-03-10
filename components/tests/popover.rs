@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn popover_trigger_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Popover {
                 PopoverTrigger { "Toggle" }
@@ -21,7 +22,7 @@ fn popover_trigger_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== popover_trigger_slot ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="popover-trigger""#));
@@ -31,7 +32,8 @@ fn popover_trigger_slot() {
 
 #[test]
 fn popover_content_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Popover {
                 default_open: true,
@@ -42,7 +44,7 @@ fn popover_content_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== popover_content_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="popover-content""#));
@@ -53,7 +55,8 @@ fn popover_content_classes() {
 
 #[test]
 fn popover_content_side_attribute() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Popover {
                 default_open: true,
@@ -65,14 +68,15 @@ fn popover_content_side_attribute() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-side="top""#));
 }
 
 #[test]
 fn popover_content_align_attribute() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Popover {
                 default_open: true,
@@ -84,14 +88,15 @@ fn popover_content_align_attribute() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-align="start""#));
 }
 
 #[test]
 fn popover_close_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Popover {
                 PopoverClose { "Close" }
@@ -99,7 +104,7 @@ fn popover_close_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="popover-close""#));
     assert!(html.contains("Close"));
@@ -107,7 +112,8 @@ fn popover_close_slot() {
 
 #[test]
 fn popover_content_animation_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Popover {
                 default_open: true,
@@ -118,7 +124,7 @@ fn popover_content_animation_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("data-[state=open]:animate-in"));
     assert!(html.contains("data-[state=open]:fade-in-0"));
@@ -127,7 +133,8 @@ fn popover_content_animation_classes() {
 
 #[test]
 fn popover_consumer_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Popover {
                 default_open: true,
@@ -139,7 +146,7 @@ fn popover_consumer_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("my-custom"));
 }

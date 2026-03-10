@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn navigation_menu_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NavigationMenu {
                 NavigationMenuList {
@@ -25,7 +26,7 @@ fn navigation_menu_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("max-w-max"), "root has shadcn class: {html}");
     assert!(
         html.contains("data-slot=\"navigation-menu\""),
@@ -35,7 +36,8 @@ fn navigation_menu_has_shadcn_classes() {
 
 #[test]
 fn navigation_menu_list_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NavigationMenu {
                 NavigationMenuList {
@@ -47,13 +49,14 @@ fn navigation_menu_list_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("list-none"), "list has shadcn class: {html}");
 }
 
 #[test]
 fn navigation_menu_item_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NavigationMenu {
                 NavigationMenuList {
@@ -65,13 +68,14 @@ fn navigation_menu_item_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("relative"), "item has relative class: {html}");
 }
 
 #[test]
 fn navigation_menu_trigger_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NavigationMenu {
                 NavigationMenuList {
@@ -86,7 +90,7 @@ fn navigation_menu_trigger_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("rounded-md"),
         "trigger has rounded-md: {html}"
@@ -99,7 +103,8 @@ fn navigation_menu_trigger_has_shadcn_classes() {
 
 #[test]
 fn navigation_menu_link_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NavigationMenu {
                 NavigationMenuList {
@@ -111,7 +116,7 @@ fn navigation_menu_link_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("rounded-sm"), "link has rounded-sm: {html}");
     assert!(
         html.contains("hover:bg-accent"),
@@ -121,7 +126,8 @@ fn navigation_menu_link_has_shadcn_classes() {
 
 #[test]
 fn navigation_menu_indicator_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NavigationMenu {
                 NavigationMenuList {
@@ -134,7 +140,7 @@ fn navigation_menu_indicator_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("overflow-hidden"),
         "indicator has overflow-hidden: {html}"
@@ -143,7 +149,8 @@ fn navigation_menu_indicator_has_shadcn_classes() {
 
 #[test]
 fn navigation_menu_viewport_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NavigationMenu {
                 NavigationMenuList {
@@ -156,7 +163,7 @@ fn navigation_menu_viewport_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("bg-popover"),
         "viewport has bg-popover: {html}"
@@ -169,7 +176,8 @@ fn navigation_menu_viewport_has_shadcn_classes() {
 
 #[test]
 fn full_styled_navigation_menu_composition() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NavigationMenu {
                 NavigationMenuList {
@@ -189,7 +197,7 @@ fn full_styled_navigation_menu_composition() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"navigation-menu\""),
         "root: {html}"

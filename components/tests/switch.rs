@@ -19,11 +19,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn switch_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Switch {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("peer group/switch inline-flex shrink-0 items-center rounded-full border border-transparent shadow-xs"),
         "switch should have base classes: {html}"
@@ -44,11 +45,12 @@ fn switch_base_classes() {
 
 #[test]
 fn switch_default_size() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Switch {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-size="default""#),
         "should have data-size=default: {html}"
@@ -57,11 +59,12 @@ fn switch_default_size() {
 
 #[test]
 fn switch_sm_size() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Switch { size: SwitchSize::Sm } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-size="sm""#),
         "should have data-size=sm: {html}"
@@ -74,11 +77,12 @@ fn switch_sm_size() {
 
 #[test]
 fn switch_thumb_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Switch {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="switch-thumb""#),
         "thumb should have data-slot: {html}"
@@ -97,11 +101,12 @@ fn switch_thumb_classes() {
 
 #[test]
 fn switch_unchecked_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Switch {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-state="unchecked""#),
         "default state should be unchecked: {html}"
@@ -110,11 +115,12 @@ fn switch_unchecked_state() {
 
 #[test]
 fn switch_checked_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Switch { default_checked: true } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-state="checked""#),
         "should be checked: {html}"
@@ -127,11 +133,12 @@ fn switch_checked_state() {
 
 #[test]
 fn switch_has_state_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Switch {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"),
         "should have state variant classes: {html}"
@@ -144,11 +151,12 @@ fn switch_has_state_classes() {
 
 #[test]
 fn switch_consumer_class() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Switch { class: "my-switch" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("my-switch"),
         "consumer class should merge: {html}"

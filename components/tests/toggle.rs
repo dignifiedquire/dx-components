@@ -19,11 +19,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn toggle_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Toggle { "Bold" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("inline-flex items-center justify-center"),
         "toggle should have base classes: {html}"
@@ -44,11 +45,12 @@ fn toggle_base_classes() {
 
 #[test]
 fn toggle_default_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Toggle { "B" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("bg-transparent"),
         "default variant should have bg-transparent: {html}"
@@ -61,11 +63,12 @@ fn toggle_default_variant() {
 
 #[test]
 fn toggle_outline_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Toggle { variant: ToggleVariant::Outline, "B" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("border-input"),
         "outline variant should have border-input: {html}"
@@ -82,31 +85,34 @@ fn toggle_outline_variant() {
 
 #[test]
 fn toggle_size_default() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Toggle { "B" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("h-9"), "default size should have h-9: {html}");
 }
 
 #[test]
 fn toggle_size_sm() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Toggle { size: ToggleSize::Sm, "B" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("h-8"), "sm size should have h-8: {html}");
 }
 
 #[test]
 fn toggle_size_lg() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Toggle { size: ToggleSize::Lg, "B" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("h-10"), "lg size should have h-10: {html}");
 }
 
@@ -116,11 +122,12 @@ fn toggle_size_lg() {
 
 #[test]
 fn toggle_disabled() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Toggle { disabled: true, "B" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("disabled=true"),
         "disabled toggle should have disabled attr: {html}"
@@ -133,11 +140,12 @@ fn toggle_disabled() {
 
 #[test]
 fn toggle_data_state_off() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Toggle { "B" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-state="off""#),
         "unpressed toggle should have data-state=off: {html}"
@@ -146,11 +154,12 @@ fn toggle_data_state_off() {
 
 #[test]
 fn toggle_data_state_on() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Toggle { default_pressed: true, "B" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-state="on""#),
         "pressed toggle should have data-state=on: {html}"
@@ -163,11 +172,12 @@ fn toggle_data_state_on() {
 
 #[test]
 fn toggle_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Toggle { class: "my-custom", "B" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("my-custom"),
         "consumer class should be applied: {html}"

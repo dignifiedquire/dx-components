@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn sheet_trigger_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 SheetTrigger { "Open" }
@@ -21,7 +22,7 @@ fn sheet_trigger_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== sheet_trigger_slot ===\n{html}\n");
 
     // SheetTrigger wraps DialogTrigger so it keeps the dialog-trigger slot
@@ -32,7 +33,8 @@ fn sheet_trigger_slot() {
 
 #[test]
 fn sheet_header_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 SheetHeader { "Header" }
@@ -40,7 +42,7 @@ fn sheet_header_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="sheet-header""#));
     assert!(html.contains("flex flex-col gap-2"));
@@ -48,7 +50,8 @@ fn sheet_header_classes() {
 
 #[test]
 fn sheet_footer_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 SheetFooter { "Footer" }
@@ -56,7 +59,7 @@ fn sheet_footer_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="sheet-footer""#));
     assert!(html.contains("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"));
@@ -64,7 +67,8 @@ fn sheet_footer_classes() {
 
 #[test]
 fn sheet_title_with_default_open() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 default_open: true,
@@ -73,7 +77,7 @@ fn sheet_title_with_default_open() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== sheet_title_with_default_open ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="sheet-title""#));
@@ -82,7 +86,8 @@ fn sheet_title_with_default_open() {
 
 #[test]
 fn sheet_description_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 default_open: true,
@@ -91,7 +96,7 @@ fn sheet_description_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="sheet-description""#));
     assert!(html.contains("text-sm text-muted-foreground"));
@@ -99,7 +104,8 @@ fn sheet_description_classes() {
 
 #[test]
 fn sheet_overlay_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 default_open: true,
@@ -108,7 +114,7 @@ fn sheet_overlay_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== sheet_overlay_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="dialog-overlay""#));
@@ -117,7 +123,8 @@ fn sheet_overlay_classes() {
 
 #[test]
 fn sheet_content_default_side() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 default_open: true,
@@ -129,7 +136,7 @@ fn sheet_content_default_side() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== sheet_content_default_side ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="sheet-content""#));
@@ -149,7 +156,8 @@ fn sheet_content_default_side() {
 
 #[test]
 fn sheet_content_side_top() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 default_open: true,
@@ -162,7 +170,7 @@ fn sheet_content_side_top() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-side="top""#));
     assert!(html.contains("inset-x-0"));
@@ -172,7 +180,8 @@ fn sheet_content_side_top() {
 
 #[test]
 fn sheet_content_side_bottom() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 default_open: true,
@@ -185,7 +194,7 @@ fn sheet_content_side_bottom() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-side="bottom""#));
     assert!(html.contains("inset-x-0"));
@@ -195,7 +204,8 @@ fn sheet_content_side_bottom() {
 
 #[test]
 fn sheet_content_side_left() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 default_open: true,
@@ -208,7 +218,7 @@ fn sheet_content_side_left() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-side="left""#));
     assert!(html.contains("inset-y-0"));
@@ -218,7 +228,8 @@ fn sheet_content_side_left() {
 
 #[test]
 fn sheet_content_has_close_button() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 default_open: true,
@@ -229,7 +240,7 @@ fn sheet_content_has_close_button() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="dialog-close""#));
     assert!(html.contains("<svg"));
@@ -239,7 +250,8 @@ fn sheet_content_has_close_button() {
 
 #[test]
 fn sheet_close_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 SheetClose { "Close me" }
@@ -247,7 +259,7 @@ fn sheet_close_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="dialog-close""#));
     assert!(html.contains("Close me"));
@@ -255,7 +267,8 @@ fn sheet_close_slot() {
 
 #[test]
 fn sheet_consumer_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Sheet {
                 SheetHeader { class: "my-custom", "Header" }
@@ -263,7 +276,7 @@ fn sheet_consumer_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("my-custom"));
     assert!(html.contains(r#"data-slot="sheet-header""#));

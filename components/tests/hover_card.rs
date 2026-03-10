@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn hover_card_trigger_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             HoverCard {
                 HoverCardTrigger { "Hover me" }
@@ -21,7 +22,7 @@ fn hover_card_trigger_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== hover_card_trigger_slot ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="hover-card-trigger""#));
@@ -32,7 +33,8 @@ fn hover_card_trigger_slot() {
 
 #[test]
 fn hover_card_content_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             HoverCard {
                 default_open: true,
@@ -41,7 +43,7 @@ fn hover_card_content_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== hover_card_content_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="hover-card-content""#));
@@ -51,7 +53,8 @@ fn hover_card_content_classes() {
 
 #[test]
 fn hover_card_content_side_attribute() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             HoverCard {
                 default_open: true,
@@ -63,14 +66,15 @@ fn hover_card_content_side_attribute() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-side="top""#));
 }
 
 #[test]
 fn hover_card_content_default_side_bottom() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             HoverCard {
                 default_open: true,
@@ -79,14 +83,15 @@ fn hover_card_content_default_side_bottom() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-side="bottom""#));
 }
 
 #[test]
 fn hover_card_content_animation_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             HoverCard {
                 default_open: true,
@@ -95,7 +100,7 @@ fn hover_card_content_animation_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("data-[state=open]:animate-in"));
     assert!(html.contains("data-[state=open]:fade-in-0"));
@@ -104,7 +109,8 @@ fn hover_card_content_animation_classes() {
 
 #[test]
 fn hover_card_consumer_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             HoverCard {
                 default_open: true,
@@ -116,7 +122,7 @@ fn hover_card_consumer_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("my-custom"));
 }

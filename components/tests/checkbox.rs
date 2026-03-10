@@ -19,11 +19,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn checkbox_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Checkbox {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("peer size-4 shrink-0 rounded-[4px] border border-input shadow-xs"),
         "checkbox should have base classes: {html}"
@@ -44,11 +45,12 @@ fn checkbox_base_classes() {
 
 #[test]
 fn checkbox_has_state_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Checkbox {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"),
         "should have checked state classes: {html}"
@@ -61,11 +63,12 @@ fn checkbox_has_state_classes() {
 
 #[test]
 fn checkbox_indicator_present() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Checkbox {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="checkbox-indicator""#),
         "should have indicator: {html}"
@@ -78,11 +81,12 @@ fn checkbox_indicator_present() {
 
 #[test]
 fn checkbox_has_check_icon_when_checked() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Checkbox { default_checked: CheckedState::Checked } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("<svg"),
         "should contain check icon SVG: {html}"
@@ -99,11 +103,12 @@ fn checkbox_has_check_icon_when_checked() {
 
 #[test]
 fn checkbox_consumer_class() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Checkbox { class: "my-custom" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("my-custom"),
         "consumer class should merge: {html}"
@@ -116,11 +121,12 @@ fn checkbox_consumer_class() {
 
 #[test]
 fn checkbox_unchecked_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Checkbox {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-state="unchecked""#),
         "default state should be unchecked: {html}"
@@ -137,11 +143,12 @@ fn checkbox_unchecked_state() {
 
 #[test]
 fn checkbox_checked_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Checkbox { default_checked: CheckedState::Checked } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-state="checked""#),
         "should be checked: {html}"

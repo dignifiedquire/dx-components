@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn form_item_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Form {
                 FormField { name: "test",
@@ -25,14 +26,15 @@ fn form_item_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("grid"), "has grid class: {html}");
     assert!(html.contains("gap-2"), "has gap-2 class: {html}");
 }
 
 #[test]
 fn form_label_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Form {
                 FormField { name: "test",
@@ -44,7 +46,7 @@ fn form_label_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-[error=true]:text-destructive"),
         "has error class: {html}"
@@ -53,7 +55,8 @@ fn form_label_has_shadcn_classes() {
 
 #[test]
 fn form_description_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Form {
                 FormField { name: "test",
@@ -65,7 +68,7 @@ fn form_description_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("text-sm"), "has text-sm class: {html}");
     assert!(
         html.contains("text-muted-foreground"),
@@ -75,7 +78,8 @@ fn form_description_has_shadcn_classes() {
 
 #[test]
 fn form_message_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Form {
                 FormField { name: "test", error: "Error".to_string(),
@@ -87,7 +91,7 @@ fn form_message_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("text-sm"), "has text-sm class: {html}");
     assert!(
         html.contains("text-destructive"),
@@ -98,7 +102,8 @@ fn form_message_has_shadcn_classes() {
 
 #[test]
 fn form_item_custom_class_merged() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Form {
                 FormField { name: "test",
@@ -110,14 +115,15 @@ fn form_item_custom_class_merged() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("my-custom"), "has custom class: {html}");
     assert!(html.contains("grid"), "has base class: {html}");
 }
 
 #[test]
 fn full_styled_form_composition() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Form {
                 FormField { name: "email", error: "Required".to_string(),
@@ -135,7 +141,7 @@ fn full_styled_form_composition() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     // All slots present
     assert!(html.contains("data-slot=\"form\""), "form slot: {html}");

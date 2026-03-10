@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn drawer_trigger_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 DrawerTrigger { "Open" }
@@ -21,7 +22,7 @@ fn drawer_trigger_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="dialog-trigger""#),
         "trigger has dialog-trigger slot: {html}"
@@ -34,7 +35,8 @@ fn drawer_trigger_renders() {
 
 #[test]
 fn drawer_header_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 DrawerHeader { "Header" }
@@ -42,7 +44,7 @@ fn drawer_header_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="drawer-header""#),
         "has header slot: {html}"
@@ -55,7 +57,8 @@ fn drawer_header_has_shadcn_classes() {
 
 #[test]
 fn drawer_footer_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 DrawerFooter { "Footer" }
@@ -63,7 +66,7 @@ fn drawer_footer_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="drawer-footer""#),
         "has footer slot: {html}"
@@ -76,7 +79,8 @@ fn drawer_footer_has_shadcn_classes() {
 
 #[test]
 fn drawer_title_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 default_open: true,
@@ -85,7 +89,7 @@ fn drawer_title_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="drawer-title""#),
         "has title slot: {html}"
@@ -98,7 +102,8 @@ fn drawer_title_has_shadcn_classes() {
 
 #[test]
 fn drawer_description_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 default_open: true,
@@ -107,7 +112,7 @@ fn drawer_description_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="drawer-description""#),
         "has description slot: {html}"
@@ -120,7 +125,8 @@ fn drawer_description_has_shadcn_classes() {
 
 #[test]
 fn drawer_overlay_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 default_open: true,
@@ -129,7 +135,7 @@ fn drawer_overlay_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("fixed inset-0 z-50 bg-black/50"),
         "overlay classes: {html}"
@@ -138,7 +144,8 @@ fn drawer_overlay_has_shadcn_classes() {
 
 #[test]
 fn drawer_content_default_direction_bottom() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 default_open: true,
@@ -147,7 +154,7 @@ fn drawer_content_default_direction_bottom() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="drawer-content""#),
         "has content slot: {html}"
@@ -163,7 +170,8 @@ fn drawer_content_default_direction_bottom() {
 
 #[test]
 fn drawer_content_direction_top() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 default_open: true,
@@ -172,7 +180,7 @@ fn drawer_content_direction_top() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-vaul-drawer-direction="top""#),
         "direction top: {html}"
@@ -183,7 +191,8 @@ fn drawer_content_direction_top() {
 
 #[test]
 fn drawer_content_direction_left() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 default_open: true,
@@ -192,7 +201,7 @@ fn drawer_content_direction_left() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-vaul-drawer-direction="left""#),
         "direction left: {html}"
@@ -204,7 +213,8 @@ fn drawer_content_direction_left() {
 
 #[test]
 fn drawer_content_direction_right() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 default_open: true,
@@ -213,7 +223,7 @@ fn drawer_content_direction_right() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-vaul-drawer-direction="right""#),
         "direction right: {html}"
@@ -224,7 +234,8 @@ fn drawer_content_direction_right() {
 
 #[test]
 fn drawer_close_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 DrawerClose { "Close me" }
@@ -232,7 +243,7 @@ fn drawer_close_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="dialog-close""#),
         "close slot: {html}"
@@ -242,7 +253,8 @@ fn drawer_close_renders() {
 
 #[test]
 fn drawer_custom_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Drawer {
                 DrawerHeader { class: "my-custom", "Header" }
@@ -250,7 +262,7 @@ fn drawer_custom_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("my-custom"), "custom class merged: {html}");
     assert!(
         html.contains(r#"data-slot="drawer-header""#),

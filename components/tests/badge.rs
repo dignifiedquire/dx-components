@@ -13,11 +13,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn default_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Badge { "Default" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== default_variant ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="badge""#));
@@ -28,74 +29,81 @@ fn default_variant() {
 
 #[test]
 fn secondary_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Badge { variant: BadgeVariant::Secondary, "Secondary" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-variant="secondary""#));
     assert!(html.contains("bg-secondary text-secondary-foreground"));
 }
 
 #[test]
 fn destructive_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Badge { variant: BadgeVariant::Destructive, "Destructive" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-variant="destructive""#));
     assert!(html.contains("bg-destructive"));
 }
 
 #[test]
 fn outline_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Badge { variant: BadgeVariant::Outline, "Outline" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-variant="outline""#));
     assert!(html.contains("text-foreground"));
 }
 
 #[test]
 fn ghost_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Badge { variant: BadgeVariant::Ghost, "Ghost" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-variant="ghost""#));
 }
 
 #[test]
 fn link_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Badge { variant: BadgeVariant::Link, "Link" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-variant="link""#));
     assert!(html.contains("text-primary"));
 }
 
 #[test]
 fn renders_span() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Badge { "Test" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("<span"));
 }
 
 #[test]
 fn consumer_class_merges() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Badge { class: "ml-2", "Custom" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("ml-2"));
 }

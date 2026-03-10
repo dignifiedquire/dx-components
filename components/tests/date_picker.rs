@@ -29,7 +29,8 @@ fn date_picker_exports_compile() {
     fn _assert_type_exists(_: DatePickerProps) {}
 
     // DatePicker renders its root div with data-slot="date-picker"
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             DatePicker {
                 "placeholder child"
@@ -37,7 +38,7 @@ fn date_picker_exports_compile() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== date_picker_exports_compile ===\n{html}\n");
 
     assert!(
@@ -56,13 +57,14 @@ fn date_picker_exports_compile() {
 
 #[test]
 fn date_picker_custom_label() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             DatePicker { aria_label: "Birthday" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("aria-label=\"Birthday\""),
         "custom label: {html}"
@@ -71,13 +73,14 @@ fn date_picker_custom_label() {
 
 #[test]
 fn date_range_picker_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             DateRangePicker {}
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"date-range-picker\""),
         "range picker has slot: {html}"

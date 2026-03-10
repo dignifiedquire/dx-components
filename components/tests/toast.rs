@@ -19,13 +19,14 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn toast_provider_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ToastProvider { "hello" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== toast_provider_renders ===\n{html}\n");
 
     assert!(
@@ -40,13 +41,14 @@ fn toast_provider_renders() {
 
 #[test]
 fn toast_viewport_has_responsive_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ToastProvider { "content" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("z-[100]"), "viewport z-index: {html}");
     assert!(html.contains("max-h-screen"), "viewport max-h: {html}");
     assert!(
@@ -57,20 +59,22 @@ fn toast_viewport_has_responsive_classes() {
 
 #[test]
 fn toast_provider_custom_class() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ToastProvider { class: "my-custom", "content" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("my-custom"), "custom class merged: {html}");
     assert!(html.contains("fixed"), "still has fixed: {html}");
 }
 
 #[test]
 fn toast_provider_renders_multiple_children() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ToastProvider {
                 div { "Child 1" }
@@ -79,20 +83,21 @@ fn toast_provider_renders_multiple_children() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("Child 1"), "first child: {html}");
     assert!(html.contains("Child 2"), "second child: {html}");
 }
 
 #[test]
 fn toast_viewport_responsive_breakpoints() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ToastProvider { "test" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("sm:bottom-0"), "sm breakpoint: {html}");
     assert!(html.contains("sm:right-0"), "sm right: {html}");
     assert!(html.contains("md:max-w-[420px]"), "md max width: {html}");

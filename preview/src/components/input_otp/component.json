@@ -1,0 +1,13 @@
+{
+  "name": "input_otp",
+  "description": "Accessible one-time password component with copy paste functionality.",
+  "authors": ["dignifiedquire"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}

@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn table_container_and_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Table {
                 TableBody {
@@ -25,7 +26,7 @@ fn table_container_and_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== table_container_and_slot ===\n{html}\n");
 
     // Container div wraps the table
@@ -40,7 +41,8 @@ fn table_container_and_slot() {
 
 #[test]
 fn table_header_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Table {
                 TableHeader {
@@ -57,14 +59,15 @@ fn table_header_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="table-header""#));
     assert!(html.contains("<thead"));
 }
 
 #[test]
 fn table_body_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Table {
                 TableBody {
@@ -76,14 +79,15 @@ fn table_body_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="table-body""#));
     assert!(html.contains("<tbody"));
 }
 
 #[test]
 fn table_row_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Table {
                 TableBody {
@@ -95,14 +99,15 @@ fn table_row_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="table-row""#));
     assert!(html.contains("border-b transition-colors"));
 }
 
 #[test]
 fn table_head_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Table {
                 TableHeader {
@@ -119,7 +124,7 @@ fn table_head_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="table-head""#));
     assert!(html.contains("<th"));
     assert!(html.contains("h-10"));
@@ -128,7 +133,8 @@ fn table_head_classes() {
 
 #[test]
 fn table_cell_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Table {
                 TableBody {
@@ -140,7 +146,7 @@ fn table_cell_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="table-cell""#));
     assert!(html.contains("<td"));
     assert!(html.contains("p-2 align-middle"));
@@ -148,7 +154,8 @@ fn table_cell_classes() {
 
 #[test]
 fn table_footer_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Table {
                 TableBody {
@@ -165,7 +172,7 @@ fn table_footer_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="table-footer""#));
     assert!(html.contains("<tfoot"));
     assert!(html.contains("bg-muted/50"));
@@ -173,7 +180,8 @@ fn table_footer_slot() {
 
 #[test]
 fn table_caption_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Table {
                 TableBody {
@@ -186,7 +194,7 @@ fn table_caption_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="table-caption""#));
     assert!(html.contains("<caption"));
     assert!(html.contains("text-muted-foreground"));

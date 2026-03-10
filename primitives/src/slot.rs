@@ -72,6 +72,8 @@
 //!     }
 //! }
 //! ```
+//!
+//! [`merge_attributes`]: crate::merge_attributes
 
 use dioxus::prelude::*;
 

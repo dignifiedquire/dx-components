@@ -19,11 +19,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn progress_root_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Progress { value: 50.0 } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("relative h-2 w-full overflow-hidden rounded-full bg-primary/20"),
         "root should have shadcn classes: {html}"
@@ -44,11 +45,12 @@ fn progress_root_classes() {
 
 #[test]
 fn progress_indicator_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Progress { value: 50.0 } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("h-full w-full flex-1 bg-primary transition-all"),
         "indicator should have shadcn classes: {html}"
@@ -65,11 +67,12 @@ fn progress_indicator_classes() {
 
 #[test]
 fn progress_transform_at_50() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Progress { value: 50.0 } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("translateX(-50%"),
         "50% progress should translate -50%: {html}"
@@ -78,11 +81,12 @@ fn progress_transform_at_50() {
 
 #[test]
 fn progress_transform_at_0() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Progress { value: 0.0 } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("translateX(-100%"),
         "0% progress should translate -100%: {html}"
@@ -91,11 +95,12 @@ fn progress_transform_at_0() {
 
 #[test]
 fn progress_transform_at_100() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Progress { value: 100.0 } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("translateX(-0%") || html.contains("translateX(0%"),
         "100% progress should translate 0%: {html}"
@@ -108,11 +113,12 @@ fn progress_transform_at_100() {
 
 #[test]
 fn progress_consumer_class() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Progress { class: "my-progress", value: 50.0 } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("my-progress"),
         "consumer class should merge: {html}"
@@ -125,11 +131,12 @@ fn progress_consumer_class() {
 
 #[test]
 fn progress_data_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Progress { value: 50.0 } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-state="loading""#),
         "50% progress should be loading state: {html}"
@@ -138,11 +145,12 @@ fn progress_data_state() {
 
 #[test]
 fn progress_complete_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Progress { value: 100.0 } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-state="complete""#),
         "100% progress should be complete state: {html}"

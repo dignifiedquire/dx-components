@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn command_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Command {
                 CommandInput {}
@@ -21,14 +22,15 @@ fn command_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("bg-popover"), "root has bg-popover: {html}");
     assert!(html.contains("rounded-md"), "root has rounded-md: {html}");
 }
 
 #[test]
 fn command_input_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Command {
                 CommandInput { placeholder: "Search..." }
@@ -36,7 +38,7 @@ fn command_input_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("bg-transparent"),
         "input has bg-transparent: {html}"
@@ -45,7 +47,8 @@ fn command_input_has_shadcn_classes() {
 
 #[test]
 fn command_list_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Command {
                 CommandList {
@@ -55,7 +58,7 @@ fn command_list_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("overflow-y-auto"),
         "list has overflow: {html}"
@@ -65,7 +68,8 @@ fn command_list_has_shadcn_classes() {
 
 #[test]
 fn command_item_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Command {
                 CommandList {
@@ -75,14 +79,15 @@ fn command_item_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("cursor-default"), "item class: {html}");
     assert!(html.contains("rounded-sm"), "item rounded: {html}");
 }
 
 #[test]
 fn command_empty_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Command {
                 CommandList {
@@ -92,14 +97,15 @@ fn command_empty_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("text-center"), "empty center: {html}");
     assert!(html.contains("py-6"), "empty padding: {html}");
 }
 
 #[test]
 fn command_group_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Command {
                 CommandList {
@@ -111,7 +117,7 @@ fn command_group_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("text-foreground"),
         "group has text-foreground: {html}"
@@ -120,7 +126,8 @@ fn command_group_has_shadcn_classes() {
 
 #[test]
 fn command_separator_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Command {
                 CommandList {
@@ -130,14 +137,15 @@ fn command_separator_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("bg-border"), "separator: {html}");
     assert!(html.contains("h-px"), "separator height: {html}");
 }
 
 #[test]
 fn command_shortcut_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Command {
                 CommandList {
@@ -150,7 +158,7 @@ fn command_shortcut_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("tracking-widest"),
         "shortcut tracking: {html}"
@@ -163,7 +171,8 @@ fn command_shortcut_has_shadcn_classes() {
 
 #[test]
 fn full_styled_command_composition() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Command {
                 CommandInput { placeholder: "Search..." }
@@ -181,7 +190,7 @@ fn full_styled_command_composition() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("data-slot=\"command\""), "root: {html}");
     assert!(
         html.contains("data-slot=\"command-input\""),

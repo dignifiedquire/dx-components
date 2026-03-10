@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn default_variant_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Alert {
                 AlertTitle { "Title" }
@@ -22,7 +23,7 @@ fn default_variant_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== default_variant_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="alert""#));
@@ -33,7 +34,8 @@ fn default_variant_classes() {
 
 #[test]
 fn destructive_variant_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Alert { variant: AlertVariant::Destructive,
                 AlertTitle { "Error" }
@@ -42,7 +44,7 @@ fn destructive_variant_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== destructive_variant_classes ===\n{html}\n");
 
     assert!(html.contains("text-destructive"));
@@ -50,7 +52,8 @@ fn destructive_variant_classes() {
 
 #[test]
 fn title_data_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Alert {
                 AlertTitle { "Title" }
@@ -59,14 +62,15 @@ fn title_data_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="alert-title""#));
     assert!(html.contains("font-medium tracking-tight"));
 }
 
 #[test]
 fn description_data_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Alert {
                 AlertTitle { "Title" }
@@ -75,14 +79,15 @@ fn description_data_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="alert-description""#));
     assert!(html.contains("text-muted-foreground"));
 }
 
 #[test]
 fn consumer_class_merges() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Alert { class: "max-w-md",
                 AlertTitle { "Title" }
@@ -91,6 +96,6 @@ fn consumer_class_merges() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("max-w-md"));
 }

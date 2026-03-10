@@ -15,7 +15,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn data_slot_present() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AspectRatio { ratio: 16.0 / 9.0,
                 img { src: "photo.jpg" }
@@ -23,7 +24,7 @@ fn data_slot_present() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="aspect-ratio""#),
         "should have data-slot: {html}"
@@ -32,7 +33,8 @@ fn data_slot_present() {
 
 #[test]
 fn consumer_class_passed_through() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AspectRatio { class: "rounded-lg overflow-hidden",
                 img { src: "photo.jpg" }
@@ -40,7 +42,7 @@ fn consumer_class_passed_through() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("rounded-lg overflow-hidden"),
         "consumer class should pass through: {html}"
@@ -49,7 +51,8 @@ fn consumer_class_passed_through() {
 
 #[test]
 fn children_rendered() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AspectRatio { ratio: 1.0,
                 span { "child-sentinel" }
@@ -57,7 +60,7 @@ fn children_rendered() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("child-sentinel"),
         "children should render: {html}"

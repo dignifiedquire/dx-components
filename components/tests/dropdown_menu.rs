@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn dropdown_menu_trigger_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             DropdownMenu {
                 DropdownMenuTrigger { "Open" }
@@ -21,7 +22,7 @@ fn dropdown_menu_trigger_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== dropdown_menu_trigger_slot ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="dropdown-menu-trigger""#));
@@ -31,7 +32,8 @@ fn dropdown_menu_trigger_slot() {
 
 #[test]
 fn dropdown_menu_content_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             DropdownMenu {
                 default_open: true,
@@ -42,7 +44,7 @@ fn dropdown_menu_content_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== dropdown_menu_content_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="dropdown-menu-content""#));
@@ -54,7 +56,8 @@ fn dropdown_menu_content_classes() {
 
 #[test]
 fn dropdown_menu_item_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             DropdownMenu {
                 default_open: true,
@@ -65,7 +68,7 @@ fn dropdown_menu_item_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="dropdown-menu-item""#));
     assert!(html.contains(r#"role="menuitem""#));
@@ -75,7 +78,8 @@ fn dropdown_menu_item_classes() {
 
 #[test]
 fn dropdown_menu_separator_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             DropdownMenu {
                 default_open: true,
@@ -86,7 +90,7 @@ fn dropdown_menu_separator_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="dropdown-menu-separator""#));
     assert!(html.contains("h-px bg-border"));
@@ -94,7 +98,8 @@ fn dropdown_menu_separator_classes() {
 
 #[test]
 fn dropdown_menu_label_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             DropdownMenu {
                 default_open: true,
@@ -105,7 +110,7 @@ fn dropdown_menu_label_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="dropdown-menu-label""#));
     assert!(html.contains("text-sm font-medium"));
@@ -113,7 +118,8 @@ fn dropdown_menu_label_classes() {
 
 #[test]
 fn dropdown_menu_consumer_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             DropdownMenu {
                 default_open: true,
@@ -125,7 +131,7 @@ fn dropdown_menu_consumer_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("my-custom"));
 }

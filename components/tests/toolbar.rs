@@ -19,7 +19,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn toolbar_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Toolbar {
                 ToolbarButton { "Click" }
@@ -27,7 +28,7 @@ fn toolbar_base_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== toolbar_base_classes ===\n{html}\n");
 
     assert!(
@@ -42,7 +43,8 @@ fn toolbar_base_classes() {
 
 #[test]
 fn toolbar_separator_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Toolbar {
                 ToolbarSeparator {}
@@ -50,7 +52,7 @@ fn toolbar_separator_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== toolbar_separator_classes ===\n{html}\n");
 
     assert!(
@@ -65,7 +67,8 @@ fn toolbar_separator_classes() {
 
 #[test]
 fn toolbar_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Toolbar {
                 class: "my-toolbar",
@@ -74,7 +77,7 @@ fn toolbar_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("my-toolbar"),

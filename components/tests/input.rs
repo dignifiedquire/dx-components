@@ -13,11 +13,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn data_slot_and_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Input { placeholder: "Email" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== data_slot_and_base_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="input""#));
@@ -29,40 +30,44 @@ fn data_slot_and_base_classes() {
 
 #[test]
 fn placeholder_passes_through() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Input { placeholder: "Enter email" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"placeholder="Enter email""#));
 }
 
 #[test]
 fn focus_visible_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Input {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("focus-visible:border-ring"));
 }
 
 #[test]
 fn aria_invalid_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Input {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("aria-invalid:border-destructive"));
 }
 
 #[test]
 fn consumer_class_merges() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Input { class: "max-w-sm" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("max-w-sm"));
 }

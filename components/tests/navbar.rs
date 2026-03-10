@@ -19,7 +19,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn navbar_base_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Navbar {
                 "nav content"
@@ -27,7 +28,7 @@ fn navbar_base_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== navbar_base_renders ===\n{html}\n");
 
     assert!(
@@ -50,7 +51,8 @@ fn navbar_base_renders() {
 
 #[test]
 fn navbar_data_slots() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Navbar {
                 NavbarNav { index: 0usize,
@@ -68,7 +70,7 @@ fn navbar_data_slots() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== navbar_data_slots ===\n{html}\n");
 
     assert!(
@@ -95,7 +97,8 @@ fn navbar_data_slots() {
 
 #[test]
 fn navbar_item_data_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Navbar {
                 NavbarNav { index: 0usize,
@@ -113,7 +116,7 @@ fn navbar_item_data_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== navbar_item_data_slot ===\n{html}\n");
 
     // NavbarContent is only rendered when the nav is open, so the item
@@ -135,7 +138,8 @@ fn navbar_item_data_slot() {
 
 #[test]
 fn navbar_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Navbar {
                 class: "my-navbar",
@@ -144,7 +148,7 @@ fn navbar_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("my-navbar"),

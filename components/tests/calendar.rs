@@ -21,7 +21,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn calendar_renders_with_data_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         let view_date = UtcDateTime::now().date();
         rsx! {
             Calendar {
@@ -39,7 +40,7 @@ fn calendar_renders_with_data_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== calendar_renders_with_data_slot ===\n{html}\n");
 
     assert!(
@@ -62,7 +63,8 @@ fn calendar_renders_with_data_slot() {
 
 #[test]
 fn calendar_grid_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         let view_date = UtcDateTime::now().date();
         rsx! {
             Calendar {
@@ -73,7 +75,7 @@ fn calendar_grid_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== calendar_grid_renders ===\n{html}\n");
 
     assert!(
@@ -97,7 +99,8 @@ fn calendar_grid_renders() {
 
 #[test]
 fn calendar_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         let view_date = UtcDateTime::now().date();
         rsx! {
             Calendar {
@@ -109,7 +112,7 @@ fn calendar_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== calendar_class_merge ===\n{html}\n");
 
     assert!(

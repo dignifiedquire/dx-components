@@ -9,7 +9,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn empty_root_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Empty {
                 EmptyHeader {
@@ -19,7 +20,7 @@ fn empty_root_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== empty_root_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="empty""#));
@@ -29,7 +30,8 @@ fn empty_root_classes() {
 
 #[test]
 fn empty_header_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Empty {
                 EmptyHeader {
@@ -40,7 +42,7 @@ fn empty_header_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="empty-header""#));
     assert!(html.contains("max-w-sm"));
@@ -48,7 +50,8 @@ fn empty_header_slot() {
 
 #[test]
 fn empty_media_default_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Empty {
                 EmptyMedia { "icon here" }
@@ -56,7 +59,7 @@ fn empty_media_default_variant() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="empty-icon""#));
     assert!(html.contains("bg-transparent"));
@@ -64,7 +67,8 @@ fn empty_media_default_variant() {
 
 #[test]
 fn empty_media_icon_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Empty {
                 EmptyMedia { variant: EmptyMediaVariant::Icon, "icon here" }
@@ -72,7 +76,7 @@ fn empty_media_icon_variant() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("bg-muted"));
     assert!(html.contains("rounded-lg"));
@@ -80,7 +84,8 @@ fn empty_media_icon_variant() {
 
 #[test]
 fn empty_title_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Empty {
                 EmptyHeader {
@@ -90,7 +95,7 @@ fn empty_title_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="empty-title""#));
     assert!(html.contains("font-medium"));
@@ -99,7 +104,8 @@ fn empty_title_classes() {
 
 #[test]
 fn empty_description_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Empty {
                 EmptyHeader {
@@ -109,7 +115,7 @@ fn empty_description_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="empty-description""#));
     assert!(html.contains("text-muted-foreground"));
@@ -117,7 +123,8 @@ fn empty_description_classes() {
 
 #[test]
 fn empty_content_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Empty {
                 EmptyContent { "Actions here" }
@@ -125,7 +132,7 @@ fn empty_content_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="empty-content""#));
     assert!(html.contains("max-w-sm"));

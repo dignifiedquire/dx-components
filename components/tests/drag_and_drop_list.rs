@@ -20,14 +20,15 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn drag_and_drop_list_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         let items = vec![rsx! { "Item A" }, rsx! { "Item B" }, rsx! { "Item C" }];
         rsx! {
             DragAndDropList { items }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== drag_and_drop_list_renders ===\n{html}\n");
 
     assert!(
@@ -50,14 +51,15 @@ fn drag_and_drop_list_renders() {
 
 #[test]
 fn drag_and_drop_item_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         let items = vec![rsx! { "First" }, rsx! { "Second" }];
         rsx! {
             DragAndDropList { items }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== drag_and_drop_item_renders ===\n{html}\n");
 
     assert!(
@@ -92,7 +94,8 @@ fn drag_and_drop_item_renders() {
 
 #[test]
 fn drag_and_drop_list_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         let items = vec![rsx! { "Item 1" }];
         rsx! {
             DragAndDropList {
@@ -102,7 +105,7 @@ fn drag_and_drop_list_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== drag_and_drop_list_class_merge ===\n{html}\n");
 
     assert!(

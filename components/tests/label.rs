@@ -19,11 +19,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn label_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Label { "Email" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("flex items-center gap-2 text-sm leading-none font-medium select-none"),
         "label should have base classes: {html}"
@@ -41,11 +42,12 @@ fn label_base_classes() {
 
 #[test]
 fn label_has_disabled_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Label { "Email" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(
             "group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50"
@@ -64,11 +66,12 @@ fn label_has_disabled_classes() {
 
 #[test]
 fn label_consumer_class() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Label { class: "text-red-500", "Error" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("text-red-500"),
         "consumer class should merge: {html}"
@@ -81,11 +84,12 @@ fn label_consumer_class() {
 
 #[test]
 fn label_html_for() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Label { html_for: "email-input", "Email" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"for="email-input""#),
         "should have for attribute: {html}"
@@ -98,10 +102,11 @@ fn label_html_for() {
 
 #[test]
 fn label_renders_label_element() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Label { "Email" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("<label"), "should render as <label>: {html}");
 }

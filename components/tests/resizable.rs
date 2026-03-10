@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn panel_group_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ResizablePanelGroup {
                 ResizablePanel { default_size: 50.0, "Left" }
@@ -23,7 +24,7 @@ fn panel_group_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"resizable-panel-group\""),
         "group slot: {html}"
@@ -35,7 +36,8 @@ fn panel_group_has_shadcn_classes() {
 
 #[test]
 fn vertical_group_has_flex_col() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ResizablePanelGroup {
                 orientation: dioxus_primitives::direction::Orientation::Vertical,
@@ -46,13 +48,14 @@ fn vertical_group_has_flex_col() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("flex-col"), "vertical flex-col: {html}");
 }
 
 #[test]
 fn panel_renders_with_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ResizablePanelGroup {
                 ResizablePanel { default_size: 50.0, "Content" }
@@ -62,7 +65,7 @@ fn panel_renders_with_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"resizable-panel\""),
         "panel has slot: {html}"
@@ -71,7 +74,8 @@ fn panel_renders_with_slot() {
 
 #[test]
 fn handle_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ResizablePanelGroup {
                 ResizablePanel { default_size: 50.0, "Left" }
@@ -81,7 +85,7 @@ fn handle_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"resizable-handle\""),
         "handle slot: {html}"
@@ -97,7 +101,8 @@ fn handle_has_shadcn_classes() {
 
 #[test]
 fn handle_has_focus_ring() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ResizablePanelGroup {
                 ResizablePanel { default_size: 50.0, "Left" }
@@ -107,7 +112,7 @@ fn handle_has_focus_ring() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("focus-visible:ring-1"), "focus ring: {html}");
     assert!(
         html.contains("focus-visible:ring-ring"),
@@ -117,7 +122,8 @@ fn handle_has_focus_ring() {
 
 #[test]
 fn handle_with_grip_icon() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ResizablePanelGroup {
                 ResizablePanel { default_size: 50.0, "Left" }
@@ -127,7 +133,7 @@ fn handle_with_grip_icon() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("rounded-xs"), "grip container: {html}");
     assert!(html.contains("size-2.5"), "grip icon size: {html}");
     assert!(html.contains("<circle"), "has SVG circles: {html}");
@@ -135,7 +141,8 @@ fn handle_with_grip_icon() {
 
 #[test]
 fn handle_without_grip_has_no_svg() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ResizablePanelGroup {
                 ResizablePanel { default_size: 50.0, "Left" }
@@ -145,13 +152,14 @@ fn handle_without_grip_has_no_svg() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(!html.contains("<circle"), "no SVG circles: {html}");
 }
 
 #[test]
 fn custom_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ResizablePanelGroup { class: "my-custom",
                 ResizablePanel { default_size: 50.0, "Left" }
@@ -161,14 +169,15 @@ fn custom_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("my-custom"), "custom class: {html}");
     assert!(html.contains("flex"), "still has flex: {html}");
 }
 
 #[test]
 fn full_composition() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ResizablePanelGroup {
                 ResizablePanel { default_size: 30.0, "A" }
@@ -178,7 +187,7 @@ fn full_composition() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"resizable-panel-group\""),
         "group: {html}"

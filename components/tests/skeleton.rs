@@ -13,11 +13,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn data_slot_and_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Skeleton { class: "h-4 w-[250px]" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== data_slot_and_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="skeleton""#));
@@ -29,11 +30,12 @@ fn data_slot_and_classes() {
 
 #[test]
 fn consumer_class_merges() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Skeleton { class: "h-12 w-12 rounded-full" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("h-12 w-12"));
     // rounded-full should override rounded-md via tw_merge
     assert!(html.contains("rounded-full"));
@@ -41,11 +43,12 @@ fn consumer_class_merges() {
 
 #[test]
 fn skeleton_renders_as_div() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Skeleton {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("<div"), "renders as div: {html}");
     assert!(
         html.contains("data-slot=\"skeleton\""),
@@ -55,13 +58,14 @@ fn skeleton_renders_as_div() {
 
 #[test]
 fn skeleton_custom_dimensions() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Skeleton { class: "h-8 w-32" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("h-8"), "has custom height: {html}");
     assert!(html.contains("w-32"), "has custom width: {html}");
     assert!(html.contains("animate-pulse"), "still pulses: {html}");
@@ -69,7 +73,8 @@ fn skeleton_custom_dimensions() {
 
 #[test]
 fn multiple_skeletons() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             div {
                 Skeleton { class: "h-4 w-[200px]" }
@@ -78,7 +83,7 @@ fn multiple_skeletons() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert_eq!(
         html.matches("data-slot=\"skeleton\"").count(),
         2,

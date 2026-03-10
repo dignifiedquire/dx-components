@@ -19,7 +19,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn avatar_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Avatar {
                 AvatarFallback { "AB" }
@@ -27,7 +28,7 @@ fn avatar_base_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(
             "group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none"
@@ -46,7 +47,8 @@ fn avatar_base_classes() {
 
 #[test]
 fn avatar_size_sm() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Avatar { size: AvatarSize::Sm,
                 AvatarFallback { "SM" }
@@ -54,7 +56,7 @@ fn avatar_size_sm() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-size="sm""#),
         "should have data-size=sm: {html}"
@@ -63,7 +65,8 @@ fn avatar_size_sm() {
 
 #[test]
 fn avatar_size_lg() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Avatar { size: AvatarSize::Lg,
                 AvatarFallback { "LG" }
@@ -71,7 +74,7 @@ fn avatar_size_lg() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-size="lg""#),
         "should have data-size=lg: {html}"
@@ -80,7 +83,8 @@ fn avatar_size_lg() {
 
 #[test]
 fn avatar_consumer_class() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Avatar { class: "border-2",
                 AvatarFallback { "AB" }
@@ -88,7 +92,7 @@ fn avatar_consumer_class() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("border-2"),
         "consumer class should merge: {html}"
@@ -101,7 +105,8 @@ fn avatar_consumer_class() {
 
 #[test]
 fn avatar_image_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Avatar {
                 AvatarImage { src: "https://example.com/avatar.jpg", alt: "User" }
@@ -110,7 +115,7 @@ fn avatar_image_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("aspect-square size-full"),
         "image should have shadcn classes: {html}"
@@ -127,7 +132,8 @@ fn avatar_image_classes() {
 
 #[test]
 fn avatar_fallback_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Avatar {
                 AvatarFallback { "JD" }
@@ -135,7 +141,7 @@ fn avatar_fallback_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground"),
         "fallback should have shadcn classes: {html}"
@@ -156,7 +162,8 @@ fn avatar_fallback_classes() {
 
 #[test]
 fn avatar_badge_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Avatar {
                 AvatarFallback { "AB" }
@@ -165,7 +172,7 @@ fn avatar_badge_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="avatar-badge""#),
         "badge should have data-slot: {html}"
@@ -182,7 +189,8 @@ fn avatar_badge_classes() {
 
 #[test]
 fn avatar_group_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AvatarGroup {
                 Avatar { AvatarFallback { "A" } }
@@ -191,7 +199,7 @@ fn avatar_group_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="avatar-group""#),
         "group should have data-slot: {html}"
@@ -208,7 +216,8 @@ fn avatar_group_classes() {
 
 #[test]
 fn avatar_group_count_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AvatarGroup {
                 AvatarGroupCount { "+3" }
@@ -216,7 +225,7 @@ fn avatar_group_count_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains(r#"data-slot="avatar-group-count""#),
         "group count should have data-slot: {html}"

@@ -9,7 +9,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn pagination_nav_structure() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Pagination {
                 PaginationContent {
@@ -19,7 +20,7 @@ fn pagination_nav_structure() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== pagination_nav_structure ===\n{html}\n");
 
     assert!(html.contains("<nav"));
@@ -31,7 +32,8 @@ fn pagination_nav_structure() {
 
 #[test]
 fn pagination_content_is_ul() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Pagination {
                 PaginationContent {
@@ -41,7 +43,7 @@ fn pagination_content_is_ul() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("<ul"));
     assert!(html.contains(r#"data-slot="pagination-content""#));
@@ -50,7 +52,8 @@ fn pagination_content_is_ul() {
 
 #[test]
 fn pagination_link_active_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Pagination {
                 PaginationContent {
@@ -62,7 +65,7 @@ fn pagination_link_active_state() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== pagination_link_active_state ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="pagination-link""#));
@@ -74,7 +77,8 @@ fn pagination_link_active_state() {
 
 #[test]
 fn pagination_link_inactive_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Pagination {
                 PaginationContent {
@@ -86,7 +90,7 @@ fn pagination_link_inactive_state() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("data-active=false"));
     // Inactive uses ghost variant
@@ -95,7 +99,8 @@ fn pagination_link_inactive_state() {
 
 #[test]
 fn pagination_previous_has_icon() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Pagination {
                 PaginationContent {
@@ -105,7 +110,7 @@ fn pagination_previous_has_icon() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== pagination_previous_has_icon ===\n{html}\n");
 
     assert!(html.contains(r#"aria-label="Go to previous page""#));
@@ -115,7 +120,8 @@ fn pagination_previous_has_icon() {
 
 #[test]
 fn pagination_next_has_icon() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Pagination {
                 PaginationContent {
@@ -125,7 +131,7 @@ fn pagination_next_has_icon() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"aria-label="Go to next page""#));
     assert!(html.contains("<svg"));
@@ -134,7 +140,8 @@ fn pagination_next_has_icon() {
 
 #[test]
 fn pagination_ellipsis_sr_only() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Pagination {
                 PaginationContent {
@@ -144,7 +151,7 @@ fn pagination_ellipsis_sr_only() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="pagination-ellipsis""#));
     assert!(html.contains("sr-only"));

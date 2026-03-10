@@ -19,11 +19,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn button_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== button_base_classes ===\n{html}\n");
 
     assert!(
@@ -42,11 +43,12 @@ fn button_base_classes() {
 
 #[test]
 fn button_default_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("bg-primary"),
@@ -56,11 +58,12 @@ fn button_default_variant() {
 
 #[test]
 fn button_destructive_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { variant: ButtonVariant::Destructive, "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("bg-destructive"),
@@ -70,11 +73,12 @@ fn button_destructive_variant() {
 
 #[test]
 fn button_outline_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { variant: ButtonVariant::Outline, "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("border"),
@@ -84,11 +88,12 @@ fn button_outline_variant() {
 
 #[test]
 fn button_secondary_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { variant: ButtonVariant::Secondary, "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("bg-secondary"),
@@ -98,11 +103,12 @@ fn button_secondary_variant() {
 
 #[test]
 fn button_ghost_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { variant: ButtonVariant::Ghost, "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("hover:bg-accent"),
@@ -112,11 +118,12 @@ fn button_ghost_variant() {
 
 #[test]
 fn button_link_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { variant: ButtonVariant::Link, "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("underline-offset-4"),
@@ -130,33 +137,36 @@ fn button_link_variant() {
 
 #[test]
 fn button_size_sm() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { size: ButtonSize::Sm, "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("h-8"), "sm size should have h-8: {html}");
 }
 
 #[test]
 fn button_size_lg() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { size: ButtonSize::Lg, "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("h-10"), "lg size should have h-10: {html}");
 }
 
 #[test]
 fn button_size_icon() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { size: ButtonSize::Icon, "X" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("size-9"),
@@ -170,11 +180,12 @@ fn button_size_icon() {
 
 #[test]
 fn button_disabled() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { disabled: true, "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("disabled=true"),
@@ -188,11 +199,12 @@ fn button_disabled() {
 
 #[test]
 fn button_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Button { class: "my-class", "Click" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("my-class"),

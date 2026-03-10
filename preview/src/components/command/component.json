@@ -1,0 +1,13 @@
+{
+  "name": "command",
+  "description": "Fast, composable, unstyled command menu.",
+  "authors": ["dignifiedquire"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}

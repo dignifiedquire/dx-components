@@ -1,0 +1,13 @@
+{
+  "name": "combobox",
+  "description": "Autocomplete input and command palette with filtering.",
+  "authors": ["dignifiedquire"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}

@@ -19,7 +19,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn radio_group_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             RadioGroup {
                 RadioGroupItem { value: "a" }
@@ -27,7 +28,7 @@ fn radio_group_base_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== radio_group_base_classes ===\n{html}\n");
 
     assert!(
@@ -46,7 +47,8 @@ fn radio_group_base_classes() {
 
 #[test]
 fn radio_group_item_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             RadioGroup {
                 RadioGroupItem { value: "a" }
@@ -54,7 +56,7 @@ fn radio_group_item_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("aspect-square size-4 shrink-0 rounded-full"),
@@ -72,7 +74,8 @@ fn radio_group_item_classes() {
 
 #[test]
 fn radio_group_item_indicator() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             RadioGroup {
                 RadioGroupItem { value: "a" }
@@ -80,7 +83,7 @@ fn radio_group_item_indicator() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains(r#"data-slot="radio-group-indicator""#),
@@ -94,7 +97,8 @@ fn radio_group_item_indicator() {
 
 #[test]
 fn radio_group_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             RadioGroup {
                 class: "my-group",
@@ -103,7 +107,7 @@ fn radio_group_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("my-group"),

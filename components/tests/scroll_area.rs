@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn scroll_area_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ScrollArea {
                 "Scrollable content"
@@ -21,7 +22,7 @@ fn scroll_area_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== scroll_area_slot ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="scroll-area""#));
@@ -30,7 +31,8 @@ fn scroll_area_slot() {
 
 #[test]
 fn scroll_area_direction_attribute() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ScrollArea {
                 direction: ScrollDirection::Horizontal,
@@ -39,14 +41,15 @@ fn scroll_area_direction_attribute() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-scroll-direction="horizontal""#));
 }
 
 #[test]
 fn scroll_area_consumer_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ScrollArea {
                 class: "my-scroll",
@@ -55,7 +58,7 @@ fn scroll_area_consumer_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("my-scroll"));
 }

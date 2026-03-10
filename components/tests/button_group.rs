@@ -9,13 +9,14 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn button_group_role_and_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ButtonGroup { "Buttons" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== button_group_role_and_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="button-group""#));
@@ -25,13 +26,14 @@ fn button_group_role_and_classes() {
 
 #[test]
 fn button_group_horizontal_default() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ButtonGroup { "Buttons" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     // Horizontal orientation classes
     assert!(html.contains("rounded-l-none"));
@@ -40,13 +42,14 @@ fn button_group_horizontal_default() {
 
 #[test]
 fn button_group_vertical() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ButtonGroup { orientation: Orientation::Vertical, "Buttons" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("flex-col"));
     assert!(html.contains("rounded-t-none"));
@@ -55,7 +58,8 @@ fn button_group_vertical() {
 
 #[test]
 fn button_group_text_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ButtonGroup {
                 ButtonGroupText { "Label" }
@@ -63,7 +67,7 @@ fn button_group_text_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="button-group-text""#));
     assert!(html.contains("bg-muted"));
@@ -72,7 +76,8 @@ fn button_group_text_classes() {
 
 #[test]
 fn button_group_separator_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ButtonGroup {
                 ButtonGroupSeparator {}
@@ -80,7 +85,7 @@ fn button_group_separator_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="button-group-separator""#));
     assert!(html.contains("bg-input"));

@@ -13,11 +13,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn data_slot_and_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Spinner {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== data_slot_and_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="spinner""#));
@@ -28,31 +29,34 @@ fn data_slot_and_classes() {
 
 #[test]
 fn accessibility_attributes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Spinner {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"role="status""#));
     assert!(html.contains(r#"aria-label="Loading""#));
 }
 
 #[test]
 fn lucide_loader_circle_path() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Spinner {} }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"d="M21 12a9 9 0 1 1-6.219-8.56""#));
 }
 
 #[test]
 fn consumer_class_merges() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Spinner { class: "size-8" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("size-8"));
 }

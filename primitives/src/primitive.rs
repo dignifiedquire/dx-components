@@ -79,6 +79,8 @@ mod tests {
     use super::*;
     use std::cell::Cell;
 
+    type OriginalHandler = Rc<dyn Fn(&(), Rc<Cell<bool>>)>;
+
     #[test]
     fn compose_callbacks_both_fire() {
         let a_count = Rc::new(Cell::new(0));
@@ -138,7 +140,7 @@ mod tests {
         let o1 = order.clone();
         let o2 = order.clone();
 
-        let original: Rc<dyn Fn(&(), Rc<Cell<bool>>)> = Rc::new(move |_, _| {
+        let original: OriginalHandler = Rc::new(move |_, _| {
             o1.borrow_mut().push("original");
         });
         let ours: Rc<dyn Fn(&())> = Rc::new(move |_| {
@@ -156,7 +158,7 @@ mod tests {
         let ours_called = Rc::new(Cell::new(false));
         let oc = ours_called.clone();
 
-        let original: Rc<dyn Fn(&(), Rc<Cell<bool>>)> = Rc::new(|_, prevented| {
+        let original: OriginalHandler = Rc::new(|_, prevented| {
             prevented.set(true);
         });
         let ours: Rc<dyn Fn(&())> = Rc::new(move |_| {
@@ -174,7 +176,7 @@ mod tests {
         let ours_called = Rc::new(Cell::new(false));
         let oc = ours_called.clone();
 
-        let original: Rc<dyn Fn(&(), Rc<Cell<bool>>)> = Rc::new(|_, prevented| {
+        let original: OriginalHandler = Rc::new(|_, prevented| {
             prevented.set(true);
         });
         let ours: Rc<dyn Fn(&())> = Rc::new(move |_| {

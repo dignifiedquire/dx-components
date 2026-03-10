@@ -9,7 +9,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn item_group_role_list() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ItemGroup {
                 Item {
@@ -19,7 +20,7 @@ fn item_group_role_list() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== item_group_role_list ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="item-group""#));
@@ -29,13 +30,14 @@ fn item_group_role_list() {
 
 #[test]
 fn item_default_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Item { "Content" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="item""#));
     assert!(html.contains("bg-transparent"));
@@ -44,39 +46,42 @@ fn item_default_variant() {
 
 #[test]
 fn item_outline_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Item { variant: ItemVariant::Outline, "Content" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("border-border"));
 }
 
 #[test]
 fn item_muted_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Item { variant: ItemVariant::Muted, "Content" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("bg-muted/50"));
 }
 
 #[test]
 fn item_sm_size() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Item { size: ItemSize::Sm, "Content" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("gap-2.5"));
     assert!(html.contains("py-3"));
@@ -84,7 +89,8 @@ fn item_sm_size() {
 
 #[test]
 fn item_media_icon_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Item {
                 ItemMedia { variant: ItemMediaVariant::Icon, "I" }
@@ -93,7 +99,7 @@ fn item_media_icon_variant() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="item-media""#));
     assert!(html.contains("size-8"));
@@ -102,7 +108,8 @@ fn item_media_icon_variant() {
 
 #[test]
 fn item_media_image_variant() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Item {
                 ItemMedia { variant: ItemMediaVariant::Image, "img" }
@@ -110,7 +117,7 @@ fn item_media_image_variant() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("size-10"));
     assert!(html.contains("overflow-hidden"));
@@ -118,7 +125,8 @@ fn item_media_image_variant() {
 
 #[test]
 fn item_content_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Item {
                 ItemContent {
@@ -129,7 +137,7 @@ fn item_content_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="item-content""#));
     assert!(html.contains(r#"data-slot="item-title""#));
@@ -139,7 +147,8 @@ fn item_content_slot() {
 
 #[test]
 fn item_actions_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Item {
                 ItemActions { "Btn" }
@@ -147,14 +156,15 @@ fn item_actions_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="item-actions""#));
 }
 
 #[test]
 fn item_header_footer() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Item {
                 ItemHeader { "Header" }
@@ -163,7 +173,7 @@ fn item_header_footer() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="item-header""#));
     assert!(html.contains(r#"data-slot="item-footer""#));
@@ -172,7 +182,8 @@ fn item_header_footer() {
 
 #[test]
 fn item_separator_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ItemGroup {
                 Item { "A" }
@@ -182,7 +193,7 @@ fn item_separator_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="item-separator""#));
     assert!(html.contains("bg-border"));

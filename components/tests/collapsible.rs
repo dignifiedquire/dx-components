@@ -19,7 +19,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn collapsible_base() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Collapsible {
                 CollapsibleTrigger { "Toggle" }
@@ -28,7 +29,7 @@ fn collapsible_base() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== collapsible_base ===\n{html}\n");
 
     assert!(
@@ -43,7 +44,8 @@ fn collapsible_base() {
 
 #[test]
 fn collapsible_trigger_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Collapsible {
                 CollapsibleTrigger { "Toggle" }
@@ -52,7 +54,7 @@ fn collapsible_trigger_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains(r#"data-slot="collapsible-trigger""#),
@@ -66,7 +68,8 @@ fn collapsible_trigger_slot() {
 
 #[test]
 fn collapsible_content_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Collapsible {
                 default_open: true,
@@ -76,7 +79,7 @@ fn collapsible_content_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains(r#"data-slot="collapsible-content""#),
@@ -90,7 +93,8 @@ fn collapsible_content_slot() {
 
 #[test]
 fn collapsible_disabled() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Collapsible {
                 disabled: true,
@@ -100,7 +104,7 @@ fn collapsible_disabled() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("data-disabled"),

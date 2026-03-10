@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn alert_dialog_trigger_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AlertDialog {
                 AlertDialogTrigger { "Delete" }
@@ -21,7 +22,7 @@ fn alert_dialog_trigger_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== alert_dialog_trigger_slot ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="alert-dialog-trigger""#));
@@ -31,7 +32,8 @@ fn alert_dialog_trigger_slot() {
 
 #[test]
 fn alert_dialog_overlay_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AlertDialog {
                 default_open: true,
@@ -40,7 +42,7 @@ fn alert_dialog_overlay_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="alert-dialog-overlay""#));
     assert!(html.contains("fixed inset-0 z-50 bg-black/50"));
@@ -48,7 +50,8 @@ fn alert_dialog_overlay_classes() {
 
 #[test]
 fn alert_dialog_content_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AlertDialog {
                 default_open: true,
@@ -59,7 +62,7 @@ fn alert_dialog_content_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== alert_dialog_content_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="alert-dialog-content""#));
@@ -70,7 +73,8 @@ fn alert_dialog_content_classes() {
 
 #[test]
 fn alert_dialog_header_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AlertDialog {
                 AlertDialogHeader { "Header" }
@@ -78,7 +82,7 @@ fn alert_dialog_header_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="alert-dialog-header""#));
     assert!(html.contains("flex flex-col gap-2 text-center sm:text-left"));
@@ -86,7 +90,8 @@ fn alert_dialog_header_classes() {
 
 #[test]
 fn alert_dialog_footer_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AlertDialog {
                 AlertDialogFooter { "Footer" }
@@ -94,7 +99,7 @@ fn alert_dialog_footer_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="alert-dialog-footer""#));
     assert!(html.contains("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"));
@@ -102,7 +107,8 @@ fn alert_dialog_footer_classes() {
 
 #[test]
 fn alert_dialog_title_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AlertDialog {
                 default_open: true,
@@ -111,7 +117,7 @@ fn alert_dialog_title_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="alert-dialog-title""#));
     assert!(html.contains("text-lg font-semibold"));
@@ -119,7 +125,8 @@ fn alert_dialog_title_classes() {
 
 #[test]
 fn alert_dialog_description_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AlertDialog {
                 default_open: true,
@@ -128,7 +135,7 @@ fn alert_dialog_description_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="alert-dialog-description""#));
     assert!(html.contains("text-sm text-muted-foreground"));
@@ -136,7 +143,8 @@ fn alert_dialog_description_classes() {
 
 #[test]
 fn alert_dialog_action_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AlertDialog {
                 AlertDialogAction { "Confirm" }
@@ -144,7 +152,7 @@ fn alert_dialog_action_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="alert-dialog-action""#));
     assert!(html.contains("Confirm"));
@@ -152,7 +160,8 @@ fn alert_dialog_action_slot() {
 
 #[test]
 fn alert_dialog_cancel_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             AlertDialog {
                 AlertDialogCancel { "Cancel" }
@@ -160,7 +169,7 @@ fn alert_dialog_cancel_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="alert-dialog-cancel""#));
     assert!(html.contains("Cancel"));

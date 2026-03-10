@@ -19,7 +19,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn tabs_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tabs {
                 default_value: "a".to_string(),
@@ -31,7 +32,7 @@ fn tabs_base_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== tabs_base_classes ===\n{html}\n");
 
     assert!(
@@ -50,7 +51,8 @@ fn tabs_base_classes() {
 
 #[test]
 fn tabs_list_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tabs {
                 default_value: "a".to_string(),
@@ -62,7 +64,7 @@ fn tabs_list_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains(r#"data-slot="tabs-list""#),
@@ -80,7 +82,8 @@ fn tabs_list_classes() {
 
 #[test]
 fn tabs_trigger_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tabs {
                 default_value: "a".to_string(),
@@ -92,7 +95,7 @@ fn tabs_trigger_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains(r#"data-slot="tabs-trigger""#),
@@ -110,7 +113,8 @@ fn tabs_trigger_classes() {
 
 #[test]
 fn tabs_content_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tabs {
                 default_value: "a".to_string(),
@@ -122,7 +126,7 @@ fn tabs_content_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains(r#"data-slot="tabs-content""#),
@@ -140,7 +144,8 @@ fn tabs_content_classes() {
 
 #[test]
 fn tabs_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tabs {
                 default_value: "a".to_string(),
@@ -153,7 +158,7 @@ fn tabs_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("my-tabs"),

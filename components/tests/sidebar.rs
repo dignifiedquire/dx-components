@@ -13,13 +13,14 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn sidebar_provider_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider { "Content" }
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-wrapper\""),
         "provider has wrapper slot: {html}"
@@ -29,7 +30,8 @@ fn sidebar_provider_renders() {
 
 #[test]
 fn sidebar_renders_with_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 Sidebar { "Sidebar content" }
@@ -37,7 +39,7 @@ fn sidebar_renders_with_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar\""),
         "sidebar has slot: {html}"
@@ -46,7 +48,8 @@ fn sidebar_renders_with_slot() {
 
 #[test]
 fn sidebar_header_has_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 Sidebar {
@@ -56,7 +59,7 @@ fn sidebar_header_has_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-header\""),
         "header has slot: {html}"
@@ -69,7 +72,8 @@ fn sidebar_header_has_slot() {
 
 #[test]
 fn sidebar_content_has_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 Sidebar {
@@ -79,7 +83,7 @@ fn sidebar_content_has_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-content\""),
         "content has slot: {html}"
@@ -92,7 +96,8 @@ fn sidebar_content_has_slot() {
 
 #[test]
 fn sidebar_footer_has_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 Sidebar {
@@ -102,7 +107,7 @@ fn sidebar_footer_has_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-footer\""),
         "footer has slot: {html}"
@@ -115,7 +120,8 @@ fn sidebar_footer_has_slot() {
 
 #[test]
 fn sidebar_menu_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 Sidebar {
@@ -131,7 +137,7 @@ fn sidebar_menu_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-menu\""),
         "menu has slot: {html}"
@@ -148,7 +154,8 @@ fn sidebar_menu_renders() {
 
 #[test]
 fn sidebar_group_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 Sidebar {
@@ -163,7 +170,7 @@ fn sidebar_group_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-group\""),
         "group has slot: {html}"
@@ -180,7 +187,8 @@ fn sidebar_group_renders() {
 
 #[test]
 fn sidebar_trigger_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 SidebarTrigger {}
@@ -188,7 +196,7 @@ fn sidebar_trigger_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-trigger\""),
         "trigger has slot: {html}"
@@ -201,7 +209,8 @@ fn sidebar_trigger_renders() {
 
 #[test]
 fn sidebar_separator_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 Sidebar {
@@ -211,7 +220,7 @@ fn sidebar_separator_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-separator\""),
         "separator has slot: {html}"
@@ -220,7 +229,8 @@ fn sidebar_separator_renders() {
 
 #[test]
 fn sidebar_menu_badge_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 Sidebar {
@@ -237,7 +247,7 @@ fn sidebar_menu_badge_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-menu-badge\""),
         "badge has slot: {html}"
@@ -247,7 +257,8 @@ fn sidebar_menu_badge_renders() {
 
 #[test]
 fn sidebar_inset_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 Sidebar { "Nav" }
@@ -256,7 +267,7 @@ fn sidebar_inset_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-inset\""),
         "inset has slot: {html}"
@@ -266,7 +277,8 @@ fn sidebar_inset_renders() {
 
 #[test]
 fn full_sidebar_composition() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             SidebarProvider {
                 Sidebar {
@@ -290,7 +302,7 @@ fn full_sidebar_composition() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("data-slot=\"sidebar-wrapper\""),
         "wrapper: {html}"

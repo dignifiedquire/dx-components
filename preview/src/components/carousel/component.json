@@ -1,0 +1,13 @@
+{
+  "name": "carousel",
+  "description": "A carousel with motion and swipe built using Embla Carousel.",
+  "authors": ["dignifiedquire"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}

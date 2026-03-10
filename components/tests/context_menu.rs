@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn context_menu_trigger_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ContextMenu {
                 ContextMenuTrigger { "Right click me" }
@@ -21,7 +22,7 @@ fn context_menu_trigger_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== context_menu_trigger_slot ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="context-menu-trigger""#));
@@ -30,7 +31,8 @@ fn context_menu_trigger_slot() {
 
 #[test]
 fn context_menu_content_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ContextMenu {
                 default_open: true,
@@ -41,7 +43,7 @@ fn context_menu_content_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== context_menu_content_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="context-menu-content""#));
@@ -53,7 +55,8 @@ fn context_menu_content_classes() {
 
 #[test]
 fn context_menu_item_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ContextMenu {
                 default_open: true,
@@ -64,7 +67,7 @@ fn context_menu_item_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="context-menu-item""#));
     assert!(html.contains(r#"role="menuitem""#));
@@ -74,7 +77,8 @@ fn context_menu_item_classes() {
 
 #[test]
 fn context_menu_separator_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ContextMenu {
                 default_open: true,
@@ -85,7 +89,7 @@ fn context_menu_separator_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="context-menu-separator""#));
     assert!(html.contains("h-px bg-border"));
@@ -93,7 +97,8 @@ fn context_menu_separator_classes() {
 
 #[test]
 fn context_menu_label_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ContextMenu {
                 default_open: true,
@@ -104,7 +109,7 @@ fn context_menu_label_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="context-menu-label""#));
     assert!(html.contains("text-sm font-medium"));

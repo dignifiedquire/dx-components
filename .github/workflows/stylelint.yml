@@ -10,6 +10,8 @@ on:
       - preview/**/Cargo.toml
       - primitives/**/*.rs
       - primitives/**/Cargo.toml
+      - components/**/*.rs
+      - components/**/Cargo.toml
       - .github/**
       - Cargo.toml
 
@@ -23,6 +25,8 @@ on:
       - preview/**/Cargo.toml
       - primitives/**/*.rs
       - primitives/**/Cargo.toml
+      - components/**/*.rs
+      - components/**/Cargo.toml
       - .github/**
       - Cargo.toml
 

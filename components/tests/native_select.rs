@@ -9,7 +9,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn native_select_wrapper_and_slots() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NativeSelect {
                 NativeSelectOption { value: "a", "Alpha" }
@@ -18,7 +19,7 @@ fn native_select_wrapper_and_slots() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== native_select_wrapper_and_slots ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="native-select-wrapper""#));
@@ -30,7 +31,8 @@ fn native_select_wrapper_and_slots() {
 
 #[test]
 fn native_select_has_chevron_icon() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NativeSelect {
                 NativeSelectOption { value: "x", "X" }
@@ -38,7 +40,7 @@ fn native_select_has_chevron_icon() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("<svg"));
     assert!(html.contains("pointer-events-none"));
@@ -46,7 +48,8 @@ fn native_select_has_chevron_icon() {
 
 #[test]
 fn native_select_option_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NativeSelect {
                 NativeSelectOption { value: "v1", "Value 1" }
@@ -54,7 +57,7 @@ fn native_select_option_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="native-select-option""#));
     assert!(html.contains("<option"));
@@ -62,7 +65,8 @@ fn native_select_option_slot() {
 
 #[test]
 fn native_select_optgroup_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NativeSelect {
                 NativeSelectOptGroup { label: "Group",
@@ -72,7 +76,7 @@ fn native_select_optgroup_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="native-select-optgroup""#));
     assert!(html.contains("<optgroup"));
@@ -80,7 +84,8 @@ fn native_select_optgroup_slot() {
 
 #[test]
 fn native_select_sm_size() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             NativeSelect { size: NativeSelectSize::Sm,
                 NativeSelectOption { value: "x", "X" }
@@ -88,7 +93,7 @@ fn native_select_sm_size() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-size="sm""#));
 }

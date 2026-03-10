@@ -13,11 +13,12 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn kbd_data_slot_and_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Kbd { "K" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== kbd_data_slot_and_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="kbd""#));
@@ -30,7 +31,8 @@ fn kbd_data_slot_and_classes() {
 
 #[test]
 fn kbd_group_data_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             KbdGroup {
                 Kbd { "Ctrl" }
@@ -39,7 +41,7 @@ fn kbd_group_data_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== kbd_group_data_slot ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="kbd-group""#));
@@ -48,10 +50,11 @@ fn kbd_group_data_slot() {
 
 #[test]
 fn consumer_class_merges() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! { Kbd { class: "text-lg", "K" } }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("text-lg"));
 }

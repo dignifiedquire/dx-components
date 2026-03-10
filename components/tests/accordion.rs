@@ -23,7 +23,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn root_no_baked_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Accordion {
                 AccordionItem { value: "one",
@@ -34,7 +35,7 @@ fn root_no_baked_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== root_no_baked_classes ===\n{html}\n");
 
     // The root accordion div should NOT have w-full baked in
@@ -51,7 +52,8 @@ fn root_no_baked_classes() {
 
 #[test]
 fn item_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Accordion {
                 AccordionItem { value: "one",
@@ -66,7 +68,7 @@ fn item_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== item_classes ===\n{html}\n");
 
     assert!(
@@ -81,7 +83,8 @@ fn item_classes() {
 
 #[test]
 fn trigger_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Accordion {
                 AccordionItem { value: "one",
@@ -92,7 +95,7 @@ fn trigger_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== trigger_classes ===\n{html}\n");
 
     // Header wrapper is <h3 class="flex">
@@ -123,7 +126,8 @@ fn trigger_classes() {
 
 #[test]
 fn trigger_chevron() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Accordion {
                 AccordionItem { value: "one",
@@ -134,7 +138,7 @@ fn trigger_chevron() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== trigger_chevron ===\n{html}\n");
 
     // SVG chevron present with correct classes
@@ -157,7 +161,8 @@ fn trigger_chevron() {
 
 #[test]
 fn content_outer_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Accordion { default_value: vec!["one".to_string()],
                 AccordionItem { value: "one",
@@ -168,7 +173,7 @@ fn content_outer_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== content_outer_classes ===\n{html}\n");
 
     // Outer content element has fixed animation classes
@@ -184,7 +189,8 @@ fn content_outer_classes() {
 
 #[test]
 fn content_inner_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Accordion { default_value: vec!["one".to_string()],
                 AccordionItem { value: "one",
@@ -195,7 +201,7 @@ fn content_inner_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== content_inner_classes ===\n{html}\n");
 
     assert!(
@@ -210,7 +216,8 @@ fn content_inner_classes() {
 
 #[test]
 fn content_consumer_class_on_inner() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Accordion { default_value: vec!["one".to_string()],
                 AccordionItem { value: "one",
@@ -223,7 +230,7 @@ fn content_consumer_class_on_inner() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== content_consumer_class_on_inner ===\n{html}\n");
 
     // Consumer class should be on the inner div, merged with pt-0 pb-4
@@ -245,7 +252,8 @@ fn content_consumer_class_on_inner() {
 
 #[test]
 fn full_snapshot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Accordion { class: "w-full", default_value: vec!["item-1".to_string()],
                 AccordionItem { value: "item-1",
@@ -270,7 +278,7 @@ fn full_snapshot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== full_snapshot ===\n{html}\n");
 
     // Consumer w-full passed through to root

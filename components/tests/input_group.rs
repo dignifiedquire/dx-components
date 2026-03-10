@@ -9,7 +9,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn input_group_role_and_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputGroup {
                 InputGroupInput {}
@@ -17,7 +18,7 @@ fn input_group_role_and_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== input_group_role_and_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="input-group""#));
@@ -29,7 +30,8 @@ fn input_group_role_and_classes() {
 
 #[test]
 fn input_group_input_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputGroup {
                 InputGroupInput { placeholder: "Enter..." }
@@ -37,7 +39,7 @@ fn input_group_input_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="input-group-control""#));
     assert!(html.contains("<input"));
@@ -48,7 +50,8 @@ fn input_group_input_slot() {
 
 #[test]
 fn input_group_textarea_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputGroup {
                 InputGroupTextarea { placeholder: "Type..." }
@@ -56,7 +59,7 @@ fn input_group_textarea_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="input-group-control""#));
     assert!(html.contains("<textarea"));
@@ -65,7 +68,8 @@ fn input_group_textarea_slot() {
 
 #[test]
 fn input_group_addon_inline_start() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputGroup {
                 InputGroupAddon { "Icon" }
@@ -74,7 +78,7 @@ fn input_group_addon_inline_start() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="input-group-addon""#));
     assert!(html.contains(r#"data-align="inline-start""#));
@@ -83,7 +87,8 @@ fn input_group_addon_inline_start() {
 
 #[test]
 fn input_group_addon_inline_end() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputGroup {
                 InputGroupInput {}
@@ -92,7 +97,7 @@ fn input_group_addon_inline_end() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-align="inline-end""#));
     assert!(html.contains("order-last"));
@@ -100,7 +105,8 @@ fn input_group_addon_inline_end() {
 
 #[test]
 fn input_group_text_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputGroup {
                 InputGroupText { "$" }
@@ -109,7 +115,7 @@ fn input_group_text_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="input-group-text""#));
     assert!(html.contains("<span"));
@@ -118,7 +124,8 @@ fn input_group_text_classes() {
 
 #[test]
 fn input_group_disabled_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputGroup { disabled: true,
                 InputGroupInput {}
@@ -126,7 +133,7 @@ fn input_group_disabled_state() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-disabled="true""#));
 }

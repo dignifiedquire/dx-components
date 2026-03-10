@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn select_trigger_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Select::<String> {
                 SelectTrigger {
@@ -23,7 +24,7 @@ fn select_trigger_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== select_trigger_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="select-trigger""#));
@@ -34,7 +35,8 @@ fn select_trigger_classes() {
 
 #[test]
 fn select_trigger_consumer_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Select::<String> {
                 SelectTrigger {
@@ -45,14 +47,15 @@ fn select_trigger_consumer_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("my-trigger"));
 }
 
 #[test]
 fn select_trigger_chevron_icon() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Select::<String> {
                 SelectTrigger {
@@ -62,7 +65,7 @@ fn select_trigger_chevron_icon() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     // The styled trigger appends a ChevronDown icon
     assert!(html.contains("svg"));
@@ -70,7 +73,8 @@ fn select_trigger_chevron_icon() {
 
 #[test]
 fn select_placeholder_text() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Select::<String> {
                 placeholder: "Pick one...",
@@ -81,7 +85,7 @@ fn select_placeholder_text() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("Pick one..."));
     assert!(html.contains(r#"data-placeholder"#));

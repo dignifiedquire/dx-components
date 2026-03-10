@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn tooltip_trigger_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tooltip {
                 TooltipTrigger { "Hover me" }
@@ -21,7 +22,7 @@ fn tooltip_trigger_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== tooltip_trigger_slot ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="tooltip-trigger""#));
@@ -30,7 +31,8 @@ fn tooltip_trigger_slot() {
 
 #[test]
 fn tooltip_content_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tooltip {
                 default_open: true,
@@ -39,7 +41,7 @@ fn tooltip_content_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== tooltip_content_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="tooltip-content""#));
@@ -51,7 +53,8 @@ fn tooltip_content_classes() {
 
 #[test]
 fn tooltip_content_side_attribute() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tooltip {
                 default_open: true,
@@ -63,14 +66,15 @@ fn tooltip_content_side_attribute() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-side="bottom""#));
 }
 
 #[test]
 fn tooltip_content_default_side_top() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tooltip {
                 default_open: true,
@@ -79,14 +83,15 @@ fn tooltip_content_default_side_top() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-side="top""#));
 }
 
 #[test]
 fn tooltip_content_animation_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tooltip {
                 default_open: true,
@@ -95,7 +100,7 @@ fn tooltip_content_animation_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("animate-in"));
     assert!(html.contains("fade-in-0"));
@@ -104,7 +109,8 @@ fn tooltip_content_animation_classes() {
 
 #[test]
 fn tooltip_consumer_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Tooltip {
                 default_open: true,
@@ -116,7 +122,7 @@ fn tooltip_consumer_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("my-custom"));
 }

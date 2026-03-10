@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn combobox_root_renders() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Combobox {
                 ComboboxInput {}
@@ -21,13 +22,14 @@ fn combobox_root_renders() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("data-slot=\"combobox\""), "root slot: {html}");
 }
 
 #[test]
 fn combobox_input_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Combobox {
                 ComboboxInput { placeholder: "Search..." }
@@ -35,14 +37,15 @@ fn combobox_input_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("w-auto"), "input has w-auto: {html}");
     assert!(html.contains("role=\"combobox\""), "input role: {html}");
 }
 
 #[test]
 fn combobox_content_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             // Content won't render because combobox is closed in SSR.
             // So we test the list directly.
@@ -54,7 +57,7 @@ fn combobox_content_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("overflow-y-auto"),
         "list has overflow-y-auto: {html}"
@@ -63,7 +66,8 @@ fn combobox_content_has_shadcn_classes() {
 
 #[test]
 fn combobox_item_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Combobox {
                 ComboboxList {
@@ -73,14 +77,15 @@ fn combobox_item_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("cursor-default"), "item class: {html}");
     assert!(html.contains("rounded-sm"), "item rounded: {html}");
 }
 
 #[test]
 fn combobox_empty_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Combobox {
                 ComboboxList {
@@ -90,7 +95,7 @@ fn combobox_empty_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("text-muted-foreground"),
         "empty has muted: {html}"
@@ -99,7 +104,8 @@ fn combobox_empty_has_shadcn_classes() {
 
 #[test]
 fn combobox_separator_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Combobox {
                 ComboboxList {
@@ -109,14 +115,15 @@ fn combobox_separator_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("bg-border"), "separator: {html}");
     assert!(html.contains("h-px"), "separator height: {html}");
 }
 
 #[test]
 fn full_styled_combobox_composition() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Combobox { value: "react",
                 ComboboxInput { placeholder: "Select..." }
@@ -132,7 +139,7 @@ fn full_styled_combobox_composition() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("data-slot=\"combobox\""), "root: {html}");
     assert!(
         html.contains("data-slot=\"combobox-input\""),

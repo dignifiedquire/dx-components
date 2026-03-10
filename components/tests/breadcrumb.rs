@@ -9,7 +9,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn breadcrumb_nav_and_aria() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Breadcrumb {
                 BreadcrumbList {
@@ -21,7 +22,7 @@ fn breadcrumb_nav_and_aria() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== breadcrumb_nav_and_aria ===\n{html}\n");
 
     assert!(html.contains("<nav"));
@@ -31,7 +32,8 @@ fn breadcrumb_nav_and_aria() {
 
 #[test]
 fn breadcrumb_list_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Breadcrumb {
                 BreadcrumbList {
@@ -41,7 +43,7 @@ fn breadcrumb_list_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== breadcrumb_list_classes ===\n{html}\n");
 
     assert!(html.contains("<ol"));
@@ -52,7 +54,8 @@ fn breadcrumb_list_classes() {
 
 #[test]
 fn breadcrumb_item_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Breadcrumb {
                 BreadcrumbList {
@@ -62,7 +65,7 @@ fn breadcrumb_item_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("<li"));
     assert!(html.contains(r#"data-slot="breadcrumb-item""#));
@@ -71,7 +74,8 @@ fn breadcrumb_item_classes() {
 
 #[test]
 fn breadcrumb_link_has_href() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Breadcrumb {
                 BreadcrumbList {
@@ -83,7 +87,7 @@ fn breadcrumb_link_has_href() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="breadcrumb-link""#));
     assert!(html.contains(r#"href="/docs""#));
@@ -92,7 +96,8 @@ fn breadcrumb_link_has_href() {
 
 #[test]
 fn breadcrumb_page_aria_current() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Breadcrumb {
                 BreadcrumbList {
@@ -104,7 +109,7 @@ fn breadcrumb_page_aria_current() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="breadcrumb-page""#));
     assert!(html.contains(r#"aria-current="page""#));
@@ -113,7 +118,8 @@ fn breadcrumb_page_aria_current() {
 
 #[test]
 fn breadcrumb_separator_has_chevron() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Breadcrumb {
                 BreadcrumbList {
@@ -123,7 +129,7 @@ fn breadcrumb_separator_has_chevron() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="breadcrumb-separator""#));
     assert!(html.contains(r#"aria-hidden="true""#));
@@ -132,7 +138,8 @@ fn breadcrumb_separator_has_chevron() {
 
 #[test]
 fn breadcrumb_ellipsis_sr_only() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Breadcrumb {
                 BreadcrumbList {
@@ -142,7 +149,7 @@ fn breadcrumb_ellipsis_sr_only() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="breadcrumb-ellipsis""#));
     assert!(html.contains("sr-only"));

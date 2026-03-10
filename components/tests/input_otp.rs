@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn input_otp_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputOTP { max_length: 6,
                 InputOTPGroup {
@@ -23,7 +24,7 @@ fn input_otp_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("has-disabled:opacity-50"),
         "root has container class: {html}"
@@ -32,7 +33,8 @@ fn input_otp_has_shadcn_classes() {
 
 #[test]
 fn input_otp_group_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputOTP { max_length: 4,
                 InputOTPGroup {
@@ -42,7 +44,7 @@ fn input_otp_group_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     // The group div should have flex items-center from styled layer
     assert!(
         html.contains("flex items-center"),
@@ -52,7 +54,8 @@ fn input_otp_group_has_shadcn_classes() {
 
 #[test]
 fn input_otp_slot_has_shadcn_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputOTP { max_length: 4,
                 InputOTPGroup {
@@ -62,7 +65,7 @@ fn input_otp_slot_has_shadcn_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(
         html.contains("border-input"),
         "slot has border-input class: {html}"
@@ -75,7 +78,8 @@ fn input_otp_slot_has_shadcn_classes() {
 
 #[test]
 fn full_styled_otp_composition() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             InputOTP { max_length: 6, value: "12",
                 InputOTPGroup {
@@ -93,7 +97,7 @@ fn full_styled_otp_composition() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("data-slot=\"input-otp\""), "has root: {html}");
     assert!(
         html.contains("data-slot=\"input-otp-group\""),

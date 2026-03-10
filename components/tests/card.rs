@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn card_data_slot_and_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Card {
                 CardContent { "Content" }
@@ -21,7 +22,7 @@ fn card_data_slot_and_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== card_data_slot_and_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="card""#));
@@ -32,7 +33,8 @@ fn card_data_slot_and_classes() {
 
 #[test]
 fn card_header_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Card {
                 CardHeader {
@@ -44,7 +46,7 @@ fn card_header_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="card-header""#));
     assert!(html.contains(r#"data-slot="card-title""#));
     assert!(html.contains(r#"data-slot="card-description""#));
@@ -52,7 +54,8 @@ fn card_header_slot() {
 
 #[test]
 fn card_title_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Card {
                 CardHeader {
@@ -63,13 +66,14 @@ fn card_title_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("leading-none font-semibold"));
 }
 
 #[test]
 fn card_description_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Card {
                 CardHeader {
@@ -80,13 +84,14 @@ fn card_description_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("text-muted-foreground"));
 }
 
 #[test]
 fn card_content_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Card {
                 CardContent { "Content" }
@@ -94,13 +99,14 @@ fn card_content_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="card-content""#));
 }
 
 #[test]
 fn card_footer_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Card {
                 CardContent { "Content" }
@@ -109,14 +115,15 @@ fn card_footer_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="card-footer""#));
     assert!(html.contains("items-center"));
 }
 
 #[test]
 fn card_action_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Card {
                 CardHeader {
@@ -128,13 +135,14 @@ fn card_action_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains(r#"data-slot="card-action""#));
 }
 
 #[test]
 fn consumer_class_merges() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Card { class: "max-w-sm",
                 CardContent { "Content" }
@@ -142,6 +150,6 @@ fn consumer_class_merges() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     assert!(html.contains("max-w-sm"));
 }

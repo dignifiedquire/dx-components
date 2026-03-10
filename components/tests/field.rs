@@ -9,7 +9,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn fieldset_slot_and_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             FieldSet {
                 Field { "content" }
@@ -17,7 +18,7 @@ fn fieldset_slot_and_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== fieldset_slot_and_classes ===\n{html}\n");
 
     assert!(html.contains("<fieldset"));
@@ -27,7 +28,8 @@ fn fieldset_slot_and_classes() {
 
 #[test]
 fn field_legend_variants() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             FieldSet {
                 FieldLegend { "Legend" }
@@ -36,7 +38,7 @@ fn field_legend_variants() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== field_legend_variants ===\n{html}\n");
 
     assert!(html.contains("<legend"));
@@ -47,7 +49,8 @@ fn field_legend_variants() {
 
 #[test]
 fn field_group_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             FieldGroup {
                 Field { "content" }
@@ -55,7 +58,7 @@ fn field_group_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="field-group""#));
     assert!(html.contains("group/field-group"));
@@ -64,7 +67,8 @@ fn field_group_slot() {
 
 #[test]
 fn field_vertical_default() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Field {
                 FieldLabel { "Name" }
@@ -72,7 +76,7 @@ fn field_vertical_default() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== field_vertical_default ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="field""#));
@@ -82,7 +86,8 @@ fn field_vertical_default() {
 
 #[test]
 fn field_horizontal_orientation() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Field { orientation: FieldOrientation::Horizontal,
                 FieldLabel { "Name" }
@@ -90,7 +95,7 @@ fn field_horizontal_orientation() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("flex-row"));
     assert!(html.contains("items-center"));
@@ -98,7 +103,8 @@ fn field_horizontal_orientation() {
 
 #[test]
 fn field_invalid_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Field { invalid: true,
                 FieldLabel { "Name" }
@@ -107,14 +113,15 @@ fn field_invalid_state() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-invalid="true""#));
 }
 
 #[test]
 fn field_disabled_state() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Field { disabled: true,
                 FieldLabel { "Name" }
@@ -122,14 +129,15 @@ fn field_disabled_state() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-disabled="true""#));
 }
 
 #[test]
 fn field_content_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Field {
                 FieldContent {
@@ -139,7 +147,7 @@ fn field_content_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="field-content""#));
     assert!(html.contains("group/field-content"));
@@ -147,7 +155,8 @@ fn field_content_slot() {
 
 #[test]
 fn field_label_is_label_element() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Field {
                 FieldLabel { html_for: "name", "Name" }
@@ -155,7 +164,7 @@ fn field_label_is_label_element() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("<label"));
     assert!(html.contains(r#"data-slot="field-label""#));
@@ -164,7 +173,8 @@ fn field_label_is_label_element() {
 
 #[test]
 fn field_description_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Field {
                 FieldDescription { "Help text" }
@@ -172,7 +182,7 @@ fn field_description_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="field-description""#));
     assert!(html.contains("text-muted-foreground"));
@@ -180,7 +190,8 @@ fn field_description_classes() {
 
 #[test]
 fn field_error_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Field { invalid: true,
                 FieldError { "This field is required" }
@@ -188,7 +199,7 @@ fn field_error_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="field-error""#));
     assert!(html.contains("text-destructive"));
@@ -196,7 +207,8 @@ fn field_error_classes() {
 
 #[test]
 fn field_separator_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             FieldGroup {
                 Field { "A" }
@@ -206,14 +218,15 @@ fn field_separator_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="field-separator""#));
 }
 
 #[test]
 fn field_separator_with_text() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             FieldGroup {
                 Field { "A" }
@@ -223,7 +236,7 @@ fn field_separator_with_text() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="field-separator-content""#));
     assert!(html.contains("or"));
@@ -231,7 +244,8 @@ fn field_separator_with_text() {
 
 #[test]
 fn field_title_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Field {
                 FieldTitle { "Section Title" }
@@ -239,7 +253,7 @@ fn field_title_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="field-label""#));
     assert!(html.contains("font-medium"));

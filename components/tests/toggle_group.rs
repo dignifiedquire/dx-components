@@ -19,7 +19,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn toggle_group_base_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ToggleGroup {
                 ToggleGroupItem { value: "a", "A" }
@@ -27,7 +28,7 @@ fn toggle_group_base_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== toggle_group_base_classes ===\n{html}\n");
 
     assert!(
@@ -46,7 +47,8 @@ fn toggle_group_base_classes() {
 
 #[test]
 fn toggle_group_item_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ToggleGroup {
                 ToggleGroupItem { value: "a", "A" }
@@ -54,7 +56,7 @@ fn toggle_group_item_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== toggle_group_item_classes ===\n{html}\n");
 
     assert!(
@@ -73,7 +75,8 @@ fn toggle_group_item_classes() {
 
 #[test]
 fn toggle_group_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             ToggleGroup {
                 class: "my-group",
@@ -82,7 +85,7 @@ fn toggle_group_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(
         html.contains("my-group"),

@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn dialog_trigger_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Dialog {
                 DialogTrigger { "Open" }
@@ -21,7 +22,7 @@ fn dialog_trigger_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== dialog_trigger_slot ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="dialog-trigger""#));
@@ -31,7 +32,8 @@ fn dialog_trigger_slot() {
 
 #[test]
 fn dialog_header_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Dialog {
                 DialogHeader { "Header" }
@@ -39,7 +41,7 @@ fn dialog_header_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="dialog-header""#));
     assert!(html.contains("flex flex-col gap-2 text-center sm:text-left"));
@@ -47,7 +49,8 @@ fn dialog_header_classes() {
 
 #[test]
 fn dialog_footer_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Dialog {
                 DialogFooter { "Footer" }
@@ -55,7 +58,7 @@ fn dialog_footer_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="dialog-footer""#));
     assert!(html.contains("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"));
@@ -63,7 +66,8 @@ fn dialog_footer_classes() {
 
 #[test]
 fn dialog_title_with_default_open() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Dialog {
                 default_open: true,
@@ -72,7 +76,7 @@ fn dialog_title_with_default_open() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== dialog_title_with_default_open ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="dialog-title""#));
@@ -81,7 +85,8 @@ fn dialog_title_with_default_open() {
 
 #[test]
 fn dialog_description_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Dialog {
                 default_open: true,
@@ -90,7 +95,7 @@ fn dialog_description_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="dialog-description""#));
     assert!(html.contains("text-sm text-muted-foreground"));
@@ -98,7 +103,8 @@ fn dialog_description_classes() {
 
 #[test]
 fn dialog_overlay_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Dialog {
                 default_open: true,
@@ -107,7 +113,7 @@ fn dialog_overlay_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== dialog_overlay_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="dialog-overlay""#));
@@ -116,7 +122,8 @@ fn dialog_overlay_classes() {
 
 #[test]
 fn dialog_content_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Dialog {
                 default_open: true,
@@ -128,7 +135,7 @@ fn dialog_content_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== dialog_content_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="dialog-content""#));
@@ -139,7 +146,8 @@ fn dialog_content_classes() {
 
 #[test]
 fn dialog_content_has_close_button() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Dialog {
                 default_open: true,
@@ -150,7 +158,7 @@ fn dialog_content_has_close_button() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="dialog-close""#));
     assert!(html.contains("<svg"));
@@ -160,7 +168,8 @@ fn dialog_content_has_close_button() {
 
 #[test]
 fn dialog_close_slot() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Dialog {
                 DialogClose { "Close me" }
@@ -168,7 +177,7 @@ fn dialog_close_slot() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="dialog-close""#));
     assert!(html.contains("Close me"));
@@ -176,7 +185,8 @@ fn dialog_close_slot() {
 
 #[test]
 fn dialog_consumer_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Dialog {
                 DialogHeader { class: "my-custom", "Header" }
@@ -184,7 +194,7 @@ fn dialog_consumer_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("my-custom"));
 }

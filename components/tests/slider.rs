@@ -13,7 +13,8 @@ fn render(app: fn() -> Element) -> String {
 
 #[test]
 fn slider_root_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Slider {
                 label: "Volume",
@@ -25,7 +26,7 @@ fn slider_root_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
     eprintln!("=== slider_root_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="slider""#));
@@ -35,7 +36,8 @@ fn slider_root_classes() {
 
 #[test]
 fn slider_track_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Slider {
                 label: "Volume",
@@ -47,7 +49,7 @@ fn slider_track_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="slider-track""#));
     assert!(html.contains("rounded-full bg-muted"));
@@ -55,7 +57,8 @@ fn slider_track_classes() {
 
 #[test]
 fn slider_range_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Slider {
                 label: "Volume",
@@ -67,7 +70,7 @@ fn slider_range_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="slider-range""#));
     assert!(html.contains("bg-primary"));
@@ -75,7 +78,8 @@ fn slider_range_classes() {
 
 #[test]
 fn slider_thumb_classes() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Slider {
                 label: "Volume",
@@ -87,7 +91,7 @@ fn slider_thumb_classes() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-slot="slider-thumb""#));
     assert!(html.contains(r#"role="slider""#));
@@ -97,7 +101,8 @@ fn slider_thumb_classes() {
 
 #[test]
 fn slider_consumer_class_merge() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Slider {
                 label: "Volume",
@@ -111,7 +116,7 @@ fn slider_consumer_class_merge() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains("my-slider"));
     assert!(html.contains("my-track"));
@@ -121,7 +126,8 @@ fn slider_consumer_class_merge() {
 
 #[test]
 fn slider_orientation_attribute() {
-    fn App() -> Element {
+    #[component]
+    fn TestApp() -> Element {
         rsx! {
             Slider {
                 label: "Volume",
@@ -134,7 +140,7 @@ fn slider_orientation_attribute() {
         }
     }
 
-    let html = render(App);
+    let html = render(TestApp);
 
     assert!(html.contains(r#"data-orientation="vertical""#));
 }
