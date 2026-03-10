@@ -45,7 +45,9 @@ jobs:
       - name: Install CLI
         run: cargo binstall dioxus-cli -y --force --version 0.7.3
       - name: Build
-        run: cd preview && dx build --web --release --base-path "components/pr-preview/pr-${{ github.event.pull_request.number }}/"
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          cd preview && dx build --web --release --base-path "$REPO_NAME/pr-preview/pr-${{ github.event.pull_request.number }}/"
       - name: Copy output
         run: cp -r target/dx/preview/release/web/public docs
       - name: Deploy 🚀
@@ -63,5 +65,5 @@ jobs:
         uses: thollander/actions-comment-pull-request@v3
         with:
           message: |
-            Preview available at https://dioxuslabs.github.io/components/pr-preview/pr-${{ github.event.pull_request.number }}/
+            Preview available at https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-preview/pr-${{ github.event.pull_request.number }}/
           comment-tag: "pr-preview"
