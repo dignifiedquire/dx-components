@@ -41,6 +41,13 @@
     "preview/src/components/pagination",
     "preview/src/components/sidebar",
     "preview/src/components/badge",
-    "preview/src/components/drag_and_drop_list"
+    "preview/src/components/drag_and_drop_list",
+    "preview/src/components/carousel",
+    "preview/src/components/combobox",
+    "preview/src/components/command",
+    "preview/src/components/drawer",
+    "preview/src/components/input_otp",
+    "preview/src/components/navigation_menu",
+    "preview/src/components/resizable"
   ]
 }
