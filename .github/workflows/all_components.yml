@@ -14,6 +14,7 @@ on:
       - components/**/Cargo.toml
       - .github/**
       - Cargo.toml
+      - component.json
 
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -29,6 +30,7 @@ on:
       - components/**/Cargo.toml
       - .github/**
       - Cargo.toml
+      - component.json
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
