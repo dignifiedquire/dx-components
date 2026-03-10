@@ -5,6 +5,7 @@
 
 use dioxus::prelude::*;
 use dioxus_primitives::carousel as primitives;
+use dx_icons_lucide::{IconArrowLeft, IconArrowRight};
 use tailwind_fuse::*;
 
 // Re-export context and types
@@ -183,19 +184,14 @@ pub fn CarouselPrevious(props: CarouselPreviousProps) -> Element {
 
     let has_children = props.children != Ok(VNode::placeholder());
 
-    if has_children {
-        rsx! {
-            primitives::CarouselPrevious {
-                class: class,
-                attributes: props.attributes,
+    rsx! {
+        primitives::CarouselPrevious {
+            class: class,
+            attributes: props.attributes,
+            if has_children {
                 {props.children}
-            }
-        }
-    } else {
-        rsx! {
-            primitives::CarouselPrevious {
-                class: class,
-                attributes: props.attributes,
+            } else {
+                IconArrowLeft { class: "size-4" }
             }
         }
     }
@@ -234,19 +230,14 @@ pub fn CarouselNext(props: CarouselNextProps) -> Element {
 
     let has_children = props.children != Ok(VNode::placeholder());
 
-    if has_children {
-        rsx! {
-            primitives::CarouselNext {
-                class: class,
-                attributes: props.attributes,
+    rsx! {
+        primitives::CarouselNext {
+            class: class,
+            attributes: props.attributes,
+            if has_children {
                 {props.children}
-            }
-        }
-    } else {
-        rsx! {
-            primitives::CarouselNext {
-                class: class,
-                attributes: props.attributes,
+            } else {
+                IconArrowRight { class: "size-4" }
             }
         }
     }

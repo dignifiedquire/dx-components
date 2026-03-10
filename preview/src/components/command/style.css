@@ -1,1 +1,4 @@
-/* Command styles are handled via Tailwind classes in the styled component. */
+/* Hide the empty state when items are visible in the list */
+[data-slot="command-list"]:has([data-slot="command-item"]) [data-slot="command-empty"] {
+  display: none;
+}

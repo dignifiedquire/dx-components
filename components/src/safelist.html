@@ -501,4 +501,120 @@
   min-w-0
   min-w-8
   min-w-9
+
+  /* --- Carousel --- */
+  -ml-4
+  -mt-4
+  pl-4
+  pt-4
+  grow-0
+  basis-full
+  top-1/2
+  -left-12
+  -translate-y-1/2
+  left-1/2
+  -top-12
+  -translate-x-1/2
+  rotate-90
+  absolute
+  -right-12
+  -bottom-12
+
+  /* --- Combobox --- */
+  w-auto
+  max-h-96
+  data-highlighted:bg-accent
+  data-highlighted:text-accent-foreground
+  text-center
+  -mx-1
+  my-1
+  h-px
+
+  /* --- Command --- */
+  h-10
+  max-h-[300px]
+  scroll-py-1
+  py-6
+  ml-auto
+  tracking-widest
+
+  /* --- Drawer --- */
+  fixed
+  group/drawer-content
+  max-h-[80%]
+  rounded-b-[10px]
+  w-[80%]
+  max-w-[500px]
+  rounded-l-[10px]
+  rounded-t-[10px]
+  rounded-r-[10px]
+  mt-auto
+
+  /* --- InputOTP --- */
+  has-disabled:opacity-50
+  w-9
+  border-y
+  first:border-l
+  data-[active=true]:z-10
+  data-[active=true]:border-ring
+  data-[active=true]:ring-[3px]
+  data-[active=true]:ring-ring/50
+  data-[active=true]:aria-invalid:border-destructive
+  data-[active=true]:aria-invalid:ring-destructive/20
+  dark:data-[active=true]:aria-invalid:ring-destructive/40
+
+  /* --- NavigationMenu --- */
+  group/navigation-menu
+  max-w-max
+  w-max
+  list-none
+  hover:bg-accent
+  hover:text-accent-foreground
+  data-[state=open]:bg-accent/50
+  data-[state=open]:hover:bg-accent
+  data-[state=open]:focus:bg-accent
+  p-2
+  pr-2.5
+  md:absolute
+  md:w-auto
+  data-[active=true]:bg-accent/50
+  data-[active=true]:text-accent-foreground
+  data-[active=true]:hover:bg-accent
+  data-[active=true]:focus:bg-accent
+  top-full
+  z-[1]
+  h-1.5
+  items-end
+  data-[state=hidden]:animate-out
+  data-[state=hidden]:fade-out
+  data-[state=visible]:animate-in
+  data-[state=visible]:fade-in
+  origin-top-center
+  mt-1.5
+  h-[var(--radix-navigation-menu-viewport-height)]
+  shadow
+  data-[state=open]:zoom-in-90
+  md:w-[var(--radix-navigation-menu-viewport-width)]
+
+  /* --- Resizable --- */
+  w-px
+  after:absolute
+  after:inset-y-0
+  after:left-1/2
+  after:w-1
+  after:-translate-x-1/2
+  focus-visible:ring-1
+  focus-visible:ring-ring
+  focus-visible:ring-offset-1
+  aria-[orientation=horizontal]:h-px
+  aria-[orientation=horizontal]:w-full
+  aria-[orientation=horizontal]:after:left-0
+  aria-[orientation=horizontal]:after:h-1
+  aria-[orientation=horizontal]:after:w-full
+  aria-[orientation=horizontal]:after:translate-x-0
+  aria-[orientation=horizontal]:after:-translate-y-1/2
+  [&[aria-orientation=horizontal]>div]:rotate-90
+  h-4
+  w-3
+  size-2.5
 "></div>
