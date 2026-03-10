@@ -31,8 +31,8 @@ test("test", async ({ page }) => {
   const description = content.locator('[data-slot="dialog-description"]');
   await expect(description).toContainText("Make changes to your profile");
 
-  // Close button
-  const closeButton = content.locator('[data-slot="dialog-close"]');
+  // Close button (X icon in top-right corner)
+  const closeButton = content.locator('[data-slot="dialog-close"]').first();
   await expect(closeButton).toBeVisible();
 
   // Tab should keep focus within dialog (focus trap)
