@@ -53,3 +53,33 @@ fn date_picker_exports_compile() {
         "DatePicker root should have aria-label=\"Date\""
     );
 }
+
+#[test]
+fn date_picker_custom_label() {
+    fn App() -> Element {
+        rsx! {
+            DatePicker { aria_label: "Birthday" }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains("aria-label=\"Birthday\""),
+        "custom label: {html}"
+    );
+}
+
+#[test]
+fn date_range_picker_renders() {
+    fn App() -> Element {
+        rsx! {
+            DateRangePicker {}
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains("data-slot=\"date-range-picker\""),
+        "range picker has slot: {html}"
+    );
+}

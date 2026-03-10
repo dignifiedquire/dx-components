@@ -38,3 +38,50 @@ fn consumer_class_merges() {
     // rounded-full should override rounded-md via tw_merge
     assert!(html.contains("rounded-full"));
 }
+
+#[test]
+fn skeleton_renders_as_div() {
+    fn App() -> Element {
+        rsx! { Skeleton {} }
+    }
+
+    let html = render(App);
+    assert!(html.contains("<div"), "renders as div: {html}");
+    assert!(
+        html.contains("data-slot=\"skeleton\""),
+        "has data-slot: {html}"
+    );
+}
+
+#[test]
+fn skeleton_custom_dimensions() {
+    fn App() -> Element {
+        rsx! {
+            Skeleton { class: "h-8 w-32" }
+        }
+    }
+
+    let html = render(App);
+    assert!(html.contains("h-8"), "has custom height: {html}");
+    assert!(html.contains("w-32"), "has custom width: {html}");
+    assert!(html.contains("animate-pulse"), "still pulses: {html}");
+}
+
+#[test]
+fn multiple_skeletons() {
+    fn App() -> Element {
+        rsx! {
+            div {
+                Skeleton { class: "h-4 w-[200px]" }
+                Skeleton { class: "h-4 w-[150px]" }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert_eq!(
+        html.matches("data-slot=\"skeleton\"").count(),
+        2,
+        "two skeletons: {html}"
+    );
+}
