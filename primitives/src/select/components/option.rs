@@ -146,7 +146,11 @@ pub fn SelectItem<T: PartialEq + Clone + 'static>(props: SelectItemProps<T>) -> 
                 role: "option",
                 "data-slot": "select-item",
                 id,
-                tabindex: if item_disabled { None::<&str> } else if focused() { Some("0") } else { Some("-1") },
+                tabindex: match (item_disabled, focused()) {
+                    (true, _) => None::<&str>,
+                    (false, true) => Some("0"),
+                    (false, false) => Some("-1"),
+                },
                 onmounted,
 
                 "data-highlighted": if focused() { "" } else { None::<&str> },
