@@ -7,10 +7,13 @@ on:
     paths:
       - /**
       - preview/**/*.rs
+      - preview/**/*.css
       - preview/**/Cargo.toml
+      - preview/.stylelintrc.json
       - primitives/**/*.rs
       - primitives/**/Cargo.toml
       - components/**/*.rs
+      - components/**/*.css
       - components/**/Cargo.toml
       - .github/**
       - Cargo.toml
@@ -22,10 +25,13 @@ on:
     paths:
       - /**
       - preview/**/*.rs
+      - preview/**/*.css
       - preview/**/Cargo.toml
+      - preview/.stylelintrc.json
       - primitives/**/*.rs
       - primitives/**/Cargo.toml
       - components/**/*.rs
+      - components/**/*.css
       - components/**/Cargo.toml
       - .github/**
       - Cargo.toml
@@ -46,8 +52,6 @@ jobs:
         with:
           node-version: lts/*
       - name: Install dependencies
-        run: |
-          npm install --save-dev stylelint-config-idiomatic-order
-          npm install -g stylelint stylelint-config-standard
+        run: cd ./preview && npm ci
       - name: Stylelint
         run: cd ./preview && npx stylelint "**/*.css" --max-warnings=0
