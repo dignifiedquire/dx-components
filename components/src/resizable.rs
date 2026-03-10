@@ -135,13 +135,39 @@ pub struct ResizableHandleProps {
 /// Renders a 1px separator line with optional grip indicator.
 #[component]
 pub fn ResizableHandle(props: ResizableHandleProps) -> Element {
+    // Read orientation from the parent panel group context.
+    let ctx = use_context::<ResizablePanelGroupCtx>();
+    let is_vertical_group = matches!(
+        ctx.orientation,
+        dioxus_primitives::direction::Orientation::Vertical
+    );
+
+    // Handle between vertical panels = horizontal separator line;
+    // handle between horizontal panels = vertical separator line.
+    let (orientation_classes, after_classes, child_rotate, cursor_class) = if is_vertical_group {
+        (
+            "h-px w-full",
+            "after:left-0 after:h-1 after:w-full after:translate-x-0 after:-translate-y-1/2",
+            "[&>div]:rotate-90",
+            "cursor-row-resize",
+        )
+    } else {
+        (
+            "w-px",
+            "after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2",
+            "",
+            "cursor-col-resize",
+        )
+    };
+
     let class = tw_merge!(
-        "relative flex w-px items-center justify-center bg-border",
-        "after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2",
+        "relative flex shrink-0 items-center justify-center bg-border",
+        orientation_classes,
+        cursor_class,
+        "after:absolute",
+        after_classes,
         "focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:outline-hidden",
-        "aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:w-full",
-        "aria-[orientation=horizontal]:after:left-0 aria-[orientation=horizontal]:after:h-1 aria-[orientation=horizontal]:after:w-full aria-[orientation=horizontal]:after:translate-x-0 aria-[orientation=horizontal]:after:-translate-y-1/2",
-        "[&[aria-orientation=horizontal]>div]:rotate-90",
+        child_rotate,
         props.class,
     );
 

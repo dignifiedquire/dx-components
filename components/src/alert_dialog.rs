@@ -262,11 +262,19 @@ pub struct AlertDialogActionProps {
     pub children: Element,
 }
 
+/// Styled AlertDialogAction — renders as a primary button (matches shadcn `buttonVariants()`).
 #[component]
 pub fn AlertDialogAction(props: AlertDialogActionProps) -> Element {
+    let class = tw_merge!(
+        "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "h-9 px-4 py-2",
+        "bg-primary text-primary-foreground hover:bg-primary/90",
+        props.class,
+    );
+
     rsx! {
         primitives::AlertDialogAction {
-            class: props.class,
+            class: class,
             attributes: props.attributes,
             {props.children}
         }
@@ -288,11 +296,20 @@ pub struct AlertDialogCancelProps {
     pub children: Element,
 }
 
+/// Styled AlertDialogCancel — renders as an outline button (matches shadcn `buttonVariants({ variant: "outline" })`).
 #[component]
 pub fn AlertDialogCancel(props: AlertDialogCancelProps) -> Element {
+    let class = tw_merge!(
+        "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "h-9 px-4 py-2",
+        "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        "mt-2 sm:mt-0",
+        props.class,
+    );
+
     rsx! {
         primitives::AlertDialogCancel {
-            class: props.class,
+            class: class,
             attributes: props.attributes,
             {props.children}
         }

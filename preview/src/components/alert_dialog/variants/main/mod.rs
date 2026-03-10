@@ -1,11 +1,14 @@
 use crate::components::alert_dialog::component::*;
+use crate::components::button::component::{Button, ButtonVariant};
 use dioxus::prelude::*;
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
         AlertDialog {
-            AlertDialogTrigger { "Show Alert Dialog" }
+            AlertDialogTrigger {
+                Button { variant: ButtonVariant::Outline, "Show Alert Dialog" }
+            }
             AlertDialogOverlay {}
             AlertDialogContent {
                 AlertDialogTitle { "Delete item" }

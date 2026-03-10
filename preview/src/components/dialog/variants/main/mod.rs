@@ -1,3 +1,4 @@
+use crate::components::button::component::{Button, ButtonVariant};
 use crate::components::dialog::component::*;
 use crate::components::label::component::Label;
 use dioxus::prelude::*;
@@ -6,7 +7,9 @@ use dioxus::prelude::*;
 pub fn Demo() -> Element {
     rsx! {
         Dialog {
-            DialogTrigger { "Edit Profile" }
+            DialogTrigger {
+                Button { variant: ButtonVariant::Outline, "Edit Profile" }
+            }
             DialogOverlay {}
             DialogContent {
                 DialogHeader {
@@ -32,7 +35,9 @@ pub fn Demo() -> Element {
                     }
                 }
                 DialogFooter {
-                    DialogClose { "Save changes" }
+                    DialogClose {
+                        Button { "Save changes" }
+                    }
                 }
             }
         }

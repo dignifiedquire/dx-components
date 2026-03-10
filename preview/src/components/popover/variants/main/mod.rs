@@ -1,3 +1,4 @@
+use crate::components::button::component::{Button, ButtonVariant};
 use crate::components::label::component::Label;
 use crate::components::popover::component::*;
 use dioxus::prelude::*;
@@ -6,7 +7,9 @@ use dioxus::prelude::*;
 pub fn Demo() -> Element {
     rsx! {
         Popover {
-            PopoverTrigger { "Open popover" }
+            PopoverTrigger {
+                Button { variant: ButtonVariant::Outline, "Open popover" }
+            }
             PopoverContent {
                 div { class: "grid gap-4",
                     div { class: "grid gap-2",

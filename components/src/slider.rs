@@ -171,7 +171,7 @@ pub struct SliderThumbProps {
 #[component]
 pub fn SliderThumb(props: SliderThumbProps) -> Element {
     let class = tw_merge!(
-        "block size-4 shrink-0 rounded-full border border-primary bg-white shadow-sm ring-ring/50 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50",
+        "block cursor-pointer size-4 shrink-0 rounded-full border border-primary bg-white shadow-sm ring-ring/50 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50",
         props.class,
     );
 

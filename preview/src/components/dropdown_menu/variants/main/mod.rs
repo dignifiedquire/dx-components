@@ -1,3 +1,4 @@
+use crate::components::button::component::{Button, ButtonVariant};
 use crate::components::dropdown_menu::component::*;
 use dioxus::prelude::*;
 
@@ -5,7 +6,9 @@ use dioxus::prelude::*;
 pub fn Demo() -> Element {
     rsx! {
         DropdownMenu {
-            DropdownMenuTrigger { "Open" }
+            DropdownMenuTrigger {
+                Button { variant: ButtonVariant::Outline, "Open" }
+            }
             DropdownMenuContent {
                 DropdownMenuLabel { "My Account" }
                 DropdownMenuSeparator {}
