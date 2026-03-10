@@ -1,0 +1,1 @@
+[data-slot=command-list]:has([data-slot=command-item]) [data-slot=command-empty]{display:none}
