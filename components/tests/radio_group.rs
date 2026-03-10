@@ -59,7 +59,7 @@ fn radio_group_item_classes() {
     let html = render(TestApp);
 
     assert!(
-        html.contains("aspect-square size-4 shrink-0 rounded-full"),
+        html.contains("aspect-square cursor-pointer size-4 shrink-0 rounded-full"),
         "radio group item should have base classes: {html}"
     );
     assert!(
