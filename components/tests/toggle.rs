@@ -26,7 +26,7 @@ fn toggle_base_classes() {
 
     let html = render(TestApp);
     assert!(
-        html.contains("inline-flex items-center justify-center"),
+        html.contains("inline-flex cursor-pointer items-center justify-center"),
         "toggle should have base classes: {html}"
     );
     assert!(

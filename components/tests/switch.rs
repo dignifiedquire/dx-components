@@ -26,7 +26,7 @@ fn switch_base_classes() {
 
     let html = render(TestApp);
     assert!(
-        html.contains("peer group/switch inline-flex shrink-0 items-center rounded-full border border-transparent shadow-xs"),
+        html.contains("peer group/switch cursor-pointer inline-flex shrink-0 items-center rounded-full border border-transparent shadow-xs"),
         "switch should have base classes: {html}"
     );
     assert!(
