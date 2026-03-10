@@ -174,7 +174,7 @@ pub fn PaginationPrevious(props: PaginationPreviousProps) -> Element {
 
     rsx! {
         a {
-            "data-slot": "pagination-link",
+            "data-slot": "pagination-previous",
             "aria-label": "Go to previous page",
             href: props.href,
             class: class,
@@ -213,7 +213,7 @@ pub fn PaginationNext(props: PaginationNextProps) -> Element {
 
     rsx! {
         a {
-            "data-slot": "pagination-link",
+            "data-slot": "pagination-next",
             "aria-label": "Go to next page",
             href: props.href,
             class: class,
