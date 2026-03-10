@@ -52,6 +52,6 @@ jobs:
         with:
           node-version: lts/*
       - name: Install dependencies
-        run: cd ./preview && npm ci
+        run: cd ./preview && npm install
       - name: Stylelint
         run: cd ./preview && npx stylelint "**/*.css" --max-warnings=0
