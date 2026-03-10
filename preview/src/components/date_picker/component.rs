@@ -8,7 +8,7 @@ use dioxus_primitives::{
 };
 
 use super::super::calendar::*;
-use super::super::popover::component::{PopoverContent, PopoverTrigger};
+use super::super::popover::{PopoverContent, PopoverTrigger};
 
 #[component]
 pub fn DatePicker(props: DatePickerProps) -> Element {
