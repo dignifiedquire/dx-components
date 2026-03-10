@@ -14,6 +14,7 @@ use time::OffsetDateTime;
 
 pub use dioxus_attributes;
 
+pub mod accessible_icon;
 pub mod accordion;
 pub mod alert_dialog;
 pub mod announce;
@@ -35,14 +36,18 @@ pub mod dropdown_menu;
 mod focus;
 pub mod focus_guards;
 pub mod focus_scope;
+pub mod form;
 pub mod hover_card;
 pub mod icon;
+pub mod input_otp;
 pub mod label;
 pub(crate) mod menu;
 pub mod menubar;
 #[cfg(feature = "router")]
 pub mod navbar;
+pub mod navigation_menu;
 pub mod number;
+pub mod password_toggle_field;
 pub mod popover;
 pub mod popper;
 mod portal;
