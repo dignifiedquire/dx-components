@@ -1,41 +1,46 @@
-The AlertDialog primitive provides an accessible, composable modal dialog for critical user confirmations (such as destructive actions). It is unstyled by default except for minimal centering/stacking, and can be fully themed by the consumer.
+A modal dialog that interrupts the user with important content and expects a response.
 
-## Component Structure
+## Usage
 
 ```rust
-// Usage example:
-let open = use_signal(|| false);
+use dioxus::prelude::*;
+use dioxus_components::alert_dialog::*;
+
 rsx! {
-    button {
-        onclick: move |_| open.set(true),
-        type: "button",
-        "Show Alert Dialog"
-    }
-    AlertDialogRoot { open: Some(open), on_open_change: move |v| open.set(v),
+    AlertDialog {
+        AlertDialogTrigger {
+            button { "Show Dialog" }
+        }
+        AlertDialogOverlay {}
         AlertDialogContent {
-            // You may pass class/style for custom appearance
-            AlertDialogTitle { "Title" }
-            AlertDialogDescription { "Description" }
-            AlertDialogActions {
+            AlertDialogHeader {
+                AlertDialogTitle { "Are you absolutely sure?" }
+                AlertDialogDescription {
+                    "This action cannot be undone."
+                }
+            }
+            AlertDialogFooter {
                 AlertDialogCancel { "Cancel" }
-                AlertDialogAction { "Confirm" }
+                AlertDialogAction { "Continue" }
             }
         }
     }
-}
+};
 ```
 
-### Components
-- **AlertDialogRoot**: Provides context and manages open state.
-- **AlertDialogContent**: The dialog container. Handles accessibility and focus trap. Applies only minimal inline style for centering/stacking if no style is provided.
-- **AlertDialogTitle**: The dialog's heading.
-- **AlertDialogDescription**: Additional description for the dialog.
-- **AlertDialogActions**: Container for action buttons.
-- **AlertDialogAction**: Main action button (e.g., confirm/delete). Closes dialog and calls optional `on_click`.
-- **AlertDialogCancel**: Cancel/close button. Closes dialog and calls optional `on_click`.
+## Props
 
-### Notes
-- By default, only minimal centering/positioning styles are applied to `AlertDialogContent` (position, top, left, transform, z-index). All appearance is controlled by your CSS.
-- The dialog is accessible and closes on Escape, backdrop click, or Cancel/Action.
-- You can pass custom `on_click`, `class`, and `style` props to all subcomponents for full control.
-- Focus trap is not fully implemented; focus may escape the dialog in some cases.
+### AlertDialog
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `open` | `Option<Signal<bool>>` | `None` | Controlled open state |
+| `default_open` | `bool` | `false` | Default open state |
+| `on_open_change` | `Callback<bool>` | - | Called when open state changes |
+
+### AlertDialogContent
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `force_mount` | `bool` | `false` | Force content to stay mounted |
+| `show_close` | `bool` | `false` | Show an X close button |

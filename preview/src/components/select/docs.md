@@ -1,39 +1,58 @@
-The Select component is used to create a dropdown menu that allows users to select one or more options from the select groups.
+Displays a list of options for the user to pick from, triggered by a button.
 
-## Component Structure
+## Usage
 
 ```rust
-// The Select component wraps all select items in the dropdown.
-Select::<String> {
-    // The currently selected value(s) in the dropdown.
-    value: "option1",
-    // Callback function triggered when the selected value changes.
-    on_value_change: |value: String| {
-        // Handle the change in selected value.
-    },
-    // The select trigger is the button that opens the dropdown.
-    SelectTrigger {
-        // The (optional) select value displays the currently selected text value.
-        SelectValue {}
-    }
-    // All groups must be wrapped in the select list.
-    SelectList {
-        // An group within the select dropdown which may contain multiple items.
-        SelectGroup {
-            // The label for the group
-            SelectGroupLabel {
-                "Other"
+use dioxus::prelude::*;
+use dioxus_components::select::*;
+
+rsx! {
+    Select::<Option<String>> {
+        placeholder: "Select a fruit...",
+        SelectTrigger {
+            SelectValue {}
+        }
+        SelectContent {
+            SelectGroup {
+                SelectLabel { "Fruits" }
+                SelectItem::<Option<String>> {
+                    index: 0,
+                    value: "apple".to_string(),
+                    "Apple"
+                }
+                SelectItem::<Option<String>> {
+                    index: 1,
+                    value: "banana".to_string(),
+                    "Banana"
+                }
             }
-            // Each select option represents an individual option in the dropdown. The type must match the type of the select.
-            SelectOption::<String> {
-                // The value of the item, which will be passed to the on_value_change callback when selected.
-                value: "option1",
-                // Select item indicator is only rendered if the item is selected.
-                SelectItemIndicator {
-                    "✔️"
+            SelectSeparator {}
+            SelectGroup {
+                SelectLabel { "Vegetables" }
+                SelectItem::<Option<String>> {
+                    index: 2,
+                    value: "carrot".to_string(),
+                    "Carrot"
                 }
             }
         }
     }
-}
+};
 ```
+
+## Props
+
+### Select
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `placeholder` | `&str` | `""` | Placeholder text when no value selected |
+| `on_value_change` | `Callback<T>` | - | Called when selected value changes |
+
+### SelectItem
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `value` | `ReadSignal<T>` | - | The value of the item |
+| `index` | `ReadSignal<usize>` | - | Item index for keyboard navigation |
+| `disabled` | `bool` | `false` | Whether the item is disabled |

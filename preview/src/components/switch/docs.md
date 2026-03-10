@@ -1,20 +1,31 @@
-The Switch component allows users to toggle between two states, such as on and off.
+A control that allows the user to toggle between a checked and not checked state.
 
-## Component Structure
+## Usage
 
 ```rust
-// The Switch component wraps the switch thumb
-Switch {
-    // The current state of the switch, true for on and false for off.
-    checked: true,
-    // Callback function triggered when the switch state changes.
-    on_checked_change: |checked: bool| {
-        // Handle the change in switch state.
-    },
-    // The switch thumb represents the draggable handle that the user moves to toggle the switch.
-    SwitchThumb {
-        // The content of the thumb
-        {children}
+use dioxus::prelude::*;
+use dioxus_components::switch::*;
+
+let mut checked = use_signal(|| false);
+
+rsx! {
+    Switch {
+        checked: checked(),
+        on_checked_change: move |v| checked.set(v),
     }
-}
+};
 ```
+
+The styled Switch composes the thumb internally — you only need to render the `Switch` component.
+
+## Props
+
+### Switch
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `checked` | `ReadSignal<Option<bool>>` | `None` | Controlled checked state |
+| `default_checked` | `bool` | `false` | Default checked state |
+| `disabled` | `bool` | `false` | Whether the switch is disabled |
+| `on_checked_change` | `Callback<bool>` | - | Called when checked state changes |
+| `size` | `SwitchSize` | `Default` | Size variant (`Default`, `Sm`) |

@@ -1,19 +1,48 @@
-The dialog component can be used to display additional information or actions related to an item. It is a simple modal dialog that can be opened and closed by the user.
+A modal dialog that interrupts the user with important content and expects a response.
 
-## Component Structure
+## Usage
 
 ```rust
-// The dialog component must wrap all dialog elements.
-Dialog {
-    // The open prop determines if the dialog is currently open or closed.
-    open: open(),
-    // The dialog title defines the heading of the dialog.
-    DialogTitle {
-        "Item information"
+use dioxus::prelude::*;
+use dioxus_components::dialog::*;
+
+rsx! {
+    Dialog {
+        DialogTrigger {
+            button { "Open" }
+        }
+        DialogOverlay {}
+        DialogContent {
+            DialogHeader {
+                DialogTitle { "Edit profile" }
+                DialogDescription {
+                    "Make changes to your profile here."
+                }
+            }
+            // Form content goes here
+            DialogFooter {
+                DialogClose {
+                    button { "Save changes" }
+                }
+            }
+        }
     }
-    // The dialog description provides additional information about the dialog.
-    DialogDescription {
-        "Here is some additional information about the item."
-    }
-}
+};
 ```
+
+## Props
+
+### Dialog
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `open` | `Option<Signal<bool>>` | `None` | Controlled open state |
+| `default_open` | `bool` | `false` | Default open state |
+| `on_open_change` | `Callback<bool>` | - | Called when open state changes |
+
+### DialogContent
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `force_mount` | `bool` | `false` | Force content to stay mounted |
+| `show_close` | `bool` | `true` | Show the X close button |

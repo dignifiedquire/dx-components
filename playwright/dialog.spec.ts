@@ -3,8 +3,8 @@ import { test, expect } from "@playwright/test";
 test("test", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/dialog", { timeout: 20 * 60 * 1000 });
 
-  // Trigger button
-  const trigger = page.locator('[data-slot="dialog-trigger"]');
+  // Trigger button (first one — "Edit Profile" main demo)
+  const trigger = page.locator('[data-slot="dialog-trigger"]').first();
   await expect(trigger).toBeVisible();
   await expect(trigger).toHaveAttribute("data-state", "closed");
   await expect(trigger).toHaveAttribute("aria-haspopup", "dialog");

@@ -1,28 +1,57 @@
-The DropdownMenu component is used to create a dropdown menu that can be triggered by a button click. It allows users to select an option from a list of items.
+Displays a menu to the user, triggered by a button.
 
-## Component Structure
+## Usage
 
 ```rust
-// The dropdown menu component must wrap all dropdown items.
-DropdownMenu {
-    // The dropdown menu trigger is the button that will display the dropdown menu when clicked.
-    DropdownMenuTrigger {
-        // The content of the trigger to display inside the button.
-        {children}
-    }
-    // The dropdown menu content contains all the items that will be displayed in the dropdown menu.
-    DropdownMenuContent {
-        // Each dropdown menu item represents an individual option in the dropdown menu. Items are displayed in order based on the order of the index property.
-        DropdownMenuItem {
-            // The index of the item, used to determine the order in which items are displayed.
-            index: 0,
-            // The value of the item which will be passed to the on_select callback when the item is selected.
-            value: "",
-            on_select: |value: String| {
-                // This callback is triggered when the item is selected.
-                // The value parameter contains the value of the selected item.
-            },
+use dioxus::prelude::*;
+use dioxus_components::dropdown_menu::*;
+
+rsx! {
+    DropdownMenu {
+        DropdownMenuTrigger {
+            button { "Open" }
+        }
+        DropdownMenuContent {
+            DropdownMenuLabel { "My Account" }
+            DropdownMenuSeparator {}
+            DropdownMenuItem {
+                on_select: move |_| { /* handle click */ },
+                "Profile"
+            }
+            DropdownMenuItem {
+                on_select: move |_| { /* handle click */ },
+                "Settings"
+            }
+            DropdownMenuSeparator {}
+            DropdownMenuItem {
+                disabled: true,
+                "Disabled item"
+            }
         }
     }
-}
+};
 ```
+
+## Props
+
+### DropdownMenuItem
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `disabled` | `bool` | `false` | Whether the item is disabled |
+| `on_select` | `EventHandler<()>` | - | Called when the item is selected |
+
+### DropdownMenuCheckboxItem
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `checked` | `ReadSignal<bool>` | - | Whether the item is checked |
+| `on_checked_change` | `Callback<bool>` | - | Called when checked state changes |
+| `disabled` | `bool` | `false` | Whether the item is disabled |
+
+### DropdownMenuRadioItem
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `value` | `String` | - | The value of this radio item |
+| `disabled` | `bool` | `false` | Whether the item is disabled |
