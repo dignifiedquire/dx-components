@@ -89,6 +89,8 @@ jobs:
               </script>
           </body>
           </html>" > docs/404.html
+      - name: Disable Jekyll
+        run: touch docs/.nojekyll
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4.2.3
         with:
