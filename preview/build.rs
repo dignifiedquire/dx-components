@@ -15,11 +15,20 @@ fn main() {
     let out_dir = std::path::PathBuf::from(out_dir);
     println!("cargo:rerun-if-changed=src/components");
 
-    // Debug: print DIOXUS_ASSET_ROOT so we can verify option_env! will see it
-    match std::env::var("DIOXUS_ASSET_ROOT") {
-        Ok(val) => println!("cargo:warning=DIOXUS_ASSET_ROOT={val}"),
-        Err(_) => println!("cargo:warning=DIOXUS_ASSET_ROOT is NOT set"),
-    }
+    // Write DIOXUS_ASSET_ROOT to a file so it can be reliably read at compile time.
+    // option_env! in dependency crates may use stale cached values, but build.rs
+    // always runs when the crate is recompiled. env::var reads the actual process
+    // environment, which dx build sets correctly.
+    println!("cargo:rerun-if-env-changed=DIOXUS_ASSET_ROOT");
+    let base_path_code = match std::env::var("DIOXUS_ASSET_ROOT") {
+        Ok(val) => format!("Some(\"{val}\")"),
+        Err(_) => "None".to_string(),
+    };
+    std::fs::write(
+        out_dir.join("base_path.rs"),
+        format!("const BASE_PATH: Option<&str> = {base_path_code};\n"),
+    )
+    .unwrap();
 
     let mut components = Vec::new();
 
