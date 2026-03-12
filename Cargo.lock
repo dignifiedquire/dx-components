@@ -390,6 +390,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-once-cell"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4288f83726785267c6f2ef073a3d83dc3f9b81464e9f99898240cced85fce35a"
+
+[[package]]
 name = "async-process"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1752,6 +1758,7 @@ dependencies = [
  "serde",
  "subsecond",
  "warnings",
+ "wasm-splitter",
 ]
 
 [[package]]
@@ -8658,6 +8665,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f01b580c9ac74c8d8f0c0e4afb04eeef2acf145458e52c03845ee9cd23e3d12"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "wasm-split-macro"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f81406cf893f0e5779deeed2c6b3909ac84e695c0833439be689c5e0363c95c3"
+dependencies = [
+ "base16",
+ "digest",
+ "proc-macro2",
+ "quote",
+ "sha2",
+ "syn 2.0.114",
+]
+
+[[package]]
+name = "wasm-splitter"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4be578c11934ab6a0d9f841f0ec7d2195fe22e863fc5ea08d0f2ccb1036ccaba"
+dependencies = [
+ "async-once-cell",
+ "wasm-split-macro",
 ]
 
 [[package]]
