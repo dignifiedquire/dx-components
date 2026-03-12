@@ -35,9 +35,7 @@ jobs:
       - name: Build
         run: |
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
-          # Force recompilation of dioxus-cli-config so option_env!("DIOXUS_ASSET_ROOT") picks up the base path
-          cargo clean -p dioxus-cli-config 2>/dev/null || true
-          cd preview && dx build --web --release --wasm-split --base-path "$REPO_NAME"
+          cd preview && dx build --web --release --base-path "$REPO_NAME"
       - name: Copy output
         run: cp -r target/dx/preview/release/web/public docs
       - name: Add gh pages 404
