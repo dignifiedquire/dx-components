@@ -1,4 +1,4 @@
-use super::{ComponentDemoData, ComponentType, ComponentVariantDemoData, HighlightedCode};
+use super::{ComponentMetadata, ComponentType, HighlightedCode, VariantMetadata};
 
 macro_rules! examples {
     ($($name:ident $(($kind:ident))? $([$($variant:ident),*])?),* $(,)?) => {
@@ -17,9 +17,9 @@ macro_rules! examples {
                 }
             }
         )*
-        pub(crate) static DEMOS: &[ComponentDemoData] = &[
+        pub(crate) static COMPONENT_LIST: &[ComponentMetadata] = &[
             $(
-                examples!(@demo $name $( $kind )? $([$($variant),*])?),
+                examples!(@meta $name $( $kind )? $([$($variant),*])?),
             )*
         ];
     };
@@ -29,8 +29,8 @@ macro_rules! examples {
     (@kind block) => { ComponentType::Block };
 
     // Normal components: no variant-level css_highlighted
-    (@demo $name:ident $([$($variant:ident),*])?) => {
-        ComponentDemoData {
+    (@meta $name:ident $([$($variant:ident),*])?) => {
+        ComponentMetadata {
             name: stringify!($name),
             description: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/description.txt")),
             r#type: ComponentType::Normal,
@@ -44,25 +44,23 @@ macro_rules! examples {
                 dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/style.css.base16-ocean.dark.html")),
             },
             variants: &[
-                ComponentVariantDemoData {
+                VariantMetadata {
                     name: "main",
                     rs_highlighted: HighlightedCode {
                         light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/main/mod.rs.base16-ocean.light.html")),
                         dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/main/mod.rs.base16-ocean.dark.html")),
                     },
                     css_highlighted: None,
-                    component: $name::variants::main::Demo,
                 },
                 $(
                     $(
-                        ComponentVariantDemoData {
+                        VariantMetadata {
                             name: stringify!($variant),
                             rs_highlighted: HighlightedCode {
                                 light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/", stringify!($variant), "/mod.rs.base16-ocean.light.html")),
                                 dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/", stringify!($variant), "/mod.rs.base16-ocean.dark.html")),
                             },
                             css_highlighted: None,
-                            component: $name::variants::$variant::Demo,
                         },
                     )*
                 )?
@@ -71,8 +69,8 @@ macro_rules! examples {
     };
 
     // Block components: rendered in iframe, with shared demo.css
-    (@demo $name:ident block $([$($variant:ident),*])?) => {
-        ComponentDemoData {
+    (@meta $name:ident block $([$($variant:ident),*])?) => {
+        ComponentMetadata {
             name: stringify!($name),
             description: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/description.txt")),
             r#type: ComponentType::Block,
@@ -86,7 +84,7 @@ macro_rules! examples {
                 dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/style.css.base16-ocean.dark.html")),
             },
             variants: &[
-                ComponentVariantDemoData {
+                VariantMetadata {
                     name: "main",
                     rs_highlighted: HighlightedCode {
                         light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/main/mod.rs.base16-ocean.light.html")),
@@ -96,11 +94,10 @@ macro_rules! examples {
                         light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/demo.css.base16-ocean.light.html")),
                         dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/demo.css.base16-ocean.dark.html")),
                     }),
-                    component: $name::variants::main::Demo,
                 },
                 $(
                     $(
-                        ComponentVariantDemoData {
+                        VariantMetadata {
                             name: stringify!($variant),
                             rs_highlighted: HighlightedCode {
                                 light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/", stringify!($variant), "/mod.rs.base16-ocean.light.html")),
@@ -110,7 +107,6 @@ macro_rules! examples {
                                 light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/demo.css.base16-ocean.light.html")),
                                 dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/demo.css.base16-ocean.dark.html")),
                             }),
-                            component: $name::variants::$variant::Demo,
                         },
                     )*
                 )?
@@ -139,6 +135,7 @@ examples!(
     drawer[directions],
     drag_and_drop_list[removable],
     dropdown_menu[checkboxes, radio],
+    form,
     hover_card,
     input[disabled, file, with_label, with_button],
     input_otp[pattern, spacing],

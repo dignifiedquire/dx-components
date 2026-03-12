@@ -66,13 +66,10 @@ pub(crate) fn Navbar() -> Element {
 #[component]
 fn MobileSidebar(open: Signal<Option<bool>>) -> Element {
     let route: Route = router().current();
-    let current_name = match &route {
-        Route::ComponentPage { name } => Some(name.as_str()),
-        _ => None,
-    };
+    let current_name = route.component_name();
 
-    let mut sorted_demos: Vec<_> = components::DEMOS.iter().collect();
-    sorted_demos.sort_by_key(|d| d.name);
+    let mut sorted: Vec<_> = components::COMPONENT_LIST.iter().collect();
+    sorted.sort_by_key(|d| d.name);
 
     rsx! {
         Sheet { open,
@@ -84,13 +81,13 @@ fn MobileSidebar(open: Signal<Option<bool>>) -> Element {
                     h4 { class: "mb-1 rounded-md px-2 py-1 text-sm font-semibold text-foreground",
                         "Components"
                     }
-                    for demo in sorted_demos {
+                    for meta in sorted {
                         {
-                            let is_active = current_name == Some(demo.name);
-                            let display_name = demo.name.replace("_", " ");
+                            let is_active = current_name == Some(meta.name);
+                            let display_name = meta.name.replace("_", " ");
                             rsx! {
                                 Link {
-                                    to: Route::component(demo.name),
+                                    to: Route::component(meta.name),
                                     onclick: move |_| open.set(Some(false)),
                                     class: if is_active {
                                         "block capitalize rounded-md px-2 py-1 text-[0.8rem] font-medium text-foreground bg-accent no-underline"

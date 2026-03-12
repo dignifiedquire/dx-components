@@ -7,17 +7,16 @@ use crate::Route;
 #[component]
 pub(crate) fn TableOfContents() -> Element {
     let route: Route = router().current();
-    let demo = match &route {
-        Route::ComponentPage { name } => components::DEMOS.iter().find(|d| d.name == name.as_str()),
-        _ => None,
-    };
+    let comp_name = route.component_name();
+    let meta =
+        comp_name.and_then(|name| components::COMPONENT_LIST.iter().find(|d| d.name == name));
 
-    let Some(demo) = demo else {
+    let Some(meta) = meta else {
         return rsx! {};
     };
 
-    let extra_variants = if demo.variants.len() > 1 {
-        &demo.variants[1..]
+    let extra_variants = if meta.variants.len() > 1 {
+        &meta.variants[1..]
     } else {
         &[]
     };

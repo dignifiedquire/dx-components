@@ -5,15 +5,13 @@ use crate::components::tabs::component::{Tabs, TabsContent, TabsList, TabsTrigge
 use crate::ui::code_block::{CodeBlock, ComponentCode, CopyButton};
 use crate::ui::prev_next::PrevNextNav;
 use crate::Route;
-use crate::{ComponentDemoData, ComponentType, ComponentVariantDemoData, HighlightedCode};
+use crate::{ComponentMetadata, ComponentType, DemoEntry, HighlightedCode, VariantMetadata};
 
+/// Inner component page renderer. Called from generated per-component page functions.
+/// `demos` contains the live demo function pointers for this specific component.
 #[component]
-pub(crate) fn ComponentPage(name: String) -> Element {
-    let Some(demo) = components::DEMOS
-        .iter()
-        .find(|demo| demo.name == name)
-        .cloned()
-    else {
+pub(crate) fn ComponentPageInner(name: &'static str, demos: Vec<DemoEntry>) -> Element {
+    let Some(meta) = components::COMPONENT_LIST.iter().find(|m| m.name == name) else {
         return rsx! {
             div { class: "flex flex-col items-center justify-center py-20",
                 h3 { class: "text-lg font-semibold", "Component not found" }
@@ -22,13 +20,13 @@ pub(crate) fn ComponentPage(name: String) -> Element {
         };
     };
     rsx! {
-        ComponentHighlight { demo }
+        ComponentHighlight { meta: meta.clone(), demos }
     }
 }
 
 #[component]
-fn ComponentHighlight(demo: ComponentDemoData) -> Element {
-    let ComponentDemoData {
+fn ComponentHighlight(meta: ComponentMetadata, demos: Vec<DemoEntry>) -> Element {
+    let ComponentMetadata {
         name: raw_name,
         description,
         r#type,
@@ -36,11 +34,13 @@ fn ComponentHighlight(demo: ComponentDemoData) -> Element {
         variants,
         component,
         style,
-    } = demo;
+    } = meta;
     let name = raw_name.replace("_", " ");
-    let [main, extra_variants @ ..] = variants else {
+    let [main_variant, extra_variants @ ..] = variants else {
         unreachable!("Expected at least one variant for component: {}", name);
     };
+
+    let main_demo = demos.iter().find(|d| d.name == main_variant.name);
 
     rsx! {
         // Title + description
@@ -52,7 +52,14 @@ fn ComponentHighlight(demo: ComponentDemoData) -> Element {
         }
 
         // Preview
-        ComponentPreview { variant: main.clone(), r#type, component_name: raw_name }
+        if let Some(demo) = main_demo {
+            ComponentPreview {
+                variant: main_variant.clone(),
+                demo_component: demo.component,
+                r#type,
+                component_name: raw_name,
+            }
+        }
 
         // Installation
         section { id: "installation", class: "mt-8",
@@ -94,14 +101,22 @@ fn ComponentHighlight(demo: ComponentDemoData) -> Element {
                 h2 { class: "scroll-m-24 text-xl font-semibold tracking-tight mb-6", "Examples" }
                 div { class: "space-y-8",
                     for variant in extra_variants {
-                        div { id: "{variant.name}",
-                            h3 { class: "scroll-m-24 text-lg font-medium mb-4 capitalize",
-                                {variant.name.replace("_", " ")}
-                            }
-                            ComponentPreview {
-                                variant: variant.clone(),
-                                r#type,
-                                component_name: raw_name,
+                        {
+                            let demo_fn = demos.iter().find(|d| d.name == variant.name).map(|d| d.component);
+                            rsx! {
+                                div { id: "{variant.name}",
+                                    h3 { class: "scroll-m-24 text-lg font-medium mb-4 capitalize",
+                                        {variant.name.replace("_", " ")}
+                                    }
+                                    if let Some(comp) = demo_fn {
+                                        ComponentPreview {
+                                            variant: variant.clone(),
+                                            demo_component: comp,
+                                            r#type,
+                                            component_name: raw_name,
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -114,22 +129,22 @@ fn ComponentHighlight(demo: ComponentDemoData) -> Element {
     }
 }
 
-/// Component preview widget matching shadcn's style:
-/// rounded-xl border container, centered preview, collapsible code with gradient overlay.
 #[component]
 fn ComponentPreview(
-    variant: ComponentVariantDemoData,
+    variant: VariantMetadata,
+    demo_component: fn() -> Element,
     r#type: ComponentType,
     component_name: &'static str,
 ) -> Element {
     let mut expanded = use_signal(|| false);
 
-    let ComponentVariantDemoData {
+    let VariantMetadata {
         name: variant_name,
         rs_highlighted: highlighted,
         css_highlighted,
-        component: Comp,
     } = variant;
+
+    let Comp = demo_component;
 
     let preview_content = match r#type {
         ComponentType::Normal => rsx! {
@@ -162,13 +177,10 @@ fn ComponentPreview(
 
     rsx! {
         div { class: "group relative mt-4 mb-12 flex flex-col overflow-hidden rounded-xl border border-border",
-            // Live preview
             {preview_content}
-            // Code section
             div {
                 "data-slot": "code",
                 class: "relative overflow-hidden border-t border-border",
-                // Top-right toolbar — only visible when expanded
                 if expanded() {
                     div { class: "absolute top-1.5 right-9 z-10 flex items-center",
                         button {
@@ -177,7 +189,6 @@ fn ComponentPreview(
                             onclick: move |_| expanded.set(false),
                             "Collapse"
                         }
-                        // Vertical separator
                         div { class: "mx-1.5 h-4 w-px bg-border" }
                     }
                     CopyButton {
@@ -187,7 +198,6 @@ fn ComponentPreview(
                         z_index: "10",
                     }
                 }
-                // Code block — collapsed (max-h-72) or expanded
                 div {
                     class: if expanded() { "relative" } else { "relative max-h-72 overflow-hidden" },
                     if let Some(css) = css_highlighted {
@@ -201,7 +211,6 @@ fn ComponentPreview(
                         CodeBlock { source: highlighted, collapsed: !expanded() }
                     }
                 }
-                // Bottom gradient overlay with "View Code" button when collapsed
                 if !expanded() {
                     div { class: "absolute inset-0 flex items-center justify-center pb-4",
                         div {

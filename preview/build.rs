@@ -1,9 +1,24 @@
 use std::sync::OnceLock;
 
+/// Information about a component discovered from its directory.
+struct ComponentInfo {
+    /// snake_case name, e.g. "alert_dialog"
+    name: String,
+    /// PascalCase page name, e.g. "AlertDialogPage"
+    page_name: String,
+    /// Whether this is a "block" component (rendered in iframe).
+    is_block: bool,
+    /// Variant directory names in sorted order. Always includes "main".
+    variants: Vec<String>,
+}
+
 fn main() {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let out_dir = std::path::PathBuf::from(out_dir);
     println!("cargo:rerun-if-changed=src/components");
+
+    let mut components = Vec::new();
+
     // Process all markdown files and highlight code files in each component folder
     for folder in std::fs::read_dir("src/components").unwrap().flatten() {
         if !folder.file_type().unwrap().is_dir() {
@@ -13,16 +28,61 @@ fn main() {
         walk_highlight_dir(&folder_path, &out_dir).unwrap();
 
         // Extract description from component.json if it exists
-        let folder_name = folder_path.file_name().unwrap().to_string_lossy();
+        let folder_name = folder_path
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
         let json_path = folder_path.join("component.json");
         let description = if json_path.exists() {
             extract_json_description(&json_path)
         } else {
             String::new()
         };
-        let desc_out = out_dir.join(&*folder_name).join("description.txt");
+        let desc_out = out_dir.join(&folder_name).join("description.txt");
         std::fs::write(desc_out, description).unwrap();
+
+        // Detect block type from component.json
+        let is_block = if json_path.exists() {
+            extract_json_field(&json_path, "type") == Some("block".to_string())
+        } else {
+            false
+        };
+
+        // Discover variant directories
+        let variants_dir = folder_path.join("variants");
+        let mut variants = Vec::new();
+        if variants_dir.is_dir() {
+            for entry in std::fs::read_dir(&variants_dir).unwrap().flatten() {
+                if entry.file_type().unwrap().is_dir() {
+                    let vname = entry.file_name().to_string_lossy().to_string();
+                    variants.push(vname);
+                }
+            }
+        }
+        // Ensure "main" is first, then sort the rest
+        variants.sort();
+        if let Some(pos) = variants.iter().position(|v| v == "main") {
+            variants.remove(pos);
+        }
+        variants.insert(0, "main".to_string());
+
+        let page_name = snake_to_pascal(&folder_name) + "Page";
+
+        components.push(ComponentInfo {
+            name: folder_name,
+            page_name,
+            is_block,
+            variants,
+        });
     }
+
+    // Sort components by name for stable output
+    components.sort_by(|a, b| a.name.cmp(&b.name));
+
+    // Generate routes.rs
+    let routes_rs = generate_routes(&components);
+    std::fs::write(out_dir.join("routes.rs"), routes_rs).unwrap();
 
     // Process the main dx-components-theme.css file
     let theme_css_path = std::path::PathBuf::from("assets/dx-components-theme.css");
@@ -31,6 +91,173 @@ fn main() {
         let out_file_path = out_dir.join(format!("dx-components-theme.css.{theme}.html"));
         std::fs::write(out_file_path, html).unwrap();
     }
+}
+
+/// Convert snake_case to PascalCase: "alert_dialog" → "AlertDialog"
+fn snake_to_pascal(s: &str) -> String {
+    s.split('_')
+        .map(|word| {
+            let mut c = word.chars();
+            match c.next() {
+                None => String::new(),
+                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+            }
+        })
+        .collect()
+}
+
+/// Extract a simple string field from component.json without a JSON parser.
+fn extract_json_field(path: &std::path::Path, field: &str) -> Option<String> {
+    let content = std::fs::read_to_string(path).ok()?;
+    let pattern = format!("\"{}\"", field);
+    let start = content.find(&pattern)?;
+    let rest = &content[start + pattern.len()..];
+    let rest = rest.trim_start().strip_prefix(':')?;
+    let rest = rest.trim_start();
+    let rest = rest.strip_prefix('"')?;
+    let end = rest.find('"')?;
+    Some(rest[..end].to_string())
+}
+
+/// Generate the complete routes.rs file with Route enum, page functions, and helpers.
+fn generate_routes(components: &[ComponentInfo]) -> String {
+    use proc_macro2::{Ident, Span};
+    use quote::quote;
+
+    let ident = |s: &str| Ident::new(s, Span::call_site());
+
+    // Route enum variants under DocsLayout
+    let route_variants: Vec<_> = components
+        .iter()
+        .map(|c| {
+            let route_path = format!("/docs/components/{}", c.name);
+            let page = ident(&c.page_name);
+            quote! {
+                #[route(#route_path)]
+                #page {},
+            }
+        })
+        .collect();
+
+    // Route::component() match arms
+    let component_arms: Vec<_> = components
+        .iter()
+        .map(|c| {
+            let name = &c.name;
+            let page = ident(&c.page_name);
+            quote! { #name => Self::#page {}, }
+        })
+        .collect();
+
+    // Route::component_name() match arms
+    let name_arms: Vec<_> = components
+        .iter()
+        .map(|c| {
+            let name = &c.name;
+            let page = ident(&c.page_name);
+            quote! { Self::#page {} => Some(#name), }
+        })
+        .collect();
+
+    // Per-component page functions
+    let page_fns: Vec<_> = components
+        .iter()
+        .map(|c| {
+            let page = ident(&c.page_name);
+            let name = &c.name;
+            let comp_mod = ident(&c.name);
+            let demo_entries: Vec<_> = c
+                .variants
+                .iter()
+                .map(|v| {
+                    let variant_mod = ident(v);
+                    quote! {
+                        DemoEntry {
+                            name: #v,
+                            component: components::#comp_mod::variants::#variant_mod::Demo,
+                        }
+                    }
+                })
+                .collect();
+            quote! {
+                #[allow(unused_braces)]
+                #[component]
+                fn #page() -> Element {
+                    rsx! {
+                        ComponentPageInner {
+                            name: #name,
+                            demos: vec![#(#demo_entries),*],
+                        }
+                    }
+                }
+            }
+        })
+        .collect();
+
+    // find_block_demo match arms
+    let block_arms: Vec<_> = components
+        .iter()
+        .flat_map(|c| {
+            let comp_mod = ident(&c.name);
+            c.variants.iter().map(move |v| {
+                let name = &c.name;
+                let variant_mod = ident(v);
+                quote! {
+                    (#name, #v) => Some(components::#comp_mod::variants::#variant_mod::Demo),
+                }
+            })
+        })
+        .collect();
+
+    let tokens = quote! {
+        #[derive(Routable, Clone, PartialEq)]
+        pub(crate) enum Route {
+            #[layout(AppLayout)]
+                #[layout(HomeLayout)]
+                    #[route("/")]
+                    Home {},
+                #[end_layout]
+                #[layout(DocsLayout)]
+                    #(#route_variants)*
+                #[end_layout]
+            #[end_layout]
+            #[route("/component/block/:name/:variant")]
+            ComponentBlockDemo { name: String, variant: String },
+        }
+
+        impl Route {
+            pub(crate) fn home() -> Self {
+                Self::Home {}
+            }
+
+            pub(crate) fn component(name: impl AsRef<str>) -> Self {
+                match name.as_ref() {
+                    #(#component_arms)*
+                    _ => Self::Home {},
+                }
+            }
+
+            pub(crate) fn component_name(&self) -> Option<&'static str> {
+                match self {
+                    #(#name_arms)*
+                    _ => None,
+                }
+            }
+        }
+
+        #(#page_fns)*
+
+        /// Look up any component demo by name and variant.
+        /// Used by ComponentBlockDemo for isolated rendering (Playwright tests, iframes).
+        pub(crate) fn find_block_demo(name: &str, variant: &str) -> Option<fn() -> Element> {
+            match (name, variant) {
+                #(#block_arms)*
+                _ => None,
+            }
+        }
+    };
+
+    tokens.to_string()
 }
 
 fn walk_highlight_dir(dir: &std::path::Path, out_dir: &std::path::Path) -> std::io::Result<()> {

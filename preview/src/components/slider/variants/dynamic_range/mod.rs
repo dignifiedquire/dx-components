@@ -12,7 +12,8 @@ pub fn Demo() -> Element {
     let step = use_memo(move || if percentage_mode() { 1.0 } else { 10.0 });
     let formatted_value = use_memo(move || {
         current_value()
-            .map(|SliderValue::Single(v)| {
+            .map(|val| {
+                let v = val.get(0).unwrap_or(0.0);
                 if percentage_mode() {
                     format!("{v:.0}%")
                 } else {

@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use dioxus_primitives::portal::PortalHost;
 
 use crate::theme;
 use crate::Route;
@@ -18,5 +19,8 @@ pub(crate) fn AppLayout() -> Element {
 
     rsx! {
         Outlet::<Route> {}
+        // PortalHost renders overlay content (Dialog, Popover, Tooltip, etc.)
+        // that has been teleported via the Portal component.
+        PortalHost {}
     }
 }

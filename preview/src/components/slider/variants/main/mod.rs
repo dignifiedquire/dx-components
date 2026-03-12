@@ -16,8 +16,9 @@ pub fn Demo() -> Element {
             step: 1.0,
             default_value: SliderValue::Single(50.0),
             on_value_change: move |value: SliderValue| {
-                let SliderValue::Single(v) = value;
-                current_value.set(v);
+                if let Some(v) = value.get(0) {
+                    current_value.set(v);
+                }
             },
             SliderTrack {
                 SliderRange {}

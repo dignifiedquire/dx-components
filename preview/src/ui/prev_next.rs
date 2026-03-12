@@ -6,7 +6,7 @@ use crate::Route;
 /// Prev/Next navigation matching shadcn's pagination buttons.
 #[component]
 pub(crate) fn PrevNextNav(current_name: &'static str) -> Element {
-    let mut sorted: Vec<_> = components::DEMOS.iter().collect();
+    let mut sorted: Vec<_> = components::COMPONENT_LIST.iter().collect();
     sorted.sort_by_key(|d| d.name);
 
     let current_idx = sorted.iter().position(|d| d.name == current_name);
