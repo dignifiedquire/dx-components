@@ -91,16 +91,14 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
 // ---------------------------------------------------------------------------
 
 #[derive(Props, Clone, PartialEq)]
-pub struct SelectItemProps<T: Clone + PartialEq + 'static> {
-    pub value: ReadSignal<T>,
+pub struct SelectItemProps {
+    pub value: ReadSignal<String>,
 
     #[props(default)]
-    pub text_value: ReadSignal<Option<String>>,
+    pub text_value: Option<String>,
 
     #[props(default)]
     pub disabled: bool,
-
-    pub index: ReadSignal<usize>,
 
     #[props(default)]
     pub class: Option<String>,
@@ -112,7 +110,7 @@ pub struct SelectItemProps<T: Clone + PartialEq + 'static> {
 }
 
 #[component]
-pub fn SelectItem<T: Clone + PartialEq + 'static>(props: SelectItemProps<T>) -> Element {
+pub fn SelectItem(props: SelectItemProps) -> Element {
     let class = tw_merge!(
         "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         props.class,
@@ -122,11 +120,10 @@ pub fn SelectItem<T: Clone + PartialEq + 'static>(props: SelectItemProps<T>) -> 
     push_class(&mut attrs, class);
 
     rsx! {
-        primitives::SelectItem::<T> {
+        primitives::SelectItem {
             value: props.value,
             text_value: props.text_value,
             disabled: props.disabled,
-            index: props.index,
             attributes: attrs,
 
             primitives::SelectItemIndicator {

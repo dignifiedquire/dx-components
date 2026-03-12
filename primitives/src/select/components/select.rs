@@ -1,9 +1,8 @@
 //! Main Select component implementation.
 
-use core::panic;
 use std::time::Duration;
 
-use crate::{select::context::RcPartialEqValue, use_controlled, use_effect};
+use crate::{use_controlled, use_effect};
 use dioxus::prelude::*;
 use dioxus_core::Task;
 
@@ -12,18 +11,19 @@ use crate::focus::use_focus_provider;
 
 /// Props for the main Select component
 #[derive(Props, Clone, PartialEq)]
-pub struct SelectProps<T: Clone + PartialEq + 'static = String> {
-    /// The controlled value of the select
+pub struct SelectProps {
+    /// The controlled value of the select.
+    /// `None` = uncontrolled, `Some(value)` = controlled.
     #[props(default)]
-    pub value: ReadSignal<Option<Option<T>>>,
+    pub value: ReadSignal<Option<String>>,
 
-    /// The default value of the select
+    /// The default value when uncontrolled. Empty string = no selection.
     #[props(default)]
-    pub default_value: Option<T>,
+    pub default_value: String,
 
-    /// Callback when the value changes
+    /// Callback when the value changes. Receives the selected value string.
     #[props(default)]
-    pub on_value_change: Callback<Option<T>>,
+    pub on_value_change: Callback<String>,
 
     /// Whether the select is disabled
     #[props(default)]
@@ -70,7 +70,7 @@ pub struct SelectProps<T: Clone + PartialEq + 'static = String> {
 /// #[component]
 /// fn Demo() -> Element {
 ///     rsx! {
-///         Select::<String> {
+///         Select {
 ///             placeholder: "Select a fruit...",
 ///             SelectTrigger {
 ///                 aria_label: "Select Trigger",
@@ -81,14 +81,12 @@ pub struct SelectProps<T: Clone + PartialEq + 'static = String> {
 ///                 aria_label: "Select Demo",
 ///                 SelectGroup {
 ///                     SelectLabel { "Fruits" }
-///                     SelectItem::<String> {
-///                         index: 0usize,
+///                     SelectItem {
 ///                         value: "apple",
 ///                         "Apple"
 ///                         SelectItemIndicator { "✔️" }
 ///                     }
-///                     SelectItem::<String> {
-///                         index: 1usize,
+///                     SelectItem {
 ///                         value: "banana",
 ///                         "Banana"
 ///                         SelectItemIndicator { "✔️" }
@@ -100,8 +98,8 @@ pub struct SelectProps<T: Clone + PartialEq + 'static = String> {
 /// }
 /// ```
 #[component]
-pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element {
-    let (value, set_value_internal) =
+pub fn Select(props: SelectProps) -> Element {
+    let (value, set_value) =
         use_controlled(props.value, props.default_value, props.on_value_change);
 
     let open = use_signal(|| false);
@@ -110,22 +108,6 @@ pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element 
     let adaptive_keyboard = use_signal(super::super::text_search::AdaptiveKeyboard::new);
     let list_id = use_signal(|| None);
     let mut typeahead_clear_task: Signal<Option<Task>> = use_signal(|| None);
-
-    let value = use_memo(move || value().map(RcPartialEqValue::new));
-    let set_value = use_callback(move |cursor_opt: Option<RcPartialEqValue>| {
-        if let Some(value) = cursor_opt {
-            set_value_internal.call(Some(
-                value
-                    .as_ref::<T>()
-                    .unwrap_or_else(|| {
-                        panic!("The values of select and all options must match types")
-                    })
-                    .clone(),
-            ));
-        } else {
-            set_value_internal.call(None);
-        }
-    });
 
     let focus_state = use_focus_provider(props.roving_loop);
 
@@ -141,6 +123,7 @@ pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element 
         }
     });
     let initial_focus = use_signal(|| None);
+    let next_index = use_signal(|| 0usize);
 
     use_context_provider(|| SelectContext {
         typeahead_buffer,
@@ -156,6 +139,7 @@ pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element 
         typeahead_clear_task,
         typeahead_timeout: props.typeahead_timeout,
         initial_focus,
+        next_index,
     });
 
     let name = props.name;
@@ -166,18 +150,13 @@ pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element 
         {props.children}
 
         // Hidden native <select> for form participation (matching Radix's BubbleSelect).
-        // Only rendered when a `name` prop is provided. The native element is invisible
-        // to sighted users and assistive technology but participates in form submission.
-        //
-        // Radix deviation: Radix uses a BubbleSelect component that dispatches native
-        // change events for form libraries. We render a plain hidden <select> which
-        // suffices for standard HTML form submission.
         if !name().is_empty() {
             {
-                // Find the currently selected option's text_value for the native select
-                let current_text_value = value.read().as_ref().and_then(|current_val| {
-                    options.read().iter().find(|opt| opt.value == *current_val).map(|opt| opt.text_value.clone())
-                }).unwrap_or_default();
+                let current_value = value();
+                let current_text = options.read().iter()
+                    .find(|opt| opt.value == current_value)
+                    .map(|opt| opt.text_value.clone())
+                    .unwrap_or_default();
 
                 rsx! {
                     select {
@@ -188,9 +167,8 @@ pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element 
                         aria_hidden: "true",
                         tabindex: "-1",
                         style: "position: absolute; border: 0; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; word-wrap: normal;",
-                        value: current_text_value.clone(),
+                        value: current_text.clone(),
 
-                        // Empty option for when nothing is selected
                         option {
                             value: "",
                             disabled: true,
@@ -200,7 +178,7 @@ pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element 
                             option {
                                 key: "{opt.id}",
                                 value: opt.text_value.clone(),
-                                selected: Some(&opt.value) == value.read().as_ref(),
+                                selected: opt.value == current_value,
                                 {opt.text_value.clone()}
                             }
                         }

@@ -77,14 +77,17 @@ pub(crate) mod typeahead;
 pub mod visually_hidden;
 
 /// Generate a runtime-unique id.
+///
+/// The signal is created at `ScopeId::ROOT` so it can safely be stored in
+/// contexts and accessed from sibling or ancestor scopes without triggering
+/// Dioxus's cross-scope access warnings.
 fn use_unique_id() -> Signal<String> {
     static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
     #[allow(unused_mut)]
     let mut initial_value = use_hook(|| {
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-        let id_str = format!("dxc-{id}");
-        id_str
+        format!("dxc-{id}")
     });
 
     fullstack! {
@@ -93,7 +96,10 @@ fn use_unique_id() -> Signal<String> {
         });
         initial_value = server_id;
     }
-    use_signal(|| initial_value)
+
+    let sig = use_hook(|| Signal::new_in_scope(initial_value, ScopeId::ROOT));
+    use_effect_cleanup(move || sig.manually_drop());
+    sig
 }
 
 // Elements can only have one id so if the user provides their own, we must use it as the aria id.

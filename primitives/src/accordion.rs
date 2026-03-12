@@ -4,7 +4,7 @@ use crate::collapsible::{Collapsible, CollapsibleContent, CollapsibleTrigger};
 use crate::collection::{use_collection_item, CollectionContext, CollectionItem};
 use crate::dioxus_elements::Key;
 pub use crate::direction::{Direction, Orientation};
-use crate::{use_controlled, use_unique_id};
+use crate::{use_controlled, use_effect_cleanup, use_unique_id};
 use dioxus::prelude::*;
 
 // ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ struct AccordionCtx {
 struct AccordionItemCtx {
     value: String,
     disabled: ReadSignal<bool>,
-    open: Memo<bool>,
+    open: ReadSignal<bool>,
     trigger_id: Signal<String>,
     content_id: Signal<String>,
 }
@@ -307,18 +307,31 @@ pub fn AccordionItem(props: AccordionItemProps) -> Element {
     let trigger_id = use_unique_id();
     let content_id = use_unique_id();
 
+    // Create at ROOT scope — these signals are stored in AccordionItemCtx and
+    // accessed cross-scope when the shared value signal causes re-evaluation.
+    // Initialize with correct values so SSR snapshots are accurate (use_effect
+    // doesn't run during SSR).
     let item_value = props.value.clone();
-    let open = use_memo(move || value_ctx.is_open(&item_value));
-
     let item_disabled = props.disabled;
     let root_disabled = ctx.disabled;
-    let is_disabled = use_memo(move || (root_disabled)() || (item_disabled)());
+    let mut open = use_hook(|| Signal::new_in_scope(value_ctx.is_open(&item_value), ScopeId::ROOT));
+    let mut is_disabled =
+        use_hook(|| Signal::new_in_scope((root_disabled)() || (item_disabled)(), ScopeId::ROOT));
+
+    let item_value2 = props.value.clone();
+    use_effect(move || open.set(value_ctx.is_open(&item_value2)));
+    use_effect(move || is_disabled.set((root_disabled)() || (item_disabled)()));
+
+    use_effect_cleanup(move || {
+        open.manually_drop();
+        is_disabled.manually_drop();
+    });
 
     // Radix: AccordionItemProvider
     use_context_provider(|| AccordionItemCtx {
         value: props.value.clone(),
         disabled: is_disabled.into(),
-        open,
+        open: open.into(),
         trigger_id,
         content_id,
     });
@@ -334,7 +347,7 @@ pub fn AccordionItem(props: AccordionItemProps) -> Element {
         })
     };
 
-    let controlled_open = use_memo(move || Some(open()));
+    let controlled_open = use_memo(move || Some((open)()));
     let orientation = (ctx.orientation)().as_str();
 
     // Radix: CollapsiblePrimitive.Root

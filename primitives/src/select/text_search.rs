@@ -417,7 +417,7 @@ static QWERTZ_KEYBOARD_LAYOUT: [[char; 10]; 4] = [
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::select::context::{OptionState, RcPartialEqValue};
+    use crate::select::context::OptionState;
     use std::collections::HashMap;
 
     #[test]
@@ -536,19 +536,19 @@ mod tests {
         let options = vec![
             OptionState {
                 tab_index: 0,
-                value: RcPartialEqValue::new("apple"),
+                value: String::from("apple"),
                 text_value: "Apple".to_string(),
                 id: "apple".to_string(),
             },
             OptionState {
                 tab_index: 1,
-                value: RcPartialEqValue::new("banana"),
+                value: String::from("banana"),
                 text_value: "Banana".to_string(),
                 id: "banana".to_string(),
             },
             OptionState {
                 tab_index: 2,
-                value: RcPartialEqValue::new("cherry"),
+                value: String::from("cherry"),
                 text_value: "Cherry".to_string(),
                 id: "cherry".to_string(),
             },
@@ -602,13 +602,13 @@ mod tests {
         let options = vec![
             OptionState {
                 tab_index: 0,
-                value: RcPartialEqValue::new("ф"),
+                value: String::from("ф"),
                 text_value: "ф".to_string(),
                 id: "ф".to_string(),
             },
             OptionState {
                 tab_index: 1,
-                value: RcPartialEqValue::new("banana"),
+                value: String::from("banana"),
                 text_value: "Banana".to_string(),
                 id: "banana".to_string(),
             },

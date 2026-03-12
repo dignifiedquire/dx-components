@@ -1,6 +1,5 @@
 {
   "name": "sidebar",
-  "type": "block",
   "description": "A composable, themeable and customizable sidebar component.",
   "authors": [
     "zhiyanzhaijie"

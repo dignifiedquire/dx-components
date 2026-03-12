@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 use dioxus_components::select::*;
 
 rsx! {
-    Select::<Option<String>> {
+    Select {
         placeholder: "Select a fruit...",
         SelectTrigger {
             SelectValue {}
@@ -15,23 +15,23 @@ rsx! {
         SelectContent {
             SelectGroup {
                 SelectLabel { "Fruits" }
-                SelectItem::<Option<String>> {
-                    index: 0,
-                    value: "apple".to_string(),
+                SelectItem {
+                    value: "apple",
+                    text_value: "Apple",
                     "Apple"
                 }
-                SelectItem::<Option<String>> {
-                    index: 1,
-                    value: "banana".to_string(),
+                SelectItem {
+                    value: "banana",
+                    text_value: "Banana",
                     "Banana"
                 }
             }
             SelectSeparator {}
             SelectGroup {
                 SelectLabel { "Vegetables" }
-                SelectItem::<Option<String>> {
-                    index: 2,
-                    value: "carrot".to_string(),
+                SelectItem {
+                    value: "carrot",
+                    text_value: "Carrot",
                     "Carrot"
                 }
             }
@@ -47,12 +47,12 @@ rsx! {
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `placeholder` | `&str` | `""` | Placeholder text when no value selected |
-| `on_value_change` | `Callback<T>` | - | Called when selected value changes |
+| `on_value_change` | `Callback<String>` | - | Called when selected value changes |
 
 ### SelectItem
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `value` | `ReadSignal<T>` | - | The value of the item |
-| `index` | `ReadSignal<usize>` | - | Item index for keyboard navigation |
+| `value` | `&str` | - | The value of the item |
+| `text_value` | `&str` | value | Text for typeahead search |
 | `disabled` | `bool` | `false` | Whether the item is disabled |

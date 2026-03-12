@@ -19,7 +19,7 @@ fn render(app: fn() -> Element) -> String {
 fn root_renders_no_dom() {
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 span { "sentinel" }
             }
         }
@@ -42,7 +42,7 @@ fn root_renders_no_dom() {
 fn trigger_attributes() {
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectTrigger { "Open" }
             }
         }
@@ -80,7 +80,7 @@ fn trigger_attributes() {
 fn trigger_disabled() {
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 disabled: true,
                 SelectTrigger { "Open" }
             }
@@ -102,7 +102,7 @@ fn trigger_disabled() {
 fn trigger_has_data_placeholder_when_no_value() {
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectTrigger { "Open" }
             }
         }
@@ -123,7 +123,7 @@ fn trigger_has_data_placeholder_when_no_value() {
 fn value_attributes() {
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 placeholder: "Pick one",
                 SelectTrigger {
                     SelectValue {}
@@ -152,7 +152,7 @@ fn value_attributes() {
 fn content_hidden_when_closed() {
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectTrigger { "Open" }
                 SelectContent {
                     p { "Hidden" }
@@ -177,7 +177,7 @@ fn content_hidden_when_closed() {
 fn group_attributes() {
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectTrigger { "Open" }
                 SelectContent {
                     SelectGroup {
@@ -205,7 +205,7 @@ fn group_attributes() {
 fn separator_attributes() {
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectSeparator {}
             }
         }
@@ -234,7 +234,7 @@ fn separator_attributes() {
 fn select_list_alias_works() {
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectTrigger { "Open" }
                 SelectList {
                     p { "alias" }
@@ -259,11 +259,10 @@ fn select_option_alias_works() {
     // Verify the alias compiles and renders without panic
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectTrigger { "Open" }
                 SelectContent {
-                    SelectOption::<String> {
-                        index: 0usize,
+                    SelectOption {
                         value: "test",
                         "Test Item"
                     }
@@ -290,7 +289,7 @@ fn select_group_label_alias_works() {
     // Verify the alias compiles and renders without panic
     fn App() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectTrigger { "Open" }
                 SelectContent {
                     SelectGroup {

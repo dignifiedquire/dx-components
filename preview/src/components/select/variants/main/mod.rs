@@ -1,8 +1,8 @@
 use super::super::component::*;
 use dioxus::prelude::*;
-use strum::{EnumCount, IntoEnumIterator};
+use strum::IntoEnumIterator;
 
-#[derive(Debug, Clone, Copy, PartialEq, strum::EnumCount, strum::EnumIter, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, strum::EnumIter, strum::Display)]
 enum Fruit {
     Apple,
     Banana,
@@ -25,16 +25,16 @@ impl Fruit {
 
 #[component]
 pub fn Demo() -> Element {
-    let fruits = Fruit::iter().enumerate().map(|(i, f)| {
+    let fruits = Fruit::iter().map(|f| {
         rsx! {
-            SelectItem::<Option<Fruit>> { index: i, value: f, text_value: "{f}",
+            SelectItem { value: "{f}", text_value: "{f}",
                 {format!("{} {f}", f.emoji())}
             }
         }
     });
 
     rsx! {
-        Select::<Option<Fruit>> { placeholder: "Select a fruit...",
+        Select { placeholder: "Select a fruit...",
             SelectTrigger { aria_label: "Select Trigger", width: "12rem", SelectValue {} }
             SelectContent { aria_label: "Select Demo",
                 SelectGroup {
@@ -43,9 +43,8 @@ pub fn Demo() -> Element {
                 }
                 SelectGroup {
                     SelectLabel { "Other" }
-                    SelectItem::<Option<Fruit>> {
-                        index: Fruit::COUNT,
-                        value: None,
+                    SelectItem {
+                        value: "",
                         text_value: "Other",
                         "Other"
                     }

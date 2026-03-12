@@ -16,7 +16,7 @@ fn select_trigger_classes() {
     #[component]
     fn TestApp() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectTrigger {
                     SelectValue {}
                 }
@@ -38,7 +38,7 @@ fn select_trigger_consumer_class_merge() {
     #[component]
     fn TestApp() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectTrigger {
                     class: "my-trigger",
                     SelectValue {}
@@ -57,7 +57,7 @@ fn select_trigger_chevron_icon() {
     #[component]
     fn TestApp() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 SelectTrigger {
                     SelectValue {}
                 }
@@ -76,7 +76,7 @@ fn select_placeholder_text() {
     #[component]
     fn TestApp() -> Element {
         rsx! {
-            Select::<String> {
+            Select {
                 placeholder: "Pick one...",
                 SelectTrigger {
                     SelectValue {}

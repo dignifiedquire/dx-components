@@ -12,44 +12,33 @@ pub struct SelectValueProps {
     pub attributes: Vec<Attribute>,
 }
 
-/// # SelectValue
+/// Displays the currently selected value or the placeholder text.
 ///
-/// The trigger button for the [`Select`](super::select::Select) component which controls if the [`SelectList`](super::list::SelectList) is rendered.
-///
-/// This must be used inside a [`Select`](super::select::Select) component.
+/// Must be used inside a [`Select`](super::select::Select) component,
+/// typically within a [`SelectTrigger`](super::trigger::SelectTrigger).
 ///
 /// ```rust
 /// use dioxus::prelude::*;
 /// use dioxus_primitives::select::{
-///     Select, SelectGroup, SelectGroupLabel, SelectItemIndicator, SelectList, SelectOption,
+///     Select, SelectGroup, SelectLabel, SelectContent, SelectItem,
 ///     SelectTrigger, SelectValue,
 /// };
 /// #[component]
 /// fn Demo() -> Element {
 ///     rsx! {
-///         Select::<String> {
+///         Select {
 ///             placeholder: "Select a fruit...",
 ///             SelectTrigger {
 ///                 aria_label: "Select Trigger",
 ///                 width: "12rem",
 ///                 SelectValue {}
 ///             }
-///             SelectList {
+///             SelectContent {
 ///                 aria_label: "Select Demo",
 ///                 SelectGroup {
-///                     SelectGroupLabel { "Fruits" }
-///                     SelectOption::<String> {
-///                         index: 0usize,
-///                         value: "apple",
-///                         "Apple"
-///                         SelectItemIndicator { "✔️" }
-///                     }
-///                     SelectOption::<String> {
-///                         index: 1usize,
-///                         value: "banana",
-///                         "Banana"
-///                         SelectItemIndicator { "✔️" }
-///                     }
+///                     SelectLabel { "Fruits" }
+///                     SelectItem { value: "apple", "Apple" }
+///                     SelectItem { value: "banana", "Banana" }
 ///                 }
 ///             }
 ///         }
@@ -65,24 +54,24 @@ pub struct SelectValueProps {
 pub fn SelectValue(props: SelectValueProps) -> Element {
     let ctx = use_context::<SelectContext>();
 
-    let selected_text_value = use_memo(move || {
-        let value = ctx.value.read();
-        value.as_ref().and_then(|v| {
-            ctx.options
-                .read()
-                .iter()
-                .find(|opt| opt.value == *v)
-                .map(|opt| opt.text_value.clone())
-        })
-    });
+    let current_value = (ctx.value)();
+    let has_value = !current_value.is_empty();
 
-    let display_value = selected_text_value().unwrap_or_else(|| ctx.placeholder.cloned());
+    let display_value = if has_value {
+        ctx.options
+            .read()
+            .iter()
+            .find(|opt| opt.value == current_value)
+            .map(|opt| opt.text_value.clone())
+            .unwrap_or_else(|| ctx.placeholder.cloned())
+    } else {
+        ctx.placeholder.cloned()
+    };
 
     rsx! {
-        // Add placeholder option if needed
         span {
             "data-slot": "select-value",
-            "data-placeholder": if ctx.value.read().is_none() { "" } else { None::<&str> },
+            "data-placeholder": if !has_value { "" } else { None::<&str> },
             pointer_events: "none",
             ..props.attributes,
             {display_value}

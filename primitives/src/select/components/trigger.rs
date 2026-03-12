@@ -21,7 +21,7 @@ pub fn SelectTrigger(props: SelectTriggerProps) -> Element {
     let mut ctx = use_context::<SelectContext>();
     let mut open = ctx.open;
     let is_disabled = ctx.disabled;
-    let has_value = ctx.value.read().is_some();
+    let has_value = !(ctx.value)().is_empty();
 
     rsx! {
         button {

@@ -62,7 +62,10 @@ impl<D: Clone + 'static> CollectionContext<D> {
 /// element's `onmounted` handler for programmatic focus support.
 pub fn use_collection_item<D: Clone + 'static>(data: D) -> Signal<Option<Rc<MountedData>>> {
     let mut ctx: CollectionContext<D> = use_context();
-    let mounted: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+    // Create at ROOT scope — the parent collection iterates all items and
+    // accesses their mounted signals, which would cross scope boundaries
+    // if created in the item's own scope.
+    let mounted = use_hook(|| Signal::new_in_scope(None, ScopeId::ROOT));
     let item_id = use_hook(|| NEXT_ITEM_ID.fetch_add(1, Ordering::Relaxed));
 
     use_effect(move || {
@@ -75,6 +78,7 @@ pub fn use_collection_item<D: Clone + 'static>(data: D) -> Signal<Option<Rc<Moun
 
     use_effect_cleanup(move || {
         ctx.unregister(item_id);
+        mounted.manually_drop();
     });
 
     mounted

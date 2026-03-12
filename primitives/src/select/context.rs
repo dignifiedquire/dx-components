@@ -5,46 +5,9 @@ use dioxus::prelude::*;
 use dioxus_core::Task;
 use dioxus_sdk_time::sleep;
 
-use std::{any::Any, rc::Rc, time::Duration};
+use std::time::Duration;
 
 use super::text_search::AdaptiveKeyboard;
-
-trait DynPartialEq: Any {
-    fn eq(&self, other: &dyn Any) -> bool;
-}
-
-impl<T: PartialEq + 'static> DynPartialEq for T {
-    fn eq(&self, other: &dyn Any) -> bool {
-        other.downcast_ref::<T>() == Some(self)
-    }
-}
-
-#[derive(Clone)]
-pub(crate) struct RcPartialEqValue {
-    value: Rc<dyn DynPartialEq>,
-}
-
-impl RcPartialEqValue {
-    pub fn new<T: PartialEq + 'static>(value: T) -> Self {
-        Self {
-            value: Rc::new(value),
-        }
-    }
-
-    pub fn as_any(&self) -> &dyn Any {
-        (&*self.value) as &dyn Any
-    }
-
-    pub fn as_ref<T: PartialEq + 'static>(&self) -> Option<&T> {
-        self.as_any().downcast_ref::<T>()
-    }
-}
-
-impl PartialEq for RcPartialEqValue {
-    fn eq(&self, other: &Self) -> bool {
-        self.value.eq(&*other.value)
-    }
-}
 
 /// Main context for the select component containing all shared state
 #[derive(Clone, Copy)]
@@ -53,10 +16,10 @@ pub(super) struct SelectContext {
     pub typeahead_buffer: Signal<String>,
     /// If the select is open
     pub open: Signal<bool>,
-    /// Current value
-    pub value: Memo<Option<RcPartialEqValue>>,
+    /// Current value (empty string = no selection)
+    pub value: Memo<String>,
     /// Set the value callback
-    pub set_value: Callback<Option<RcPartialEqValue>>,
+    pub set_value: Callback<String>,
     /// A list of options with their states
     pub options: Signal<Vec<OptionState>>,
     /// Adaptive keyboard system for multi-language support
@@ -75,6 +38,8 @@ pub(super) struct SelectContext {
     pub typeahead_timeout: ReadSignal<Duration>,
     /// The initial element to focus once the list is rendered
     pub initial_focus: Signal<Option<usize>>,
+    /// Auto-incrementing counter for assigning item indices
+    pub next_index: Signal<usize>,
 }
 
 impl SelectContext {
@@ -85,7 +50,7 @@ impl SelectContext {
             if let Some(focused_index) = self.focus_state.current_focus() {
                 let options = self.options.read();
                 if let Some(option) = options.iter().find(|opt| opt.tab_index == focused_index) {
-                    self.set_value.call(Some(option.value.clone()));
+                    self.set_value.call(option.value.clone());
                     self.open.set(false);
                 }
             }
@@ -149,8 +114,8 @@ pub(super) struct OptionState {
     /// Tab index for focus management
     pub tab_index: usize,
     /// The value of the option
-    pub value: RcPartialEqValue,
-    /// Display text for the option
+    pub value: String,
+    /// Display text for the option (used for typeahead search)
     pub text_value: String,
     /// Unique ID for the option
     pub id: String,

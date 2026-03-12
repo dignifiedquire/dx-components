@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting</title>
+</head>
+<body>
+    <script>
+        const parts = window.location.pathname.split('/');
+        let realUrl;
+        if (parts[2] === 'pr-preview') {
+            realUrl = '/' + parts.slice(1, 4).join('/') + '/';
+        } else {
+            realUrl = '/' + parts.slice(1, 2).join('/');
+        }
+        fetch(realUrl)
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.text();
+            })
+            .then(html => {
+                document.documentElement.innerHTML = html;
+                document.documentElement.querySelectorAll('script').forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    for (const { name, value } of oldScript.attributes) {
+                        newScript.setAttribute(name, value);
+                    }
+                    newScript.textContent = oldScript.textContent;
+                    oldScript.replaceWith(newScript);
+                });
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+    </script>
+</body>
+</html>

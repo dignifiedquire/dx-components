@@ -1,9 +1,8 @@
 //! SelectItem (formerly SelectOption) and SelectItemIndicator component implementations.
 
 use crate::{
-    focus::use_focus_controlled_item,
-    select::context::{RcPartialEqValue, SelectListContext},
-    use_effect, use_effect_cleanup, use_id_or, use_unique_id,
+    focus::use_focus_controlled_item, select::context::SelectListContext, use_effect,
+    use_effect_cleanup, use_id_or, use_unique_id,
 };
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
@@ -12,13 +11,14 @@ use super::super::context::{OptionState, SelectContext, SelectOptionContext};
 
 /// The props for the [`SelectItem`] component
 #[derive(Props, Clone, PartialEq)]
-pub struct SelectItemProps<T: Clone + PartialEq + 'static> {
+pub struct SelectItemProps {
     /// The value of the item
-    pub value: ReadSignal<T>,
+    pub value: ReadSignal<String>,
 
-    /// The text value of the item used for typeahead search
+    /// The text value of the item used for typeahead search.
+    /// Defaults to `value` if not provided.
     #[props(default)]
-    pub text_value: ReadSignal<Option<String>>,
+    pub text_value: Option<String>,
 
     /// Whether the item is disabled
     #[props(default)]
@@ -27,9 +27,6 @@ pub struct SelectItemProps<T: Clone + PartialEq + 'static> {
     /// Optional ID for the item
     #[props(default)]
     pub id: ReadSignal<Option<String>>,
-
-    /// The index of the item in the list for keyboard navigation focus order.
-    pub index: ReadSignal<usize>,
 
     /// Optional label for the item (for accessibility)
     #[props(default)]
@@ -48,7 +45,7 @@ pub struct SelectItemProps<T: Clone + PartialEq + 'static> {
 }
 
 /// Backward-compatible alias.
-pub type SelectOptionProps<T> = SelectItemProps<T>;
+pub type SelectOptionProps = SelectItemProps;
 
 /// An individual selectable item within a [`SelectContent`](super::list::SelectContent).
 ///
@@ -63,7 +60,7 @@ pub type SelectOptionProps<T> = SelectItemProps<T>;
 /// #[component]
 /// fn Demo() -> Element {
 ///     rsx! {
-///         Select::<String> {
+///         Select {
 ///             placeholder: "Select a fruit...",
 ///             SelectTrigger {
 ///                 aria_label: "Select Trigger",
@@ -74,8 +71,7 @@ pub type SelectOptionProps<T> = SelectItemProps<T>;
 ///                 aria_label: "Select Demo",
 ///                 SelectGroup {
 ///                     SelectLabel { "Fruits" }
-///                     SelectItem::<String> {
-///                         index: 0usize,
+///                     SelectItem {
 ///                         value: "apple",
 ///                         "Apple"
 ///                         SelectItemIndicator { "✔️" }
@@ -87,36 +83,25 @@ pub type SelectOptionProps<T> = SelectItemProps<T>;
 /// }
 /// ```
 #[component]
-pub fn SelectItem<T: PartialEq + Clone + 'static>(props: SelectItemProps<T>) -> Element {
+pub fn SelectItem(props: SelectItemProps) -> Element {
     let option_id = use_unique_id();
     let id = use_id_or(option_id, props.id);
 
-    let index = props.index;
-    let value = props.value;
-    let text_value = use_memo(move || match (props.text_value)() {
-        Some(text) => text,
-        None => {
-            let value = value.read();
-            let as_any: &dyn std::any::Any = &*value;
-            as_any
-                .downcast_ref::<String>()
-                .cloned()
-                .or_else(|| as_any.downcast_ref::<&str>().map(|s| s.to_string()))
-                .unwrap_or_else(|| {
-                    tracing::warn!(
-                        "SelectItem with non-string types requires text_value to be set"
-                    );
-                    String::new()
-                })
-        }
-    });
-
     let mut ctx: SelectContext = use_context();
+    let index = use_hook(|| {
+        let idx = (ctx.next_index)();
+        ctx.next_index.set(idx + 1);
+        idx
+    });
+    let index_signal = use_hook(|| Signal::new(index));
+    let value = props.value;
+    let text_value = props.text_value.clone().unwrap_or_else(|| value.cloned());
+
     use_effect(move || {
         let option_state = OptionState {
-            tab_index: index(),
-            value: RcPartialEqValue::new(value.cloned()),
-            text_value: text_value.cloned(),
+            tab_index: index,
+            value: value.cloned(),
+            text_value: text_value.clone(),
             id: id(),
         };
         ctx.options.write().push(option_state);
@@ -126,12 +111,10 @@ pub fn SelectItem<T: PartialEq + Clone + 'static>(props: SelectItemProps<T>) -> 
         ctx.options.write().retain(|opt| opt.id != *id.read());
     });
 
-    let onmounted = use_focus_controlled_item(props.index);
-    let focused = move || ctx.focus_state.is_focused(index());
+    let onmounted = use_focus_controlled_item(index_signal);
+    let focused = move || ctx.focus_state.is_focused(index);
     let item_disabled = ctx.disabled || props.disabled;
-    let selected = use_memo(move || {
-        ctx.value.read().as_ref().and_then(|v| v.as_ref::<T>()) == Some(&props.value.read())
-    });
+    let selected = use_memo(move || (ctx.value)() == value.cloned());
     let mut did_drag = use_signal(|| false);
 
     use_context_provider(|| SelectOptionContext {
@@ -163,7 +146,7 @@ pub fn SelectItem<T: PartialEq + Clone + 'static>(props: SelectItemProps<T>) -> 
 
                 onpointerdown: move |event| {
                     if !item_disabled && &event.pointer_type() == "mouse" && event.trigger_button() == Some(MouseButton::Primary) {
-                        ctx.set_value.call(Some(RcPartialEqValue::new(props.value.cloned())));
+                        ctx.set_value.call(value.cloned());
                         ctx.open.set(false);
                     }
                 },
@@ -172,7 +155,7 @@ pub fn SelectItem<T: PartialEq + Clone + 'static>(props: SelectItemProps<T>) -> 
                 },
                 ontouchend: move |_| {
                     if !item_disabled && !did_drag() {
-                        ctx.set_value.call(Some(RcPartialEqValue::new(props.value.cloned())));
+                        ctx.set_value.call(value.cloned());
                         ctx.open.set(false);
                     }
                 },
@@ -195,7 +178,7 @@ pub fn SelectItem<T: PartialEq + Clone + 'static>(props: SelectItemProps<T>) -> 
 
 /// Backward-compatible alias for [`SelectItem`].
 #[component]
-pub fn SelectOption<T: PartialEq + Clone + 'static>(props: SelectItemProps<T>) -> Element {
+pub fn SelectOption(props: SelectItemProps) -> Element {
     SelectItem(props)
 }
 
