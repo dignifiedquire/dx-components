@@ -29,9 +29,17 @@ pub struct SelectProps<T: Clone + PartialEq + 'static = String> {
     #[props(default)]
     pub disabled: bool,
 
-    /// Name of the select for form submission
+    /// Name of the select for form submission. When set, a hidden native
+    /// `<select>` element is rendered alongside the custom UI so the
+    /// value participates in HTML form submissions (matching Radix's
+    /// `BubbleSelect` pattern).
     #[props(default)]
     pub name: ReadSignal<String>,
+
+    /// Whether the native select is required for form validation.
+    /// Only has effect when `name` is set.
+    #[props(default)]
+    pub required: bool,
 
     /// Optional placeholder text
     #[props(default = ReadSignal::new(Signal::new(String::from("Select an option"))))]
@@ -150,5 +158,55 @@ pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element 
         initial_focus,
     });
 
-    rsx! { {props.children} }
+    let name = props.name;
+    let required = props.required;
+    let disabled = props.disabled;
+
+    rsx! {
+        {props.children}
+
+        // Hidden native <select> for form participation (matching Radix's BubbleSelect).
+        // Only rendered when a `name` prop is provided. The native element is invisible
+        // to sighted users and assistive technology but participates in form submission.
+        //
+        // Radix deviation: Radix uses a BubbleSelect component that dispatches native
+        // change events for form libraries. We render a plain hidden <select> which
+        // suffices for standard HTML form submission.
+        if !name().is_empty() {
+            {
+                // Find the currently selected option's text_value for the native select
+                let current_text_value = value.read().as_ref().and_then(|current_val| {
+                    options.read().iter().find(|opt| opt.value == *current_val).map(|opt| opt.text_value.clone())
+                }).unwrap_or_default();
+
+                rsx! {
+                    select {
+                        "data-slot": "select-native",
+                        name: name,
+                        required: required,
+                        disabled: disabled,
+                        aria_hidden: "true",
+                        tabindex: "-1",
+                        style: "position: absolute; border: 0; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; word-wrap: normal;",
+                        value: current_text_value.clone(),
+
+                        // Empty option for when nothing is selected
+                        option {
+                            value: "",
+                            disabled: true,
+                        }
+
+                        for opt in options.read().iter() {
+                            option {
+                                key: "{opt.id}",
+                                value: opt.text_value.clone(),
+                                selected: Some(&opt.value) == value.read().as_ref(),
+                                {opt.text_value.clone()}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

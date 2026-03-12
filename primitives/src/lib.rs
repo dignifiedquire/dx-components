@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use dioxus::core::{current_scope_id, use_drop};
 use dioxus::prelude::*;
-use dioxus::prelude::{asset, manganis, Asset};
+
 use dioxus_core::AttributeValue::Text;
 use dioxus_elements::geometry::PixelsRect;
 use time::OffsetDateTime;
@@ -18,6 +18,7 @@ pub mod accessible_icon;
 pub mod accordion;
 pub mod alert_dialog;
 pub mod announce;
+mod aria_hidden;
 pub mod arrow;
 pub mod aspect_ratio;
 pub mod avatar;
@@ -53,13 +54,14 @@ pub mod number;
 pub mod password_toggle_field;
 pub mod popover;
 pub mod popper;
-mod portal;
+pub mod portal;
 pub mod primitive;
 pub mod progress;
 pub mod radio_group;
 pub mod resizable;
 pub mod roving_focus;
 pub mod scroll_area;
+mod scroll_lock;
 pub mod select;
 pub mod separator;
 pub mod slider;
@@ -71,9 +73,8 @@ pub mod toggle;
 pub mod toggle_group;
 pub mod toolbar;
 pub mod tooltip;
+pub(crate) mod typeahead;
 pub mod visually_hidden;
-
-pub(crate) const FOCUS_TRAP_JS: Asset = asset!("/src/js/focus-trap.js");
 
 /// Generate a runtime-unique id.
 fn use_unique_id() -> Signal<String> {
@@ -349,6 +350,108 @@ fn use_animated_open(
     });
 
     move || show_in_dom() || animating()
+}
+
+// ---------------------------------------------------------------------------
+// Delayed open/close — shared by Tooltip, HoverCard, NavigationMenu
+// ---------------------------------------------------------------------------
+
+/// Handle returned by [`use_delayed_open`] for controlling delayed open/close.
+#[derive(Clone, Copy)]
+pub(crate) struct DelayedOpenHandle {
+    /// The current open state.
+    pub open: Memo<bool>,
+    /// Set the open state directly (also fires `on_open_change`).
+    pub set_open: Callback<bool>,
+    /// Start the open timer (opens after `open_delay`).
+    pub handle_delayed_open: Callback<()>,
+    /// Start the close timer (closes after `close_delay`).
+    pub handle_delayed_close: Callback<()>,
+    /// Open immediately, cancelling any pending timers.
+    pub handle_immediate_open: Callback<()>,
+    /// Close immediately, cancelling any pending timers.
+    pub handle_immediate_close: Callback<()>,
+    /// Cancel all pending timers without changing state.
+    pub cancel_timers: Callback<()>,
+}
+
+/// Hook for delayed open/close with generation-counter cancellation.
+///
+/// Used by Tooltip, HoverCard, and NavigationMenu to delay open/close
+/// on hover, matching Radix's timer-based approach.
+pub(crate) fn use_delayed_open(
+    controlled_open: ReadSignal<Option<bool>>,
+    default_open: bool,
+    on_open_change: Callback<bool>,
+    open_delay_ms: u64,
+    close_delay_ms: u64,
+) -> DelayedOpenHandle {
+    use std::time::Duration;
+
+    let (open, set_open) = use_controlled(controlled_open, default_open, on_open_change);
+
+    // Generation counter for cancelling pending timers.
+    // Bumped on every timer start or cancel — stale spawns check their
+    // generation against current and bail if mismatched.
+    let mut open_gen = use_signal(|| 0u64);
+    let mut close_gen = use_signal(|| 0u64);
+
+    let cancel_timers = use_callback(move |_: ()| {
+        open_gen += 1;
+        close_gen += 1;
+    });
+
+    let handle_immediate_open = use_callback(move |_: ()| {
+        cancel_timers.call(());
+        set_open.call(true);
+    });
+
+    let handle_immediate_close = use_callback(move |_: ()| {
+        cancel_timers.call(());
+        set_open.call(false);
+    });
+
+    let handle_delayed_open = use_callback(move |_: ()| {
+        close_gen += 1; // cancel any pending close
+        if open_delay_ms == 0 {
+            set_open.call(true);
+            return;
+        }
+        open_gen += 1;
+        let gen = open_gen();
+        spawn(async move {
+            dioxus_sdk_time::sleep(Duration::from_millis(open_delay_ms)).await;
+            if open_gen() == gen {
+                set_open.call(true);
+            }
+        });
+    });
+
+    let handle_delayed_close = use_callback(move |_: ()| {
+        open_gen += 1; // cancel any pending open
+        if close_delay_ms == 0 {
+            set_open.call(false);
+            return;
+        }
+        close_gen += 1;
+        let gen = close_gen();
+        spawn(async move {
+            dioxus_sdk_time::sleep(Duration::from_millis(close_delay_ms)).await;
+            if close_gen() == gen {
+                set_open.call(false);
+            }
+        });
+    });
+
+    DelayedOpenHandle {
+        open,
+        set_open,
+        handle_delayed_open,
+        handle_delayed_close,
+        handle_immediate_open,
+        handle_immediate_close,
+        cancel_timers,
+    }
 }
 
 // ---------------------------------------------------------------------------

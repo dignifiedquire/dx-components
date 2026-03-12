@@ -4,7 +4,8 @@
 //! - [`HoverCardTrigger`]: Anchor element that shows/hides card on hover/focus
 //! - [`HoverCardContent`]: The card content, visible on hover
 
-use crate::{use_controlled, use_id_or, use_presence, use_unique_id};
+use crate::portal::Portal;
+use crate::{use_delayed_open, use_id_or, use_presence, use_unique_id};
 use crate::{ContentAlign, ContentSide};
 use dioxus::prelude::*;
 
@@ -16,6 +17,9 @@ use dioxus::prelude::*;
 struct HoverCardCtx {
     open: Memo<bool>,
     set_open: Callback<bool>,
+    handle_delayed_open: Callback<()>,
+    handle_delayed_close: Callback<()>,
+    handle_immediate_close: Callback<()>,
     content_id: Signal<String>,
 }
 
@@ -37,6 +41,14 @@ pub struct HoverCardRootProps {
     /// Callback when open state changes.
     #[props(default)]
     pub on_open_change: Callback<bool>,
+
+    /// Delay in ms before hover card opens. Defaults to 700 (matching Radix).
+    #[props(default = 700)]
+    pub open_delay: u64,
+
+    /// Delay in ms before hover card closes. Defaults to 300 (matching Radix).
+    #[props(default = 300)]
+    pub close_delay: u64,
 
     /// Children (should include [`HoverCardTrigger`] and [`HoverCardContent`]).
     pub children: Element,
@@ -67,11 +79,20 @@ pub struct HoverCardRootProps {
 #[component]
 pub fn HoverCardRoot(props: HoverCardRootProps) -> Element {
     let content_id = use_unique_id();
-    let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
+    let delayed = use_delayed_open(
+        props.open,
+        props.default_open,
+        props.on_open_change,
+        props.open_delay,
+        props.close_delay,
+    );
 
     use_context_provider(|| HoverCardCtx {
-        open,
-        set_open,
+        open: delayed.open,
+        set_open: delayed.set_open,
+        handle_delayed_open: delayed.handle_delayed_open,
+        handle_delayed_close: delayed.handle_delayed_close,
+        handle_immediate_close: delayed.handle_immediate_close,
         content_id,
     });
 
@@ -111,25 +132,10 @@ pub struct HoverCardTriggerProps {
 /// The trigger element. Renders as an `<a>` by default (matching Radix `Primitive.a`).
 ///
 /// Shows the hover card on pointer enter / focus, hides on leave / blur.
+/// Touch events are excluded — hover cards are a pointer-only interaction.
 #[component]
 pub fn HoverCardTrigger(props: HoverCardTriggerProps) -> Element {
     let ctx: HoverCardCtx = use_context();
-
-    let handle_pointer_enter = move |_: Event<PointerData>| {
-        ctx.set_open.call(true);
-    };
-
-    let handle_pointer_leave = move |_: Event<PointerData>| {
-        ctx.set_open.call(false);
-    };
-
-    let handle_focus = move |_: Event<FocusData>| {
-        ctx.set_open.call(true);
-    };
-
-    let handle_blur = move |_: Event<FocusData>| {
-        ctx.set_open.call(false);
-    };
 
     let is_open = (ctx.open)();
 
@@ -138,10 +144,25 @@ pub fn HoverCardTrigger(props: HoverCardTriggerProps) -> Element {
             id: props.id.clone(),
             "data-slot": "hover-card-trigger",
             "data-state": if is_open { "open" } else { "closed" },
-            onpointerenter: handle_pointer_enter,
-            onpointerleave: handle_pointer_leave,
-            onfocus: handle_focus,
-            onblur: handle_blur,
+            onpointerenter: move |e: Event<PointerData>| {
+                // Skip touch events — hover cards are pointer-only
+                if e.data().pointer_type() == "touch" {
+                    return;
+                }
+                ctx.handle_delayed_open.call(());
+            },
+            onpointerleave: move |e: Event<PointerData>| {
+                if e.data().pointer_type() == "touch" {
+                    return;
+                }
+                ctx.handle_delayed_close.call(());
+            },
+            onfocus: move |_: Event<FocusData>| {
+                ctx.set_open.call(true);
+            },
+            onblur: move |_: Event<FocusData>| {
+                ctx.handle_immediate_close.call(());
+            },
             ..props.attributes,
             {props.children}
         }
@@ -192,31 +213,33 @@ pub fn HoverCardContent(props: HoverCardContentProps) -> Element {
     let id = use_id_or(ctx.content_id, props.id);
     let mut presence = use_presence(ctx.open, id);
 
-    let handle_pointer_enter = move |_: Event<PointerData>| {
-        ctx.set_open.call(true);
-    };
-
-    let handle_pointer_leave = move |_: Event<PointerData>| {
-        ctx.set_open.call(false);
-    };
-
     if !presence.is_present() && !props.force_mount {
         return rsx! {};
     }
 
+    // Radix deviation: Radix uses ReactDOM.createPortal to render the content
+    // at document.body. We use our Portal component which teleports content to
+    // the nearest PortalHost via context-based signal system.
     rsx! {
-        div {
-            id,
-            "data-slot": "hover-card-content",
-            "data-state": presence.data_state(),
-            "data-side": props.side.as_str(),
-            "data-align": props.align.as_str(),
-            class: props.class,
-            onpointerenter: handle_pointer_enter,
-            onpointerleave: handle_pointer_leave,
-            onanimationend: move |_| presence.on_animation_end(),
-            ..props.attributes,
-            {props.children}
+        Portal {
+            div {
+                id,
+                "data-slot": "hover-card-content",
+                "data-state": presence.data_state(),
+                "data-side": props.side.as_str(),
+                "data-align": props.align.as_str(),
+                class: props.class,
+                // Keep card open while pointer is in content, close on leave
+                onpointerenter: move |_| {
+                    ctx.set_open.call(true);
+                },
+                onpointerleave: move |_| {
+                    ctx.handle_delayed_close.call(());
+                },
+                onanimationend: move |_| presence.on_animation_end(),
+                ..props.attributes,
+                {props.children}
+            }
         }
     }
 }

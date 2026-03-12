@@ -57,8 +57,9 @@ impl Not for CheckedState {
 
     fn not(self) -> Self::Output {
         match self {
-            Self::Unchecked => Self::Checked,
-            _ => Self::Unchecked,
+            Self::Checked => Self::Unchecked,
+            // Radix: indeterminate toggles to checked
+            Self::Unchecked | Self::Indeterminate => Self::Checked,
         }
     }
 }

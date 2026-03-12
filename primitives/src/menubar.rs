@@ -251,12 +251,14 @@ pub fn MenubarMenu(props: MenubarMenuProps) -> Element {
     });
 
     // Provide MenuCtx for the shared menu base components (MenuItem, etc.)
+    let typeahead_items = use_signal(Vec::new);
     use_context_provider(|| MenuCtx {
         open: is_open,
         on_close,
         content_id,
         trigger_id,
         slot_prefix: "menubar",
+        typeahead_items,
     });
 
     use_context_provider(|| MenubarMenuInternalCtx {

@@ -126,12 +126,14 @@ pub fn ContextMenuRoot(props: ContextMenuRootProps) -> Element {
     let position = use_signal(|| (0i32, 0i32));
 
     let set_open_cb = set_open;
+    let typeahead_items = use_signal(Vec::new);
     use_context_provider(|| MenuCtx {
         open,
         on_close: Callback::new(move |()| set_open_cb.call(false)),
         content_id,
         trigger_id,
         slot_prefix: "context-menu",
+        typeahead_items,
     });
 
     use_context_provider(|| ContextMenuInternalCtx {

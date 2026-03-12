@@ -2,14 +2,14 @@
 //!
 //! Displays rich content in a portal, triggered by a button.
 
-use dioxus::document;
+use std::rc::Rc;
+
 use dioxus::prelude::*;
 
+use crate::focus_scope::FocusScope;
+use crate::portal::Portal;
 use crate::use_global_escape_listener;
-use crate::{
-    use_controlled, use_id_or, use_presence, use_unique_id, ContentAlign, ContentSide,
-    FOCUS_TRAP_JS,
-};
+use crate::{use_controlled, use_id_or, use_presence, use_unique_id, ContentAlign, ContentSide};
 
 // ---------------------------------------------------------------------------
 // Context
@@ -22,6 +22,7 @@ pub struct PopoverCtx {
     pub(crate) set_open: Callback<bool>,
     pub(crate) is_modal: bool,
     pub(crate) content_id: Signal<String>,
+    pub(crate) trigger_ref: Signal<Option<Rc<MountedData>>>,
 }
 
 impl PopoverCtx {
@@ -83,6 +84,7 @@ pub struct PopoverRootProps {
 #[component]
 pub fn PopoverRoot(props: PopoverRootProps) -> Element {
     let content_id = use_unique_id();
+    let trigger_ref = use_signal(|| None);
 
     let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
 
@@ -91,10 +93,10 @@ pub fn PopoverRoot(props: PopoverRootProps) -> Element {
         set_open,
         is_modal: props.modal,
         content_id,
+        trigger_ref,
     });
 
     rsx! {
-        document::Script { src: FOCUS_TRAP_JS, defer: true }
         {props.children}
     }
 }
@@ -140,6 +142,7 @@ pub fn PopoverTrigger(props: PopoverTriggerProps) -> Element {
     let ctx: PopoverCtx = use_context();
     let open = ctx.open;
     let set_open = ctx.set_open;
+    let mut trigger_ref = ctx.trigger_ref;
 
     rsx! {
         button {
@@ -151,6 +154,7 @@ pub fn PopoverTrigger(props: PopoverTriggerProps) -> Element {
             aria_controls: ctx.content_id,
             class: props.class,
             onclick: move |_| set_open.call(!open()),
+            onmounted: move |e| trigger_ref.set(Some(e.data())),
             ..props.attributes,
             {props.children}
         }
@@ -229,45 +233,48 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
     // Escape key listener
     use_global_escape_listener(move || set_open.call(false));
 
-    // Focus trap for modal popovers
+    // Restore focus to trigger when popover closes
+    let mut was_open = use_signal(|| false);
     use_effect(move || {
-        if !is_modal {
-            return;
-        }
-        let eval = document::eval(
-            r#"let id = await dioxus.recv();
-            let is_open = await dioxus.recv();
-            let dialog = document.getElementById(id);
-
-            if (is_open) {
-                dialog.trap = window.createFocusTrap(dialog);
+        let is_open = open();
+        // Use peek() to avoid subscribing to was_open — we only want to
+        // re-run when `open` changes, not when we write was_open below.
+        if *was_open.peek() && !is_open {
+            if let Some(ref trigger) = *ctx.trigger_ref.read() {
+                let _ = trigger.set_focus(true);
             }
-            if (!is_open && dialog.trap) {
-                dialog.trap.remove();
-                dialog.trap = null;
-            }"#,
-        );
-        let _ = eval.send(id.to_string());
-        let _ = eval.send(open.cloned());
+        }
+        was_open.set(is_open);
     });
 
     if !presence.is_present() && !props.force_mount {
         return rsx! {};
     }
 
+    let trapped = is_modal && open();
+
+    // Radix deviation: Radix uses ReactDOM.createPortal to render the content
+    // at document.body. We use our Portal component which teleports content to
+    // the nearest PortalHost via context-based signal system.
     rsx! {
-        div {
-            id,
-            "data-slot": "popover-content",
-            "data-state": presence.data_state(),
-            "data-side": props.side.as_str(),
-            "data-align": props.align.as_str(),
-            role: "dialog",
-            aria_modal: if is_modal { "true" },
-            class: props.class,
-            onanimationend: move |_| presence.on_animation_end(),
-            ..props.attributes,
-            {props.children}
+        Portal {
+            FocusScope {
+                trapped: trapped,
+                r#loop: trapped,
+                div {
+                    id,
+                    "data-slot": "popover-content",
+                    "data-state": presence.data_state(),
+                    "data-side": props.side.as_str(),
+                    "data-align": props.align.as_str(),
+                    role: "dialog",
+                    aria_modal: if is_modal { "true" },
+                    class: props.class,
+                    onanimationend: move |_| presence.on_animation_end(),
+                    ..props.attributes,
+                    {props.children}
+                }
+            }
         }
     }
 }

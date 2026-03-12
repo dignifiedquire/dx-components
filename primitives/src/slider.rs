@@ -10,17 +10,103 @@ use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use std::rc::Rc;
 
-/// The value of the slider. Currently this can only be a single value, but support for ranges is planned.
+/// The value of the slider. Supports single value or multiple values for
+/// range sliders (matching Radix's `values: number[]` API).
 #[derive(Debug, Clone, PartialEq)]
 pub enum SliderValue {
-    /// A single value for the slider
+    /// A single value for the slider.
     Single(f64),
+    /// Multiple values for a range slider (multi-thumb).
+    Multi(Vec<f64>),
+}
+
+impl SliderValue {
+    /// Get the value at the given thumb index.
+    pub fn get(&self, index: usize) -> Option<f64> {
+        match self {
+            SliderValue::Single(v) => {
+                if index == 0 {
+                    Some(*v)
+                } else {
+                    None
+                }
+            }
+            SliderValue::Multi(vs) => vs.get(index).copied(),
+        }
+    }
+
+    /// Get all values as a slice.
+    pub fn values(&self) -> Vec<f64> {
+        match self {
+            SliderValue::Single(v) => vec![*v],
+            SliderValue::Multi(vs) => vs.clone(),
+        }
+    }
+
+    /// Number of values (thumbs).
+    pub fn len(&self) -> usize {
+        match self {
+            SliderValue::Single(_) => 1,
+            SliderValue::Multi(vs) => vs.len(),
+        }
+    }
+
+    /// Returns true if there are no values.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Minimum value across all thumbs.
+    pub fn min_value(&self) -> f64 {
+        match self {
+            SliderValue::Single(v) => *v,
+            SliderValue::Multi(vs) => vs.iter().copied().fold(f64::INFINITY, f64::min),
+        }
+    }
+
+    /// Maximum value across all thumbs.
+    pub fn max_value(&self) -> f64 {
+        match self {
+            SliderValue::Single(v) => *v,
+            SliderValue::Multi(vs) => vs.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+        }
+    }
+
+    /// Set the value at the given index, returning a new SliderValue.
+    fn with_value_at(&self, index: usize, new_val: f64) -> SliderValue {
+        match self {
+            SliderValue::Single(_) => {
+                if index == 0 {
+                    SliderValue::Single(new_val)
+                } else {
+                    self.clone()
+                }
+            }
+            SliderValue::Multi(vs) => {
+                let mut new = vs.clone();
+                if index < new.len() {
+                    new[index] = new_val;
+                }
+                SliderValue::Multi(new)
+            }
+        }
+    }
+}
+
+impl From<f64> for SliderValue {
+    fn from(v: f64) -> Self {
+        SliderValue::Single(v)
+    }
 }
 
 impl std::fmt::Display for SliderValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SliderValue::Single(v) => write!(f, "{v}"),
+            SliderValue::Multi(vs) => {
+                let strs: Vec<String> = vs.iter().map(|v| v.to_string()).collect();
+                write!(f, "{}", strs.join(", "))
+            }
         }
     }
 }
@@ -115,6 +201,11 @@ pub struct SliderProps {
     #[props(default)]
     pub inverted: bool,
 
+    /// Minimum number of steps between thumbs (for multi-thumb sliders).
+    /// Matching Radix's `minStepsBetweenThumbs` prop. Default 0.
+    #[props(default = 0.0)]
+    pub min_steps_between_thumbs: f64,
+
     /// Callback when value changes
     #[props(default)]
     pub on_value_change: Callback<SliderValue>,
@@ -134,6 +225,10 @@ pub struct SliderProps {
 ///
 /// The `Slider` component is a range input control that allows users to select a value along a
 /// [`SliderTrack`] by dragging a [`SliderThumb`] with the pointer or using the arrow keys.
+///
+/// Supports multiple thumbs for range selection (matching Radix's multi-value API).
+/// Use `SliderValue::Multi(vec![...])` as the default value and place multiple
+/// `SliderThumb` components with different `index` values.
 ///
 /// ## Example
 ///
@@ -179,7 +274,7 @@ pub fn Slider(props: SliderProps) -> Element {
 
     let is_disabled = props.disabled;
 
-    let ctx = use_context_provider(|| SliderContext {
+    let mut ctx = use_context_provider(|| SliderContext {
         value,
         set_value,
         min: props.min,
@@ -190,6 +285,8 @@ pub fn Slider(props: SliderProps) -> Element {
         inverted: props.inverted,
         dragging: dragging.into(),
         label: props.label,
+        active_thumb_index: Signal::new(None),
+        min_steps_between_thumbs: props.min_steps_between_thumbs,
     });
 
     let mut rect = use_signal(|| None);
@@ -238,11 +335,16 @@ pub fn Slider(props: SliderProps) -> Element {
 
         let delta = delta_pos / size * ctx.range_size();
 
-        let SliderValue::Single(current_value) = granular_value.cloned();
-        let new = current_value + delta;
-        granular_value.set(SliderValue::Single(new));
+        // Get the active thumb index (default to 0 for single-value)
+        let thumb_idx = ctx.active_thumb_index.peek().unwrap_or(0);
+        let granular = granular_value.cloned();
+        let current_val = granular.get(thumb_idx).unwrap_or(0.0);
+        let new = current_val + delta;
+        granular_value.set(granular.with_value_at(thumb_idx, new));
+
+        let clamped = ctx.clamp_and_snap_for_thumb(new, thumb_idx);
         ctx.set_value
-            .call(SliderValue::Single(ctx.clamp_and_snap(new)));
+            .call(ctx.value.cloned().with_value_at(thumb_idx, clamped));
     });
 
     rsx! {
@@ -312,9 +414,17 @@ pub fn Slider(props: SliderProps) -> Element {
                         } else {
                             relative_pos.y
                         };
-                        let new = (offset / size) * ctx.range_size() + (ctx.min)();
-                        granular_value.set(SliderValue::Single(new));
-                        ctx.set_value.call(SliderValue::Single(ctx.snap(new)));
+                        let click_value = (offset / size) * ctx.range_size() + (ctx.min)();
+
+                        // Find the closest thumb to the click position
+                        // (matching Radix's behavior for multi-thumb sliders)
+                        let current = ctx.value.cloned();
+                        let closest_idx = find_closest_thumb(&current, click_value);
+                        ctx.active_thumb_index.set(Some(closest_idx));
+
+                        let snapped = ctx.clamp_and_snap_for_thumb(click_value, closest_idx);
+                        granular_value.set(current.with_value_at(closest_idx, click_value));
+                        ctx.set_value.call(current.with_value_at(closest_idx, snapped));
                     }
 
                     dragging.set(true);
@@ -326,6 +436,25 @@ pub fn Slider(props: SliderProps) -> Element {
             {props.children}
         }
     }
+}
+
+/// Find the thumb index closest to the given value.
+fn find_closest_thumb(slider_value: &SliderValue, target: f64) -> usize {
+    let values = slider_value.values();
+    if values.len() <= 1 {
+        return 0;
+    }
+    values
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| {
+            (target - *a)
+                .abs()
+                .partial_cmp(&(target - *b).abs())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(i, _)| i)
+        .unwrap_or(0)
 }
 
 /// The props for the [`SliderTrack`] component
@@ -406,6 +535,10 @@ pub struct SliderRangeProps {
 ///
 /// The range component for the [`Slider`] that visually represents the selected portion of the slider track.
 ///
+/// For single-value sliders, the range spans from `min` to the value.
+/// For multi-thumb sliders, the range spans from the minimum to maximum
+/// of all thumb values (matching Radix's behavior).
+///
 /// This must be used inside a [`SliderTrack`] component.
 ///
 /// ## Example
@@ -446,8 +579,14 @@ pub fn SliderRange(props: SliderRangeProps) -> Element {
     };
 
     let style = use_memo(move || {
-        let (start, end) = match (ctx.value)() {
-            SliderValue::Single(v) => ((ctx.min)(), v),
+        let val = (ctx.value)();
+
+        // For single-value sliders: range from min to value.
+        // For multi-thumb sliders: range from min(values) to max(values).
+        // This matches Radix's SliderRange behavior.
+        let (start, end) = match &val {
+            SliderValue::Single(v) => ((ctx.min)(), *v),
+            SliderValue::Multi(_) => (val.min_value(), val.max_value()),
         };
 
         let start_percent = ctx.as_percent(start);
@@ -475,7 +614,8 @@ pub fn SliderRange(props: SliderRangeProps) -> Element {
 /// The props for the [`SliderThumb`] component
 #[derive(Props, Clone, PartialEq)]
 pub struct SliderThumbProps {
-    /// Which thumb this is in a range slider
+    /// Which thumb this is in a range slider (0-indexed).
+    /// For single-value sliders, defaults to 0.
     #[props(default)]
     pub index: Option<usize>,
 
@@ -491,6 +631,9 @@ pub struct SliderThumbProps {
 /// The thumb component for the [`Slider`] that users can drag to change the slider value. It supports
 /// both mouse/touch interaction and keyboard navigation with arrow keys. Arrow keys will move the thumb
 /// by the step value by default, or by 10x the step value if the shift key is held down.
+///
+/// For multi-thumb sliders, set the `index` prop to specify which value this thumb controls.
+/// Keyboard navigation respects `min_steps_between_thumbs` to prevent thumbs from overlapping.
 ///
 /// This must be used inside a [`SliderTrack`] component.
 ///
@@ -525,16 +668,16 @@ pub struct SliderThumbProps {
 /// It automatically has the percentage based position styles applied based on the current slider value.
 #[component]
 pub fn SliderThumb(props: SliderThumbProps) -> Element {
-    let ctx = use_context::<SliderContext>();
+    let mut ctx = use_context::<SliderContext>();
     let orientation = if ctx.horizontal {
         "horizontal"
     } else {
         "vertical"
     };
 
-    let value = use_memo(move || match ((ctx.value)(), props.index) {
-        (SliderValue::Single(v), _) => v,
-    });
+    let thumb_idx = props.index.unwrap_or(0);
+
+    let value = use_memo(move || (ctx.value)().get(thumb_idx).unwrap_or(0.0));
 
     let percent = ctx.as_percent(value());
     let style = if ctx.horizontal {
@@ -550,7 +693,8 @@ pub fn SliderThumb(props: SliderThumbProps) -> Element {
         if let Some(thumb) = thumb_ref {
             // Focus the thumb while dragging
             let dragging = ctx.dragging.cloned();
-            if !ctx.disabled && dragging {
+            let is_active = ctx.active_thumb_index.peek().unwrap_or(0) == thumb_idx;
+            if !ctx.disabled && dragging && is_active {
                 spawn(async move {
                     _ = thumb.set_focus(true).await;
                 });
@@ -587,6 +731,10 @@ pub fn SliderThumb(props: SliderThumbProps) -> Element {
                 // Don't focus the thumb. The dragging state will handle focus
                 evt.prevent_default();
             },
+            onfocus: move |_| {
+                // Set this as the active thumb when focused
+                ctx.active_thumb_index.set(Some(thumb_idx));
+            },
             onkeydown: move |evt| async move {
                 if ctx.disabled {
                     return;
@@ -599,19 +747,20 @@ pub fn SliderThumb(props: SliderThumbProps) -> Element {
                     step *= 10.0;
                 }
 
-                // Handle keyboard navigation
-                let new_value = match key {
-                    Key::ArrowUp | Key::ArrowRight => {
+                // Handle keyboard navigation (orientation-aware)
+                let new_value = match (key, ctx.horizontal) {
+                    (Key::ArrowRight, true) | (Key::ArrowUp, false) => {
                         value() + step
                     }
-                    Key::ArrowDown | Key::ArrowLeft => {
+                    (Key::ArrowLeft, true) | (Key::ArrowDown, false) => {
                         value() - step
                     }
                     _ => return,
                 };
 
-                // Clamp and snap the new value
-                ctx.set_value.call(SliderValue::Single(ctx.clamp_and_snap(new_value)));
+                // Clamp, snap, and enforce minimum spacing between thumbs
+                let clamped = ctx.clamp_and_snap_for_thumb(new_value, thumb_idx);
+                ctx.set_value.call(ctx.value.cloned().with_value_at(thumb_idx, clamped));
             },
             ..props.attributes,
             {props.children}
@@ -632,6 +781,10 @@ struct SliderContext {
     inverted: bool,
     dragging: ReadSignal<bool>,
     label: ReadSignal<Option<String>>,
+    /// Which thumb is currently being interacted with.
+    active_thumb_index: Signal<Option<usize>>,
+    /// Minimum spacing between thumbs in step units (matching Radix's minStepsBetweenThumbs).
+    min_steps_between_thumbs: f64,
 }
 
 impl SliderContext {
@@ -655,6 +808,33 @@ impl SliderContext {
 
     fn clamp_and_snap(&self, value: f64) -> f64 {
         let clamped = value.clamp((self.min)(), (self.max)());
+        self.snap(clamped)
+    }
+
+    /// Clamp, snap, and enforce minimum spacing from neighbor thumbs.
+    /// Matching Radix's `minStepsBetweenThumbs` constraint.
+    fn clamp_and_snap_for_thumb(&self, value: f64, thumb_idx: usize) -> f64 {
+        let step = (self.step)();
+        let min_gap = self.min_steps_between_thumbs * step;
+        let current = self.value.cloned();
+        let values = current.values();
+
+        let mut low = (self.min)();
+        let mut high = (self.max)();
+
+        // Constrain by neighboring thumbs' values + minimum gap
+        if thumb_idx > 0 {
+            if let Some(prev_val) = values.get(thumb_idx - 1) {
+                low = low.max(prev_val + min_gap);
+            }
+        }
+        if thumb_idx + 1 < values.len() {
+            if let Some(next_val) = values.get(thumb_idx + 1) {
+                high = high.min(next_val - min_gap);
+            }
+        }
+
+        let clamped = value.clamp(low, high);
         self.snap(clamped)
     }
 

@@ -1,5 +1,9 @@
 //! Defines the [`Navbar`] component and its sub-components.
 
+use std::time::Duration;
+
+use dioxus::prelude::*;
+
 use crate::{
     focus::{
         use_focus_control, use_focus_controlled_item, use_focus_entry, use_focus_provider,
@@ -7,7 +11,6 @@ use crate::{
     },
     use_animated_open, use_id_or, use_unique_id,
 };
-use dioxus::prelude::*;
 
 #[derive(Clone, Copy)]
 struct NavbarContext {
@@ -209,24 +212,51 @@ pub fn NavbarNav(props: NavbarNavProps) -> Element {
             "data-state": if is_open() { "open" } else { "closed" },
             "data-disabled": if disabled { "" } else { None::<&str> },
 
-            onmouseenter: move |_| {
-                if !disabled {
-                    let index = Some(nav_ctx.index);
-                    if (ctx.open_nav)().is_some() {
-                        ctx.focus.set_focus(index);
-                    } else {
-                        ctx.set_open_nav.call(index);
+            onmouseenter: {
+                let mut open_gen = use_signal(|| 0u64);
+                move |_| {
+                    if !disabled {
+                        let index = Some(nav_ctx.index);
+                        if (ctx.open_nav)().is_some() {
+                            // Already hovering in navbar — switch instantly
+                            ctx.focus.set_focus(index);
+                        } else {
+                            // Delay open by 200ms (matching Radix NavigationMenu)
+                            open_gen += 1;
+                            let gen = open_gen();
+                            spawn(async move {
+                                dioxus_sdk_time::sleep(Duration::from_millis(200)).await;
+                                if open_gen() == gen {
+                                    ctx.set_open_nav.call(index);
+                                }
+                            });
+                        }
                     }
                 }
             },
-            onmouseleave: move |_| {
-                if is_open() {
-                    ctx.focus.set_focus(None);
+            onmouseleave: {
+                let mut close_gen = use_signal(|| 0u64);
+                move |_| {
+                    if is_open() {
+                        // Delay close by 150ms (matching Radix)
+                        close_gen += 1;
+                        let gen = close_gen();
+                        spawn(async move {
+                            dioxus_sdk_time::sleep(Duration::from_millis(150)).await;
+                            if close_gen() == gen {
+                                ctx.focus.set_focus(None);
+                                ctx.set_open_nav.call(None);
+                            }
+                        });
+                    }
                 }
             },
             onkeydown: move |event: Event<KeyboardData>| {
                 match event.key() {
                     Key::Enter if !disabled => {
+                        ctx.set_open_nav.call((!is_open()).then_some(nav_ctx.index));
+                    }
+                    Key::Character(ref c) if c == " " && !disabled => {
                         ctx.set_open_nav.call((!is_open()).then_some(nav_ctx.index));
                     }
                     Key::ArrowDown if !disabled => {
@@ -239,6 +269,11 @@ pub fn NavbarNav(props: NavbarNavProps) -> Element {
                         if is_open() {
                             nav_ctx.focus_prev();
                         }
+                    },
+                    Key::Tab => {
+                        // Tab dismisses the navigation menu entirely (matching Radix)
+                        ctx.set_open_nav.call(None);
+                        return; // Don't prevent default — let Tab move focus naturally
                     },
                     _ => return,
                 }

@@ -4,10 +4,13 @@
 //! a response. Built on top of [`DialogRoot`] but always modal, with
 //! `role="alertdialog"` and no overlay-click-to-close.
 
-use dioxus::document;
 use dioxus::prelude::*;
 
+use crate::aria_hidden::use_aria_hidden;
 use crate::dialog::{DialogCtx, DialogRoot};
+use crate::focus_scope::FocusScope;
+use crate::portal::Portal;
+use crate::scroll_lock::use_scroll_lock;
 use crate::use_global_escape_listener;
 use crate::{use_id_or, use_presence, use_unique_id};
 
@@ -189,14 +192,19 @@ pub fn AlertDialogOverlay(props: AlertDialogOverlayProps) -> Element {
     }
 
     // No onclick handler — alert dialog overlay does NOT close on click
+    // Radix deviation: Radix uses ReactDOM.createPortal to render the overlay
+    // at document.body. We use our Portal component which teleports content to
+    // the nearest PortalHost via context-based signal system.
     rsx! {
-        div {
-            id,
-            "data-slot": "alert-dialog-overlay",
-            "data-state": presence.data_state(),
-            class: props.class,
-            onanimationend: move |_| presence.on_animation_end(),
-            ..props.attributes,
+        Portal {
+            div {
+                id,
+                "data-slot": "alert-dialog-overlay",
+                "data-state": presence.data_state(),
+                class: props.class,
+                onanimationend: move |_| presence.on_animation_end(),
+                ..props.attributes,
+            }
         }
     }
 }
@@ -260,46 +268,49 @@ pub fn AlertDialogContent(props: AlertDialogContentProps) -> Element {
     // Escape key listener
     use_global_escape_listener(move || set_open.call(false));
 
+    // Prevent body scrolling when alert dialog is open (always modal).
+    // Matches Radix's react-remove-scroll integration.
+    #[allow(clippy::redundant_closure)]
+    let scroll_lock_active = use_memo(move || open());
+    use_scroll_lock(scroll_lock_active);
+
     let gen_id = use_unique_id();
     let id = use_id_or(gen_id, props.id);
+
+    // Hide sibling elements from assistive technology (always modal).
+    // Matches Radix's aria-hidden integration.
+    use_aria_hidden(id, scroll_lock_active);
+
     let mut presence = use_presence(open, id);
-
-    // Focus trap (always modal)
-    use_effect(move || {
-        let eval = document::eval(
-            r#"let id = await dioxus.recv();
-            let is_open = await dioxus.recv();
-            let dialog = document.getElementById(id);
-
-            if (is_open) {
-                dialog.trap = window.createFocusTrap(dialog);
-            }
-            if (!is_open && dialog.trap) {
-                dialog.trap.remove();
-                dialog.trap = null;
-            }"#,
-        );
-        let _ = eval.send(id.to_string());
-        let _ = eval.send(open.cloned());
-    });
 
     if !presence.is_present() && !props.force_mount {
         return rsx! {};
     }
 
+    let trapped = open();
+
+    // Radix deviation: Radix uses ReactDOM.createPortal to render the content
+    // at document.body. We use our Portal component which teleports content to
+    // the nearest PortalHost via context-based signal system.
     rsx! {
-        div {
-            id,
-            "data-slot": "alert-dialog-content",
-            "data-state": presence.data_state(),
-            role: "alertdialog",
-            aria_modal: "true",
-            aria_labelledby: ctx.title_id,
-            aria_describedby: ctx.description_id,
-            class: props.class,
-            onanimationend: move |_| presence.on_animation_end(),
-            ..props.attributes,
-            {props.children}
+        Portal {
+            FocusScope {
+                trapped: trapped,
+                r#loop: trapped,
+                div {
+                    id,
+                    "data-slot": "alert-dialog-content",
+                    "data-state": presence.data_state(),
+                    role: "alertdialog",
+                    aria_modal: "true",
+                    aria_labelledby: ctx.title_id,
+                    aria_describedby: ctx.description_id,
+                    class: props.class,
+                    onanimationend: move |_| presence.on_animation_end(),
+                    ..props.attributes,
+                    {props.children}
+                }
+            }
         }
     }
 }

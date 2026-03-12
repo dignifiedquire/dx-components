@@ -1,5 +1,6 @@
 //! SelectContent (formerly SelectList) component implementation.
 
+use crate::portal::Portal;
 use crate::{
     select::context::SelectListContext, use_animated_open, use_effect, use_id_or, use_unique_id,
 };
@@ -127,25 +128,40 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
         }
     });
 
+    let active_descendant = use_memo(move || {
+        let focus_idx = ctx.focus_state.current_focus()?;
+        let options = ctx.options.read();
+        options
+            .iter()
+            .find(|opt| opt.tab_index == focus_idx)
+            .map(|opt| opt.id.clone())
+    });
+
+    // Radix deviation: Radix uses ReactDOM.createPortal to render the select
+    // content at document.body. We use our Portal component which teleports
+    // content to the nearest PortalHost via context-based signal system.
     rsx! {
         if render() {
-            div {
-                id,
-                role: "listbox",
-                "data-slot": "select-content",
-                tabindex: if focused() { "0" } else { "-1" },
-                "data-state": if open() { "open" } else { "closed" },
+            Portal {
+                div {
+                    id,
+                    role: "listbox",
+                    "data-slot": "select-content",
+                    tabindex: if focused() { "0" } else { "-1" },
+                    "data-state": if open() { "open" } else { "closed" },
+                    aria_activedescendant: active_descendant,
 
-                onmounted: move |evt| listbox_ref.set(Some(evt.data())),
-                onkeydown,
-                onblur: move |_| {
-                    if focused() {
-                        open.set(false);
-                    }
-                },
+                    onmounted: move |evt| listbox_ref.set(Some(evt.data())),
+                    onkeydown,
+                    onblur: move |_| {
+                        if focused() {
+                            open.set(false);
+                        }
+                    },
 
-                ..props.attributes,
-                {props.children}
+                    ..props.attributes,
+                    {props.children}
+                }
             }
         } else {
             {props.children}

@@ -3,9 +3,13 @@
 //! Not exposed publicly. DropdownMenu, ContextMenu, and Menubar re-export
 //! these components with prefixed names matching shadcn's data-slot convention.
 
+use std::rc::Rc;
+
 use crate::direction::Orientation;
 use crate::merge_attributes;
+use crate::portal::Portal;
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
+use crate::typeahead::{use_typeahead, TypeaheadItem};
 use crate::{use_controlled, use_global_escape_listener, use_id_or, use_presence, use_unique_id};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
@@ -13,6 +17,13 @@ use dioxus_attributes::attributes;
 // ---------------------------------------------------------------------------
 // Contexts
 // ---------------------------------------------------------------------------
+
+/// Typeahead entry — stores text and element ref for focus-on-match.
+#[derive(Clone)]
+pub(crate) struct MenuTypeaheadEntry {
+    pub text: String,
+    pub element_ref: Signal<Option<Rc<MountedData>>>,
+}
 
 /// Provided by each wrapper (DropdownMenu, ContextMenu, Menubar).
 #[derive(Clone, Copy)]
@@ -22,6 +33,8 @@ pub(crate) struct MenuCtx {
     pub content_id: Signal<String>,
     pub trigger_id: Signal<String>,
     pub slot_prefix: &'static str,
+    /// Registry for typeahead search — items register their text_value + element ref.
+    pub typeahead_items: Signal<Vec<MenuTypeaheadEntry>>,
 }
 
 /// Provided by MenuCheckboxItem / MenuRadioItem for MenuItemIndicator.
@@ -57,12 +70,17 @@ pub struct MenuPortalProps {
     pub children: Element,
 }
 
-/// No-op pass-through for API compatibility with Radix Portal.
+/// Teleports menu content to the nearest [`PortalHost`](crate::portal::PortalHost).
 ///
-/// Dioxus does not have React's `createPortal`. This renders children in place.
+/// Matches Radix's `MenuPortal` which uses `ReactDOM.createPortal` to render
+/// at `document.body`. We use our context-based Portal component instead.
 #[component]
 pub fn MenuPortal(props: MenuPortalProps) -> Element {
-    rsx! { {props.children} }
+    rsx! {
+        Portal {
+            {props.children}
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -119,6 +137,9 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
     let ctx: MenuCtx = use_context();
     let id = use_id_or(ctx.content_id, props.id);
     let mut presence = use_presence(ctx.open, id);
+
+    // Typeahead: prefix search with 1s auto-clear (matching Radix menu behavior)
+    let mut typeahead = use_typeahead(1000);
 
     // Document-level Escape listener so the menu closes even when
     // focus is not inside the content div.
@@ -187,6 +208,10 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
                                         }
                                         event.prevent_default();
                                     }
+                                    Key::Tab => {
+                                        // Prevent Tab from moving focus out of open menus (matching Radix)
+                                        event.prevent_default();
+                                    }
                                     Key::ArrowLeft => {
                                         if let Some(cb) = on_arrow_left {
                                             cb.call(());
@@ -197,6 +222,29 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
                                         if let Some(cb) = on_arrow_right {
                                             cb.call(());
                                             event.prevent_default();
+                                        }
+                                    }
+                                    Key::Character(ch) => {
+                                        // Typeahead: type to jump to items (matching Radix)
+                                        if let Some(first_char) = ch.chars().next() {
+                                            let items: Vec<TypeaheadItem> = ctx
+                                                .typeahead_items
+                                                .read()
+                                                .iter()
+                                                .enumerate()
+                                                .map(|(i, entry)| TypeaheadItem {
+                                                    text: entry.text.clone(),
+                                                    index: i,
+                                                })
+                                                .collect();
+                                            if let Some(matched_idx) = typeahead.search(first_char, &items) {
+                                                let entries = ctx.typeahead_items.read();
+                                                if let Some(entry) = entries.get(matched_idx) {
+                                                    if let Some(ref el) = *entry.element_ref.read() {
+                                                        let _ = el.set_focus(true);
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                     _ => {}
@@ -241,6 +289,11 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
 /// Props for [`MenuItem`].
 #[derive(Props, Clone, PartialEq)]
 pub struct MenuItemProps {
+    /// Text value for typeahead search. If not provided, typeahead won't match this item.
+    /// Matches Radix's `textValue` prop on MenuItem.
+    #[props(default)]
+    pub text_value: Option<String>,
+
     /// Whether the item is disabled.
     #[props(default)]
     pub disabled: bool,
@@ -266,13 +319,30 @@ pub struct MenuItemProps {
 /// Wraps in `RovingFocusGroupItem` for keyboard navigation.
 #[component]
 pub fn MenuItem(props: MenuItemProps) -> Element {
-    let ctx: MenuCtx = use_context();
+    let mut ctx: MenuCtx = use_context();
     let slot = format!("{}-item", ctx.slot_prefix);
     let disabled = props.disabled;
     let on_close = ctx.on_close;
     let class = props.class;
     let user_attrs = props.attributes;
     let children = props.children;
+
+    // Register for typeahead search (matching Radix textValue prop)
+    let mut element_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+    if let Some(text) = props.text_value.clone() {
+        let entry_index = use_hook(|| {
+            let mut items = ctx.typeahead_items.write();
+            let idx = items.len();
+            items.push(MenuTypeaheadEntry { text, element_ref });
+            idx
+        });
+        crate::use_effect_cleanup(move || {
+            let mut items = ctx.typeahead_items.write();
+            if entry_index < items.len() {
+                items.remove(entry_index);
+            }
+        });
+    }
 
     rsx! {
         RovingFocusGroupItem {
@@ -294,7 +364,10 @@ pub fn MenuItem(props: MenuItemProps) -> Element {
 
                     rsx! {
                         div {
-                            onmounted: move |e| slot_props.on_mounted.call(e),
+                            onmounted: move |e: Event<MountedData>| {
+                                element_ref.set(Some(e.data()));
+                                slot_props.on_mounted.call(e);
+                            },
                             onfocus: move |e| slot_props.on_focus.call(e),
                             onmousedown: move |e| slot_props.on_mousedown.call(e),
                             onkeydown: {
@@ -721,6 +794,14 @@ pub struct MenuSubTriggerProps {
 /// A menu item that opens a sub-menu. Has `role="menuitem"`, `aria-haspopup="menu"`.
 ///
 /// Opens on hover (300ms delay) and ArrowRight. Closes on ArrowLeft.
+///
+/// ## Radix deviation
+/// Radix uses a triangular "grace area" polygon between the trigger and
+/// sub-content to allow diagonal mouse movement. This implementation uses
+/// a simpler generation-counter delay approach instead, which provides
+/// adequate UX for most cases. The `document::eval` timer approach from
+/// the previous implementation has been replaced with `dioxus_sdk_time::sleep`
+/// + generation counter for cancellation (no JS calls).
 #[component]
 pub fn MenuSubTrigger(props: MenuSubTriggerProps) -> Element {
     let ctx: MenuCtx = use_context();
@@ -732,7 +813,8 @@ pub fn MenuSubTrigger(props: MenuSubTriggerProps) -> Element {
     let user_attrs = props.attributes;
     let children = props.children;
 
-    let mut hover_timer = use_signal(|| None::<i32>);
+    // Generation counter for cancelling stale hover timers (replaces document::eval timers)
+    let mut open_gen = use_signal(|| 0u64);
 
     rsx! {
         RovingFocusGroupItem {
@@ -778,35 +860,22 @@ pub fn MenuSubTrigger(props: MenuSubTriggerProps) -> Element {
                             },
                             onpointerenter: move |_| {
                                 if !disabled {
-                                    // Clear any pending timer
-                                    if let Some(timer_id) = hover_timer() {
-                                        let js = format!("clearTimeout({timer_id})");
-                                        document::eval(&js);
-                                    }
-                                    // Open after 300ms delay
-                                    let mut eval = document::eval(
-                                        "dioxus.send(setTimeout(() => {}, 300))"
-                                    );
+                                    // Cancel any previous open timer
+                                    let gen = *open_gen.peek() + 1;
+                                    open_gen.set(gen);
+                                    // Open after 300ms delay (matching Radix SELECTION_OPEN_DELAY)
                                     spawn(async move {
-                                        if let Ok(timer_id) = eval.recv::<i32>().await {
-                                            hover_timer.set(Some(timer_id));
-                                            // Wait the actual delay
-                                            let mut delay = document::eval(
-                                                "setTimeout(() => dioxus.send(true), 300)"
-                                            );
-                                            if delay.recv::<bool>().await.is_ok() {
-                                                sub_ctx.set_open.call(true);
-                                            }
+                                        dioxus_sdk_time::sleep(std::time::Duration::from_millis(300)).await;
+                                        if *open_gen.peek() == gen {
+                                            sub_ctx.set_open.call(true);
                                         }
                                     });
                                 }
                             },
                             onpointerleave: move |_| {
-                                if let Some(timer_id) = hover_timer() {
-                                    let js = format!("clearTimeout({timer_id})");
-                                    document::eval(&js);
-                                    hover_timer.set(None);
-                                }
+                                // Cancel pending open timer
+                                let current = *open_gen.peek();
+                                open_gen.set(current + 1);
                             },
                             ..merged,
                             {children.clone()}
@@ -864,46 +933,51 @@ pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
     let class = props.class;
     let user_attrs = props.attributes;
 
+    // Radix deviation: Radix uses ReactDOM.createPortal to render sub-menu
+    // content at document.body. We use our Portal component which teleports
+    // content to the nearest PortalHost via context-based signal system.
     rsx! {
-        RovingFocusGroup {
-            orientation: Signal::new(Some(Orientation::Vertical)),
-            r#loop: Signal::new(true),
-            r#as: {
-                let children = children.clone();
-                let class = class.clone();
-                let user_attrs = user_attrs.clone();
-                let slot = slot.clone();
-                move |roving_attrs: Vec<Attribute>| {
-                    let content_attrs = attributes!(div {
-                        id: id,
-                        role: "menu",
-                        "data-slot": slot.clone(),
-                        "data-state": presence.data_state(),
-                        aria_orientation: "vertical",
-                        aria_labelledby: sub_ctx.trigger_id.cloned(),
-                        class: class.clone(),
-                    });
-                    let merged = merge_attributes(vec![roving_attrs, content_attrs, user_attrs.clone()]);
+        Portal {
+            RovingFocusGroup {
+                orientation: Signal::new(Some(Orientation::Vertical)),
+                r#loop: Signal::new(true),
+                r#as: {
+                    let children = children.clone();
+                    let class = class.clone();
+                    let user_attrs = user_attrs.clone();
+                    let slot = slot.clone();
+                    move |roving_attrs: Vec<Attribute>| {
+                        let content_attrs = attributes!(div {
+                            id: id,
+                            role: "menu",
+                            "data-slot": slot.clone(),
+                            "data-state": presence.data_state(),
+                            aria_orientation: "vertical",
+                            aria_labelledby: sub_ctx.trigger_id.cloned(),
+                            class: class.clone(),
+                        });
+                        let merged = merge_attributes(vec![roving_attrs, content_attrs, user_attrs.clone()]);
 
-                    rsx! {
-                        div {
-                            onanimationend: move |_| presence.on_animation_end(),
-                            onkeydown: move |event: Event<KeyboardData>| {
-                                match event.key() {
-                                    Key::ArrowLeft | Key::Escape => {
-                                        sub_ctx.set_open.call(false);
-                                        event.prevent_default();
-                                        event.stop_propagation();
+                        rsx! {
+                            div {
+                                onanimationend: move |_| presence.on_animation_end(),
+                                onkeydown: move |event: Event<KeyboardData>| {
+                                    match event.key() {
+                                        Key::ArrowLeft | Key::Escape => {
+                                            sub_ctx.set_open.call(false);
+                                            event.prevent_default();
+                                            event.stop_propagation();
+                                        }
+                                        _ => {}
                                     }
-                                    _ => {}
-                                }
-                            },
-                            ..merged,
-                            {children.clone()}
+                                },
+                                ..merged,
+                                {children.clone()}
+                            }
                         }
                     }
-                }
-            },
+                },
+            }
         }
     }
 }

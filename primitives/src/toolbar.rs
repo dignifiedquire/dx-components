@@ -195,6 +195,10 @@ pub fn ToolbarButton(props: ToolbarButtonProps) -> Element {
 #[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
 pub struct ToolbarLinkProps {
+    /// Called when the link is activated (click or Space key).
+    #[props(default)]
+    pub on_click: Callback<()>,
+
     #[props(default)]
     pub class: Option<String>,
 
@@ -220,6 +224,7 @@ pub struct ToolbarLinkProps {
 /// ```
 #[component]
 pub fn ToolbarLink(props: ToolbarLinkProps) -> Element {
+    let on_click = props.on_click;
     let class = props.class;
     let user_attrs = props.attributes;
     let children = props.children;
@@ -242,14 +247,15 @@ pub fn ToolbarLink(props: ToolbarLinkProps) -> Element {
                     rsx! {
                         a {
                             onmounted: move |e| slot.on_mounted.call(e),
+                            onclick: move |_| on_click.call(()),
                             onmousedown: move |event: MouseEvent| {
                                 slot.on_mousedown.call(event);
                             },
                             onkeydown: move |event: KeyboardEvent| {
                                 // Space key activates link (accessibility)
                                 if matches!(event.key(), Key::Character(ref c) if c == " ") {
-                                    // Triggering click via JS eval since we can't call .click() on element
                                     event.prevent_default();
+                                    on_click.call(());
                                 }
                                 slot.on_keydown.call(event);
                             },

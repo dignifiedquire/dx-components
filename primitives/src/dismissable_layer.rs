@@ -7,7 +7,10 @@
 //! interaction detection. This Dioxus port uses component-level event
 //! handlers and the existing `use_global_escape_listener` hook.
 
+use std::time::Duration;
+
 use dioxus::prelude::*;
+use dioxus_sdk_time::sleep;
 
 use crate::use_global_escape_listener;
 
@@ -59,7 +62,8 @@ pub struct DismissableLayerProps {
 ///
 /// Matches Radix's `DismissableLayer`. Escape key handling uses stack
 /// discipline (only the topmost layer responds). Outside interaction
-/// detection uses component-level focus/blur tracking.
+/// detection uses a debounced focusout/focusin pattern to avoid false
+/// positives when focus moves between children within the layer.
 ///
 /// ```rust,no_run
 /// # use dioxus::prelude::*;
@@ -86,6 +90,29 @@ pub fn DismissableLayer(props: DismissableLayerProps) -> Element {
     let on_interact_outside = props.on_interact_outside;
     let on_dismiss_focus = props.on_dismiss;
 
+    // Debounced focus-outside detection: when focus leaves the layer,
+    // we schedule a dismiss. If focus re-enters the layer (focusin fires),
+    // we cancel the pending dismiss. This avoids false positives when focus
+    // moves between children within the layer.
+    let mut focus_outside_pending = use_signal(|| false);
+
+    // When the pending flag transitions to true, fire the dismiss callbacks.
+    // The spawn ensures we wait one frame for a possible focusin to cancel.
+    use_effect(move || {
+        if focus_outside_pending() {
+            spawn(async move {
+                // Wait one frame for a possible focusin to cancel
+                sleep(Duration::ZERO).await;
+                if focus_outside_pending() {
+                    focus_outside_pending.set(false);
+                    on_focus_outside.call(());
+                    on_interact_outside.call(());
+                    on_dismiss_focus.call(());
+                }
+            });
+        }
+    });
+
     let pointer_events_style = if props.disable_outside_pointer_events {
         "pointer-events: auto;"
     } else {
@@ -99,13 +126,14 @@ pub fn DismissableLayer(props: DismissableLayerProps) -> Element {
             style: pointer_events_style,
             class: props.class,
 
-            // Track focus leaving the layer
+            // Track focus leaving the layer — schedule pending dismiss
             onfocusout: move |_event: FocusEvent| {
-                // When focus leaves entirely (blur without refocus inside),
-                // treat it as focus-outside
-                on_focus_outside.call(());
-                on_interact_outside.call(());
-                on_dismiss_focus.call(());
+                focus_outside_pending.set(true);
+            },
+
+            // Track focus entering the layer — cancel pending dismiss
+            onfocusin: move |_event: FocusEvent| {
+                focus_outside_pending.set(false);
             },
 
             ..props.attributes,
