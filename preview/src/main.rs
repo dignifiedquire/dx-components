@@ -92,10 +92,11 @@ fn main() {
         });
 
     // Provide WebHistory with the base path captured by build.rs.
-    #[cfg(feature = "web")]
+    // Use target_arch = "wasm32" because that's always true for web builds and
+    // doesn't depend on the preview crate's "web" feature being explicitly enabled.
+    #[cfg(target_arch = "wasm32")]
     {
-        // DEBUG: Hardcode the base path to verify the WebHistory mechanism works.
-        // If this fixes routing on GH Pages, then BASE_PATH was None.
+        // DEBUG: Hardcode to verify the mechanism, then switch back to BASE_PATH.
         let base = Some("dx-components".to_string());
         builder = builder.with_cfg(
             dioxus::web::Config::new()
