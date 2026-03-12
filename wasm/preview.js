@@ -1937,7 +1937,7 @@ async function __wbg_init(module_or_path) {
 export { initSync, __wbg_init as default };
 //#endregion
 export { wasm as __wasm }
-/*54db3378-e3ad-5037-850e-17c0707df387*/
+/*6752d28a-ca31-5836-a4ee-59319f721e63*/
 globalThis.__wasm_split_main_initSync = initSync;
 
 // Actually perform the load
