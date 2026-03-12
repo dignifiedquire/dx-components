@@ -63,7 +63,8 @@ pub(crate) struct HighlightedCode {
 include!(concat!(env!("OUT_DIR"), "/routes.rs"));
 
 fn main() {
-    dioxus::LaunchBuilder::new()
+    #[allow(unused_mut)]
+    let mut builder = dioxus::LaunchBuilder::new()
         // Set the server config only if we are building the server target
         .with_cfg(server_only! {
             ServeConfig::builder()
@@ -83,18 +84,26 @@ fn main() {
                         .clear_cache(false)
                 )
                 .enable_out_of_order_streaming()
-        })
-        // Provide WebHistory with the base path baked in at compile time.
-        // option_env! here is evaluated when THIS crate compiles (always recompiled
-        // by dx build), unlike the one inside dioxus-cli-config which may be cached.
-        .with_cfg(web! {
-            dioxus::web::Config::new()
-                .history(std::rc::Rc::new(dioxus::web::WebHistory::new(
+        });
+
+    // Provide WebHistory with the base path baked in at compile time.
+    // option_env! here is evaluated when THIS crate compiles (always recompiled
+    // by dx build), unlike the one inside dioxus-cli-config which may be cached.
+    // We use #[cfg] instead of the web! macro to ensure compile-time evaluation
+    // happens in the caller's context.
+    #[cfg(feature = "web")]
+    {
+        builder = builder.with_cfg(
+            dioxus::web::Config::new().history(std::rc::Rc::new(
+                dioxus::web::WebHistory::new(
                     option_env!("DIOXUS_ASSET_ROOT").map(|s| s.to_string()),
                     true,
-                )))
-        })
-        .launch(App);
+                ),
+            )),
+        );
+    }
+
+    builder.launch(App);
 }
 
 #[component]
