@@ -94,9 +94,13 @@ fn main() {
     // Provide WebHistory with the base path captured by build.rs.
     #[cfg(feature = "web")]
     {
-        builder = builder.with_cfg(dioxus::web::Config::new().history(std::rc::Rc::new(
-            dioxus::web::WebHistory::new(BASE_PATH.map(|s| s.to_string()), true),
-        )));
+        // DEBUG: Hardcode the base path to verify the WebHistory mechanism works.
+        // If this fixes routing on GH Pages, then BASE_PATH was None.
+        let base = Some("dx-components".to_string());
+        builder = builder.with_cfg(
+            dioxus::web::Config::new()
+                .history(std::rc::Rc::new(dioxus::web::WebHistory::new(base, true))),
+        );
     }
 
     builder.launch(App);
