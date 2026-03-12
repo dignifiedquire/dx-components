@@ -94,11 +94,9 @@ fn main() {
     // Provide WebHistory with the base path captured by build.rs.
     #[cfg(feature = "web")]
     {
-        builder = builder.with_cfg(
-            dioxus::web::Config::new().history(std::rc::Rc::new(
-                dioxus::web::WebHistory::new(BASE_PATH.map(|s| s.to_string()), true),
-            )),
-        );
+        builder = builder.with_cfg(dioxus::web::Config::new().history(std::rc::Rc::new(
+            dioxus::web::WebHistory::new(BASE_PATH.map(|s| s.to_string()), true),
+        )));
     }
 
     builder.launch(App);
