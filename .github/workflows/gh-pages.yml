@@ -35,7 +35,7 @@ jobs:
       - name: Build
         run: |
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
-          cd preview && dx build --web --release --base-path "$REPO_NAME"
+          cd preview && dx build --web --release --wasm-split --base-path "$REPO_NAME"
       - name: Copy output
         run: cp -r target/dx/preview/release/web/public docs
       - name: Add gh pages 404
