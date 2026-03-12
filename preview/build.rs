@@ -15,6 +15,12 @@ fn main() {
     let out_dir = std::path::PathBuf::from(out_dir);
     println!("cargo:rerun-if-changed=src/components");
 
+    // Debug: print DIOXUS_ASSET_ROOT so we can verify option_env! will see it
+    match std::env::var("DIOXUS_ASSET_ROOT") {
+        Ok(val) => println!("cargo:warning=DIOXUS_ASSET_ROOT={val}"),
+        Err(_) => println!("cargo:warning=DIOXUS_ASSET_ROOT is NOT set"),
+    }
+
     let mut components = Vec::new();
 
     // Process all markdown files and highlight code files in each component folder
