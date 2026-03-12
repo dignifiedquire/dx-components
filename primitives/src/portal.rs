@@ -204,7 +204,7 @@ pub fn Portal(props: PortalProps) -> Element {
     // Check if a PortalHost is mounted. If not, render children inline
     // so components work without requiring PortalHost (e.g. in tests).
     let ctx = try_use_context::<PortalCtx>();
-    let has_host = ctx.map_or(false, |c| (c.has_host)());
+    let has_host = ctx.is_some_and(|c| (c.has_host)());
 
     if has_host {
         rsx! {

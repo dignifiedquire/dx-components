@@ -371,8 +371,6 @@ pub(crate) struct DelayedOpenHandle {
     pub handle_immediate_open: Callback<()>,
     /// Close immediately, cancelling any pending timers.
     pub handle_immediate_close: Callback<()>,
-    /// Cancel all pending timers without changing state.
-    pub cancel_timers: Callback<()>,
 }
 
 /// Hook for delayed open/close with generation-counter cancellation.
@@ -450,7 +448,6 @@ pub(crate) fn use_delayed_open(
         handle_delayed_close,
         handle_immediate_open,
         handle_immediate_close,
-        cancel_timers,
     }
 }
 

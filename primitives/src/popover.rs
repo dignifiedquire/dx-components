@@ -241,7 +241,10 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
         // re-run when `open` changes, not when we write was_open below.
         if *was_open.peek() && !is_open {
             if let Some(ref trigger) = *ctx.trigger_ref.read() {
-                let _ = trigger.set_focus(true);
+                let trigger = trigger.clone();
+                spawn(async move {
+                    let _ = trigger.set_focus(true).await;
+                });
             }
         }
         was_open.set(is_open);

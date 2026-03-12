@@ -806,11 +806,6 @@ impl SliderContext {
         (value / step).round() * step
     }
 
-    fn clamp_and_snap(&self, value: f64) -> f64 {
-        let clamped = value.clamp((self.min)(), (self.max)());
-        self.snap(clamped)
-    }
-
     /// Clamp, snap, and enforce minimum spacing from neighbor thumbs.
     /// Matching Radix's `minStepsBetweenThumbs` constraint.
     fn clamp_and_snap_for_thumb(&self, value: f64, thumb_idx: usize) -> f64 {

@@ -22,7 +22,10 @@ struct TooltipProviderCtx {
     skip_delay_duration: u64,
     disable_hoverable_content: bool,
     /// Tracks whether we're within the skip-delay window (recently closed a tooltip).
+    /// When false, the next tooltip opens instantly (within skip window).
     is_open_delayed: Signal<bool>,
+    /// Generation counter for skip-delay timer cancellation.
+    skip_delay_gen: Signal<u64>,
 }
 
 // ---------------------------------------------------------------------------
@@ -55,12 +58,14 @@ pub struct TooltipProviderProps {
 #[component]
 pub fn TooltipProvider(props: TooltipProviderProps) -> Element {
     let is_open_delayed = use_signal(|| true);
+    let skip_delay_gen = use_signal(|| 0u64);
 
     use_context_provider(|| TooltipProviderCtx {
         delay_duration: props.delay_duration,
         skip_delay_duration: props.skip_delay_duration,
         disable_hoverable_content: props.disable_hoverable_content,
         is_open_delayed,
+        skip_delay_gen,
     });
 
     rsx! { {props.children} }
@@ -75,7 +80,7 @@ pub(crate) struct TooltipCtx {
     pub(crate) open: Memo<bool>,
     pub(crate) set_open: Callback<bool>,
     pub(crate) handle_delayed_open: Callback<()>,
-    pub(crate) handle_delayed_close: Callback<()>,
+    pub(crate) handle_immediate_open: Callback<()>,
     pub(crate) handle_immediate_close: Callback<()>,
     pub(crate) disabled: Signal<bool>,
     pub(crate) content_id: Signal<String>,
@@ -133,6 +138,8 @@ pub struct TooltipRootProps {
 /// ```
 #[component]
 pub fn TooltipRoot(props: TooltipRootProps) -> Element {
+    use std::time::Duration;
+
     let content_id = use_unique_id();
 
     // Get provider context if available, otherwise use defaults
@@ -140,7 +147,7 @@ pub fn TooltipRoot(props: TooltipRootProps) -> Element {
     let delay = props
         .delay_duration
         .unwrap_or_else(|| provider.map_or(700, |p| p.delay_duration));
-    let disable_hoverable = provider.map_or(false, |p| p.disable_hoverable_content);
+    let disable_hoverable = provider.is_some_and(|p| p.disable_hoverable_content);
 
     let delayed = use_delayed_open(
         props.open,
@@ -155,11 +162,45 @@ pub fn TooltipRoot(props: TooltipRootProps) -> Element {
         disabled_signal.set(props.disabled);
     }
 
+    // Skip-delay: notify provider when tooltip opens/closes.
+    // When one tooltip closes, subsequent tooltips within skip_delay_duration
+    // open instantly (matching Radix's TooltipProvider behavior).
+    {
+        let open = delayed.open;
+        use_effect(move || {
+            let is_open = open();
+            if let Some(mut provider) = provider {
+                if is_open {
+                    // Cancel any pending skip-delay timer
+                    *provider.skip_delay_gen.write() += 1;
+                    // Next tooltip should open instantly (within skip window)
+                    provider.is_open_delayed.set(false);
+                } else {
+                    // Start skip-delay timer: re-enable delay after skip_delay_duration
+                    let gen = {
+                        let mut g = provider.skip_delay_gen.write();
+                        *g += 1;
+                        *g
+                    };
+                    let skip_duration = provider.skip_delay_duration;
+                    let mut is_open_delayed = provider.is_open_delayed;
+                    let skip_delay_gen = provider.skip_delay_gen;
+                    spawn(async move {
+                        dioxus_sdk_time::sleep(Duration::from_millis(skip_duration)).await;
+                        if skip_delay_gen() == gen {
+                            is_open_delayed.set(true);
+                        }
+                    });
+                }
+            }
+        });
+    }
+
     use_context_provider(|| TooltipCtx {
         open: delayed.open,
         set_open: delayed.set_open,
         handle_delayed_open: delayed.handle_delayed_open,
-        handle_delayed_close: delayed.handle_delayed_close,
+        handle_immediate_open: delayed.handle_immediate_open,
         handle_immediate_close: delayed.handle_immediate_close,
         disabled: disabled_signal,
         content_id,
@@ -210,10 +251,18 @@ pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
     // avoids touch events, and tracks pointer movement more precisely.
     let mut pointer_in = use_signal(|| false);
 
+    let provider: Option<TooltipProviderCtx> = try_use_context();
+
     let handle_pointer_move = move |_: Event<PointerData>| {
         if !(ctx.disabled)() && !pointer_in() {
             pointer_in.set(true);
-            ctx.handle_delayed_open.call(());
+            // If within skip-delay window, open instantly; otherwise use delay
+            let should_skip = provider.is_some_and(|p| !(p.is_open_delayed)());
+            if should_skip {
+                ctx.handle_immediate_open.call(());
+            } else {
+                ctx.handle_delayed_open.call(());
+            }
         }
     };
 

@@ -6,8 +6,6 @@ struct ComponentInfo {
     name: String,
     /// PascalCase page name, e.g. "AlertDialogPage"
     page_name: String,
-    /// Whether this is a "block" component (rendered in iframe).
-    is_block: bool,
     /// Variant directory names in sorted order. Always includes "main".
     variants: Vec<String>,
 }
@@ -42,13 +40,6 @@ fn main() {
         let desc_out = out_dir.join(&folder_name).join("description.txt");
         std::fs::write(desc_out, description).unwrap();
 
-        // Detect block type from component.json
-        let is_block = if json_path.exists() {
-            extract_json_field(&json_path, "type") == Some("block".to_string())
-        } else {
-            false
-        };
-
         // Discover variant directories
         let variants_dir = folder_path.join("variants");
         let mut variants = Vec::new();
@@ -72,7 +63,6 @@ fn main() {
         components.push(ComponentInfo {
             name: folder_name,
             page_name,
-            is_block,
             variants,
         });
     }
@@ -104,19 +94,6 @@ fn snake_to_pascal(s: &str) -> String {
             }
         })
         .collect()
-}
-
-/// Extract a simple string field from component.json without a JSON parser.
-fn extract_json_field(path: &std::path::Path, field: &str) -> Option<String> {
-    let content = std::fs::read_to_string(path).ok()?;
-    let pattern = format!("\"{}\"", field);
-    let start = content.find(&pattern)?;
-    let rest = &content[start + pattern.len()..];
-    let rest = rest.trim_start().strip_prefix(':')?;
-    let rest = rest.trim_start();
-    let rest = rest.strip_prefix('"')?;
-    let end = rest.find('"')?;
-    Some(rest[..end].to_string())
 }
 
 /// Generate the complete routes.rs file with Route enum, page functions, and helpers.

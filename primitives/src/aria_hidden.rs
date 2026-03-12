@@ -51,7 +51,7 @@ pub(crate) fn use_aria_hidden(id: Memo<String>, active: Memo<bool>) {
 
     // Cleanup: restore aria-hidden on elements we modified
     crate::use_effect_cleanup(move || {
-        if active.peek().clone() {
+        if *active.peek() {
             let element_id = id.peek().clone();
             let js = format!(
                 r#"

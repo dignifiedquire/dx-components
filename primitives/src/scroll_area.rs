@@ -118,6 +118,7 @@ struct ScrollAreaCtx {
     /// Generation counter for hide timer cancellation.
     hide_gen: Signal<u64>,
     /// Corner dimensions for CSS custom properties.
+    /// Updated by [`ScrollAreaCorner`] when it measures scrollbar sizes.
     corner_width: Signal<f64>,
     corner_height: Signal<f64>,
     /// Unique ID for the viewport element (to avoid querySelectorAll conflicts
@@ -241,6 +242,10 @@ pub fn ScrollArea(props: ScrollAreaProps) -> Element {
         },
     };
 
+    let corner_w = (state.corner_width)();
+    let corner_h = (state.corner_height)();
+    let root_style = format!("position: relative; --radix-scroll-area-corner-width: {corner_w}px; --radix-scroll-area-corner-height: {corner_h}px;");
+
     rsx! {
         div {
             "data-slot": "scroll-area",
@@ -252,7 +257,7 @@ pub fn ScrollArea(props: ScrollAreaProps) -> Element {
                 ScrollDirection::Horizontal => "horizontal",
                 ScrollDirection::Both => "both",
             },
-            style: "position: relative; --radix-scroll-area-corner-width: 0px; --radix-scroll-area-corner-height: 0px;",
+            style: "{root_style}",
             onpointerenter: move |_| {
                 state.is_hovered.set(true);
                 // Cancel any pending hide timer
@@ -333,9 +338,9 @@ pub fn ScrollAreaViewport(props: ScrollAreaViewportProps) -> Element {
 
     // Measure dimensions on mount
     {
-        let id = viewport_id.clone();
+        let id = viewport_id;
         use_effect(move || {
-            let id = id.clone();
+            let id = id;
             spawn(async move {
                 dioxus_sdk_time::sleep(Duration::from_millis(16)).await;
                 let id_val = id();
@@ -756,24 +761,55 @@ pub struct ScrollAreaCornerProps {
 ///
 /// ## Radix deviation
 /// Radix uses ResizeObserver on scrollbar elements to measure corner
-/// dimensions. We use a fixed approach since scrollbar dimensions are
-/// determined by CSS rather than measured dynamically.
+/// dimensions. We measure scrollbar elements once on mount via JS eval
+/// and update CSS custom properties on the root ScrollArea.
 #[component]
 pub fn ScrollAreaCorner(props: ScrollAreaCornerProps) -> Element {
-    let ctx = use_context::<ScrollAreaCtx>();
+    let mut ctx = use_context::<ScrollAreaCtx>();
 
     // Only render when both scrollbars are present and type != scroll
     let both_visible = (ctx.scrollbar_x_enabled)() && (ctx.scrollbar_y_enabled)();
     let show = both_visible && ctx.visibility != ScrollbarVisibility::Scroll;
 
+    // Measure scrollbar dimensions on mount to set corner size.
+    // Corner width = vertical scrollbar's width, corner height = horizontal scrollbar's height.
+    use_effect(move || {
+        if !show {
+            ctx.corner_width.set(0.0);
+            ctx.corner_height.set(0.0);
+            return;
+        }
+        let viewport_id = (ctx.viewport_id)();
+        spawn(async move {
+            let mut reader = document::eval(&format!(
+                r#"
+                var viewport = document.getElementById('{viewport_id}');
+                if (!viewport) {{ dioxus.send([0, 0]); return; }}
+                var root = viewport.closest('[data-slot="scroll-area"]');
+                if (!root) {{ dioxus.send([0, 0]); return; }}
+                var vbar = root.querySelector('[data-slot="scroll-area-scrollbar"][data-orientation="vertical"]');
+                var hbar = root.querySelector('[data-slot="scroll-area-scrollbar"][data-orientation="horizontal"]');
+                dioxus.send([vbar ? vbar.offsetWidth : 0, hbar ? hbar.offsetHeight : 0]);
+                "#
+            ));
+            if let Ok((w, h)) = reader.recv::<(f64, f64)>().await {
+                ctx.corner_width.set(w);
+                ctx.corner_height.set(h);
+            }
+        });
+    });
+
     if !show {
         return rsx! {};
     }
 
+    let w = (ctx.corner_width)();
+    let h = (ctx.corner_height)();
+
     rsx! {
         div {
             "data-slot": "scroll-area-corner",
-            style: "position: absolute; right: 0; bottom: 0;",
+            style: "position: absolute; right: 0; bottom: 0; width: {w}px; height: {h}px;",
             class: props.class,
             ..props.attributes,
             {props.children}

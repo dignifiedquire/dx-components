@@ -241,7 +241,8 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
                                                 let entries = ctx.typeahead_items.read();
                                                 if let Some(entry) = entries.get(matched_idx) {
                                                     if let Some(ref el) = *entry.element_ref.read() {
-                                                        let _ = el.set_focus(true);
+                                                        let el = el.clone();
+                                                        spawn(async move { let _ = el.set_focus(true).await; });
                                                     }
                                                 }
                                             }

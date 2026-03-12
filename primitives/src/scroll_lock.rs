@@ -40,7 +40,7 @@ pub(crate) fn use_scroll_lock(active: Memo<bool>) {
 
     // Cleanup: decrement counter and restore if last
     crate::use_effect_cleanup(move || {
-        if active.peek().clone() {
+        if *active.peek() {
             document::eval(
                 r#"
                 if (window.__dxScrollLockCount) {
