@@ -5,6 +5,7 @@
 //! - [`SelectValue`]: Displays the currently selected value
 //! - [`SelectContent`]: Dropdown container with `role="listbox"` (aliased as [`SelectList`])
 //! - [`SelectItem`]: Individual item with `role="option"` (aliased as [`SelectOption`])
+//! - [`SelectItemText`]: Display text wrapper — registers typeahead text and trigger display
 //! - [`SelectItemIndicator`]: Visual indicator for selected items
 //! - [`SelectGroup`]: Grouping element with `role="group"`
 //! - [`SelectLabel`]: Non-interactive label (aliased as [`SelectGroupLabel`])
@@ -38,6 +39,8 @@ pub use components::{
     SelectItemIndicator,
     SelectItemIndicatorProps,
     SelectItemProps,
+    SelectItemText,
+    SelectItemTextProps,
     SelectLabel,
     SelectLabelProps,
     SelectList,

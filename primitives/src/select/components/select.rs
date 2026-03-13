@@ -124,6 +124,7 @@ pub fn Select(props: SelectProps) -> Element {
     });
     let initial_focus = use_signal(|| None);
     let next_index = use_signal(|| 0usize);
+    let item_text_overrides = use_signal(Vec::default);
 
     use_context_provider(|| SelectContext {
         typeahead_buffer,
@@ -140,6 +141,7 @@ pub fn Select(props: SelectProps) -> Element {
         typeahead_timeout: props.typeahead_timeout,
         initial_focus,
         next_index,
+        item_text_overrides,
     });
 
     let name = props.name;

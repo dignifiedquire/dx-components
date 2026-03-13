@@ -7,7 +7,9 @@ use crate::{
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 
-use super::super::context::{OptionState, SelectContext, SelectOptionContext};
+use super::super::context::{
+    OptionState, SelectContext, SelectItemTextRegistration, SelectOptionContext,
+};
 
 /// The props for the [`SelectItem`] component
 #[derive(Props, Clone, PartialEq)]
@@ -116,6 +118,8 @@ pub fn SelectItem(props: SelectItemProps) -> Element {
     let item_disabled = ctx.disabled || props.disabled;
     let selected = use_memo(move || (ctx.value)() == value.cloned());
     let mut did_drag = use_signal(|| false);
+
+    use_context_provider(|| SelectItemTextRegistration { value: props.value });
 
     use_context_provider(|| SelectOptionContext {
         selected: selected.into(),

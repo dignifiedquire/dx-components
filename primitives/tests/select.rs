@@ -306,3 +306,54 @@ fn select_group_label_alias_works() {
         "SelectGroupLabel alias does not panic: {html}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// SelectItemText
+// ---------------------------------------------------------------------------
+
+#[test]
+fn select_item_text_compiles() {
+    // Verify SelectItemText compiles and renders without panic inside SelectItem
+    fn App() -> Element {
+        rsx! {
+            Select {
+                SelectTrigger { SelectValue {} }
+                SelectContent {
+                    SelectItem { value: "apple",
+                        SelectItemText { text: "Apple", "🍎 Apple" }
+                        SelectItemIndicator { "✓" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="select-value""#),
+        "SelectItemText does not panic: {html}"
+    );
+}
+
+#[test]
+fn select_item_text_without_text_prop() {
+    // SelectItemText without `text` prop should still compile and render
+    fn App() -> Element {
+        rsx! {
+            Select {
+                SelectTrigger { SelectValue {} }
+                SelectContent {
+                    SelectItem { value: "apple",
+                        SelectItemText { "Apple" }
+                    }
+                }
+            }
+        }
+    }
+
+    let html = render(App);
+    assert!(
+        html.contains(r#"data-slot="select-value""#),
+        "SelectItemText without text prop does not panic: {html}"
+    );
+}

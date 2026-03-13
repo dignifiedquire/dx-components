@@ -58,11 +58,19 @@ pub fn SelectValue(props: SelectValueProps) -> Element {
     let has_value = !current_value.is_empty();
 
     let display_value = if has_value {
-        ctx.options
+        // Prefer text registered by SelectItemText (persists across list open/close)
+        ctx.item_text_overrides
             .read()
             .iter()
-            .find(|opt| opt.value == current_value)
-            .map(|opt| opt.text_value.clone())
+            .find(|(v, _)| v == &current_value)
+            .map(|(_, t)| t.clone())
+            .or_else(|| {
+                ctx.options
+                    .read()
+                    .iter()
+                    .find(|opt| opt.value == current_value)
+                    .map(|opt| opt.text_value.clone())
+            })
             .unwrap_or_else(|| ctx.placeholder.cloned())
     } else {
         ctx.placeholder.cloned()

@@ -5,7 +5,9 @@
 use dioxus::prelude::*;
 use dioxus_core::AttributeValue::Text;
 use dioxus_primitives::select as primitives;
-pub use dioxus_primitives::select::{Select, SelectGroup, SelectProps, SelectValue};
+pub use dioxus_primitives::select::{
+    Select, SelectGroup, SelectItemText, SelectItemTextProps, SelectProps, SelectValue,
+};
 use dx_icons_lucide::{IconCheck, IconChevronDown};
 use tailwind_fuse::*;
 
@@ -122,7 +124,7 @@ pub fn SelectItem(props: SelectItemProps) -> Element {
     rsx! {
         primitives::SelectItem {
             value: props.value,
-            text_value: props.text_value,
+            text_value: props.text_value.clone(),
             disabled: props.disabled,
             attributes: attrs,
 
@@ -130,7 +132,10 @@ pub fn SelectItem(props: SelectItemProps) -> Element {
                 class: "absolute right-2 flex size-3.5 items-center justify-center",
                 IconCheck { class: "size-4" }
             }
-            {props.children}
+            primitives::SelectItemText {
+                text: props.text_value,
+                {props.children}
+            }
         }
     }
 }
