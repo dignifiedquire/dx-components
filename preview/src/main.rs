@@ -3,6 +3,8 @@ use dioxus_i18n::prelude::*;
 use unic_langid::langid;
 
 mod components;
+#[cfg(target_arch = "wasm32")]
+mod fixed_history;
 mod layouts;
 mod pages;
 mod theme;
@@ -68,15 +70,26 @@ include!(concat!(env!("OUT_DIR"), "/routes.rs"));
 include!(concat!(env!("OUT_DIR"), "/base_path.rs"));
 
 fn main() {
-    #[allow(unused_mut)]
-    let mut builder = dioxus::LaunchBuilder::new()
-        // Set the server config only if we are building the server target
-        .with_cfg(server_only! {
+    // On WASM, use FixedPrefixHistory to work around a wasm-split bug where
+    // format!("/{prefix}") produces an empty string in WebHistory::new_inner().
+    #[cfg(target_arch = "wasm32")]
+    {
+        let bp = BASE_PATH.map(|s| s.to_string());
+        let history: std::rc::Rc<dyn dioxus::history::History> =
+            std::rc::Rc::new(fixed_history::FixedPrefixHistory::new(bp, true));
+        let mut vdom = dioxus_core::VirtualDom::new(App);
+        vdom.provide_root_context(history);
+        dioxus::web::launch::launch_virtual_dom(vdom, dioxus::web::Config::new());
+        return;
+    }
+
+    #[allow(unreachable_code)]
+    {
+        #[allow(unused_mut)]
+        let mut builder = dioxus::LaunchBuilder::new().with_cfg(server_only! {
             ServeConfig::builder()
-                // Enable incremental rendering
                 .incremental(
                     dioxus::server::IncrementalRendererConfig::new()
-                        // Store static files in the public directory where other static assets like wasm are stored
                         .static_dir(
                             std::env::current_exe()
                                 .unwrap()
@@ -84,27 +97,12 @@ fn main() {
                                 .unwrap()
                                 .join("public")
                         )
-                        // Don't clear the public folder on every build. The public folder has other files including the wasm
-                        // binary and static assets required for the app to run
                         .clear_cache(false)
                 )
                 .enable_out_of_order_streaming()
         });
-
-    // Provide WebHistory with the base path captured by build.rs.
-    // Use target_arch = "wasm32" because that's always true for web builds and
-    // doesn't depend on the preview crate's "web" feature being explicitly enabled.
-    #[cfg(target_arch = "wasm32")]
-    {
-        // DEBUG: Hardcode to verify the mechanism, then switch back to BASE_PATH.
-        let base = Some("dx-components".to_string());
-        builder = builder.with_cfg(
-            dioxus::web::Config::new()
-                .history(std::rc::Rc::new(dioxus::web::WebHistory::new(base, true))),
-        );
+        builder.launch(App);
     }
-
-    builder.launch(App);
 }
 
 #[component]

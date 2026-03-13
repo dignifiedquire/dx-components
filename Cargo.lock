@@ -5975,6 +5975,7 @@ dependencies = [
  "dioxus-i18n",
  "dioxus-primitives 0.0.1",
  "dx_icons_lucide",
+ "js-sys",
  "proc-macro2",
  "pulldown-cmark",
  "quote",
@@ -5983,6 +5984,8 @@ dependencies = [
  "time",
  "tracing",
  "unic-langid",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
