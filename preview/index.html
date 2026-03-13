@@ -32,45 +32,33 @@
     <script>
       // FIX(wasm-split): The asset!() macro uses format!() to prepend the base
       // path to asset URLs, but format!() produces empty strings under wasm-split.
-      // This MutationObserver rewrites /assets/ paths to include the base path.
+      // Override setAttribute to transparently prepend the base path to /assets/
+      // URLs. This is more robust than a MutationObserver which can be killed by
+      // the WASM runtime's DOM initialization.
       (function () {
-        var scriptSrc = document.currentScript
-          ? document.currentScript.src || ""
-          : "";
-        // Detect base path from the WASM script tag that dx build inserts,
-        // or fall back to the current pathname up to the first segment.
-        var base = "";
-        var scripts = document.querySelectorAll('script[src*="/wasm/"]');
-        if (scripts.length) {
-          var m = scripts[0].getAttribute("src").match(/^(\/[^/]+)\/wasm\//);
-          if (m) base = m[1];
-        }
-        if (!base) {
-          var parts = location.pathname.split("/").filter(Boolean);
-          if (parts.length > 0) base = "/" + parts[0];
-        }
-        if (!base) return;
+        var base = null; // null = not yet detected, "" = no base path
+        var orig = Element.prototype.setAttribute;
 
-        function fix(el) {
-          ["href", "src"].forEach(function (attr) {
-            var val = el.getAttribute(attr);
-            if (val && val.startsWith("/assets/")) {
-              el.setAttribute(attr, base + val);
-            }
-          });
+        function detectBase() {
+          var scripts = document.querySelectorAll('script[src*="/wasm/"]');
+          if (scripts.length) {
+            var m = scripts[0].getAttribute("src").match(/^(\/[^/]+)\/wasm\//);
+            if (m) return m[1];
+          }
+          return "";
         }
 
-        new MutationObserver(function (mutations) {
-          mutations.forEach(function (m) {
-            m.addedNodes.forEach(function (n) {
-              if (n.nodeType === 1) {
-                fix(n);
-                n.querySelectorAll &&
-                  n.querySelectorAll("[href],[src]").forEach(fix);
-              }
-            });
-          });
-        }).observe(document.documentElement, { childList: true, subtree: true });
+        Element.prototype.setAttribute = function (name, value) {
+          if (
+            (name === "href" || name === "src") &&
+            typeof value === "string" &&
+            value.startsWith("/assets/")
+          ) {
+            if (base === null) base = detectBase();
+            if (base) value = base + value;
+          }
+          return orig.call(this, name, value);
+        };
       })();
     </script>
   </head>
