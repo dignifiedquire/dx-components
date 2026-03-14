@@ -45,10 +45,10 @@ impl Default for AutoUpdateOptions {
 pub fn auto_update(
     reference: &Element,
     floating: &Element,
-    update: impl Fn() + 'static,
+    update: impl FnMut() + 'static,
     options: AutoUpdateOptions,
 ) -> Box<dyn FnOnce()> {
-    let update = std::rc::Rc::new(update);
+    let update = std::rc::Rc::new(std::cell::RefCell::new(update));
 
     let mut cleanups: Vec<Box<dyn FnOnce()>> = Vec::new();
 
@@ -66,7 +66,7 @@ pub fn auto_update(
         for ancestor in &ancestors {
             let cb = Closure::<dyn FnMut()>::new({
                 let update = update.clone();
-                move || update()
+                move || update.borrow_mut()()
             });
             let opts = web_sys::AddEventListenerOptions::new();
             opts.set_passive(true);
@@ -88,7 +88,7 @@ pub fn auto_update(
         for ancestor in &ancestors {
             let cb = Closure::<dyn FnMut()>::new({
                 let update = update.clone();
-                move || update()
+                move || update.borrow_mut()()
             });
             let _ =
                 ancestor.add_event_listener_with_callback("resize", cb.as_ref().unchecked_ref());
@@ -132,7 +132,7 @@ pub fn auto_update(
                     }
                 }
             }
-            update_for_ro();
+            update_for_ro.borrow_mut()();
         });
 
         let ro = web_sys::ResizeObserver::new(cb.as_ref().unchecked_ref());
@@ -176,7 +176,7 @@ pub fn auto_update(
             let cur = [rect.x(), rect.y(), rect.width(), rect.height()];
             if let Some(prev) = *prev_rect.borrow() {
                 if prev != cur {
-                    update_for_raf();
+                    update_for_raf.borrow_mut()();
                 }
             }
             *prev_rect.borrow_mut() = Some(cur);
@@ -212,8 +212,7 @@ pub fn auto_update(
     }
 
     // Fire initial update
-    let update_initial = update.clone();
-    update_initial();
+    update.borrow_mut()();
 
     Box::new(move || {
         for cleanup in cleanups {

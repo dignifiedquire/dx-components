@@ -252,7 +252,7 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     let anchor = ctx.anchor;
 
     // Tick counter — incremented by auto_update scroll/resize listeners to trigger re-measurement
-    let mut tick = use_signal(|| 0u64);
+    let tick = use_signal(|| 0u64);
 
     // Positioning effect: fires on tick changes (scroll/resize) and ref changes
     use_effect(move || {
@@ -418,32 +418,20 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     {
         use crate::use_effect_with_cleanup;
         use_effect_with_cleanup(move || {
-            // We need the content element to be mounted for auto_update.
-            // Set up listeners on the window to catch all scroll/resize events.
+            let doc_el = floating_ui::dom::get_document_element();
             let cleanup = floating_ui::dom::auto_update(
-                // For auto_update we need web_sys::Element refs.
-                // Since we don't have direct access to the DOM elements from MountedData,
-                // we use a simpler approach: listen on the window for scroll/resize.
-                // This matches the upstream behavior for the common case.
-                &web_sys::window()
-                    .unwrap()
-                    .document()
-                    .unwrap()
-                    .document_element()
-                    .unwrap(),
-                &web_sys::window()
-                    .unwrap()
-                    .document()
-                    .unwrap()
-                    .document_element()
-                    .unwrap(),
-                move || {
-                    tick += 1;
+                &doc_el,
+                &doc_el,
+                {
+                    let mut tick = tick;
+                    move || {
+                        tick += 1;
+                    }
                 },
                 floating_ui::dom::AutoUpdateOptions {
                     ancestor_scroll: true,
                     ancestor_resize: true,
-                    element_resize: false, // We don't have real Element refs here
+                    element_resize: false,
                     layout_shift: false,
                     animation_frame: false,
                 },
