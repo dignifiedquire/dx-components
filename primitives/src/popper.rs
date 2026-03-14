@@ -285,9 +285,12 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     let mut anchor_h = use_signal(|| 0.0f64);
     let mut transform_origin = use_signal(String::new);
 
-    // Matches upstream `isPositioned` — false until floating-ui computes position.
+    // Derived from position values — true once floating-ui computes position.
     // Used to suppress entry animations on inner content div (upstream line 281).
-    let mut is_positioned = use_signal(|| false);
+    // Derived rather than set separately to avoid signal batching race conditions
+    // in async spawn (pos_x/pos_y set before is_positioned would cause a render
+    // with position values but is_positioned=false).
+    let is_positioned = use_memo(move || pos_x().is_some() && pos_y().is_some());
 
     // Mirrors content's computed z-index to wrapper (matching upstream lines 232-235, 245).
     let mut content_z_index = use_signal(|| Option::<String>::None);
@@ -500,7 +503,6 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             anchor_w.set(anchor_rect.width);
             anchor_h.set(anchor_rect.height);
             transform_origin.set(to);
-            is_positioned.set(true);
         });
     });
 
@@ -537,38 +539,54 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     let prefix = props.css_var_prefix;
 
     // --- Wrapper style (matching upstream lines 241-258) ---
-    // The wrapper is the floating element with position:fixed.
-    // CSS vars are set here (both --radix-popper-* and --radix-{prefix}-* aliases).
+    // Upstream useFloating returns floatingStyles = { position: 'fixed', left: 0, top: 0,
+    // transform: 'translate(x, y)' }. Position is always done via transform, not left/top.
+    // When !isPositioned, transform is overridden with 'translate(0, -200%)' to hide off-page.
     let wrapper_style = {
-        let is_pos = is_positioned();
         let z_index = content_z_index();
+        let is_pos = is_positioned();
 
-        if let (Some(x), Some(y)) = (pos_x(), pos_y()) {
+        let z_part = match &z_index {
+            Some(z) => format!("z-index: {z};"),
+            None => String::new(),
+        };
+
+        // transform: isPositioned ? floatingStyles.transform : 'translate(0, -200%)'
+        let transform = if is_pos {
+            if let (Some(x), Some(y)) = (pos_x(), pos_y()) {
+                format!("translate({x}px, {y}px)")
+            } else {
+                "translate(0, -200%)".to_string()
+            }
+        } else {
+            "translate(0, -200%)".to_string()
+        };
+
+        let mut style = format!(
+            "position: fixed; left: 0px; top: 0px; \
+             transform: {transform}; \
+             min-width: max-content; {z_part}"
+        );
+
+        if is_pos {
             let to = transform_origin();
             let aw = avail_w();
             let ah = avail_h();
             let anw = anchor_w();
             let anh = anchor_h();
 
-            let z_part = match &z_index {
-                Some(z) => format!("z-index: {z};"),
-                None => String::new(),
-            };
-
-            // Always set --radix-popper-* base vars on wrapper
-            let mut style = format!(
-                "position: fixed; left: {x}px; top: {y}px; \
-                 min-width: max-content; {z_part} \
-                 --radix-popper-transform-origin: {to}; \
+            use std::fmt::Write;
+            let _ = write!(
+                style,
+                " --radix-popper-transform-origin: {to}; \
                  --radix-popper-available-width: {aw}px; \
                  --radix-popper-available-height: {ah}px; \
                  --radix-popper-anchor-width: {anw}px; \
                  --radix-popper-anchor-height: {anh}px;"
             );
 
-            // Also set component-specific aliases if css_var_prefix is set
+            // Component-specific aliases (e.g. --radix-dropdown-menu-*)
             if let Some(p) = prefix {
-                use std::fmt::Write;
                 let _ = write!(
                     style,
                     " --radix-{p}-content-transform-origin: {to}; \
@@ -578,27 +596,9 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
                      --radix-{p}-trigger-height: {anh}px;"
                 );
             }
-
-            // Upstream line 243: transform is floatingStyles.transform when positioned,
-            // otherwise translate(0, -200%) to keep off-page while measuring.
-            // floatingStyles.transform is empty/none when using strategy:fixed + left/top.
-            if !is_pos {
-                style.push_str(" transform: translate(0, -200%);");
-            }
-
-            style
-        } else {
-            // Not yet positioned — keep off-screen while measuring
-            let z_part = match &z_index {
-                Some(z) => format!("z-index: {z};"),
-                None => String::new(),
-            };
-            format!(
-                "position: fixed; left: 0; top: 0; \
-                 transform: translate(0, -200%); \
-                 min-width: max-content; {z_part}"
-            )
         }
+
+        style
     };
 
     // --- Inner content style (matching upstream line 277-282) ---
