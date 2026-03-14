@@ -23,8 +23,11 @@
 //! - [`ContextMenuPortal`] (re-export)
 
 use crate::menu::MenuCtx;
-use crate::popper::{Align, PopperAnchorKind, PopperContent, PopperContentCtx, PopperCtx, Side};
-use crate::{use_controlled, use_unique_id};
+use crate::popper::{Align, PopperAnchorKind, PopperContent, PopperCtx, Side};
+use crate::{
+    merge_attributes, use_controlled, use_global_escape_listener, use_id_or, use_outside_click,
+    use_presence, use_unique_id,
+};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 
@@ -267,6 +270,43 @@ pub struct ContextMenuContentProps {
 /// Matches Radix's `ContextMenuContent` (side=Right, sideOffset=2, align=Start).
 #[component]
 pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
+    let ctx: MenuCtx = use_context();
+    let id = use_id_or(ctx.content_id, props.id);
+    let mut presence = use_presence(ctx.open, id);
+
+    // Document-level Escape listener (closes menu even without focus inside)
+    {
+        let on_close = ctx.on_close;
+        let open = ctx.open;
+        use_global_escape_listener(move || {
+            if *open.peek() {
+                on_close.call(());
+            }
+        });
+    }
+
+    // Dismiss on click outside content
+    {
+        let on_close = ctx.on_close;
+        let open = ctx.open;
+        use_outside_click(id, move || {
+            if *open.peek() {
+                on_close.call(());
+            }
+        });
+    }
+
+    if !presence.is_present() && !props.force_mount {
+        return rsx! {};
+    }
+
+    let content_attrs = attributes!(div {
+        id: id,
+        "data-slot": "context-menu-content",
+        "data-state": presence.data_state(),
+    });
+    let merged = merge_attributes(vec![content_attrs, props.attributes]);
+
     rsx! {
         PopperContent {
             side: props.side,
@@ -276,52 +316,14 @@ pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
             avoid_collisions: props.avoid_collisions,
             collision_padding: props.collision_padding,
             css_var_prefix: "context-menu",
-
-
-            ContextMenuContentInner {
-                id: props.id,
-                force_mount: props.force_mount,
-                class: props.class,
-                attributes: props.attributes,
-                children: props.children,
-            }
-        }
-    }
-}
-
-/// Inner component that reads [`PopperContentCtx`] for `data-side`/`data-align`.
-#[derive(Props, Clone, PartialEq)]
-struct ContextMenuContentInnerProps {
-    #[props(default)]
-    id: ReadSignal<Option<String>>,
-    #[props(default)]
-    force_mount: bool,
-    #[props(default)]
-    class: Option<String>,
-    #[props(extends = GlobalAttributes)]
-    attributes: Vec<Attribute>,
-    children: Element,
-}
-
-#[component]
-fn ContextMenuContentInner(props: ContextMenuContentInnerProps) -> Element {
-    let popper = use_context::<PopperContentCtx>();
-    let side = (popper.placed_side)();
-    let align = (popper.placed_align)();
-
-    let popper_attrs = attributes!(div {
-        "data-side": side.as_str(),
-        "data-align": align.as_str(),
-    });
-
-    rsx! {
-        crate::menu::MenuContent {
-            id: props.id,
-            force_mount: props.force_mount,
             class: props.class,
-            extra_attributes: popper_attrs,
-            attributes: props.attributes,
-            {props.children}
+            content_attributes: merged,
+            on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
+
+            crate::menu::MenuContent {
+                content_id: id,
+                {props.children}
+            }
         }
     }
 }

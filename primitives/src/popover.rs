@@ -7,10 +7,11 @@ use std::rc::Rc;
 use dioxus::prelude::*;
 
 use crate::focus_scope::FocusScope;
-use crate::popper::{Align, Popper, PopperContent, PopperContentCtx, PopperCtx, Side};
+use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
 use crate::portal::Portal;
 use crate::use_global_escape_listener;
-use crate::{use_controlled, use_id_or, use_presence, use_unique_id};
+use crate::{merge_attributes, use_controlled, use_id_or, use_presence, use_unique_id};
+use dioxus_attributes::attributes;
 
 // ---------------------------------------------------------------------------
 // Context
@@ -227,6 +228,15 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
     let trapped = is_modal && open();
     let data_state = presence.data_state();
 
+    let content_attrs = attributes!(div {
+        id: id,
+        "data-slot": "popover-content",
+        "data-state": data_state,
+        role: "dialog",
+        aria_modal: if is_modal { "true" },
+    });
+    let merged = merge_attributes(vec![content_attrs, props.attributes]);
+
     rsx! {
         Portal {
             PopperContent {
@@ -237,59 +247,15 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
                 avoid_collisions: props.avoid_collisions,
                 collision_padding: props.collision_padding,
                 css_var_prefix: "popover",
-
-                PopoverContentInner {
-                    id,
-                    data_state,
-                    is_modal,
-                    trapped,
-                    on_anim_end: move |_: Event<AnimationData>| presence.on_animation_end(),
-                    class: props.class,
-                    attributes: props.attributes,
-                    children: props.children,
-                }
-            }
-        }
-    }
-}
-
-/// Inner component that reads [`PopperContentCtx`] for `data-side`/`data-align`.
-#[derive(Props, Clone, PartialEq)]
-struct PopoverContentInnerProps {
-    id: Memo<String>,
-    data_state: &'static str,
-    is_modal: bool,
-    trapped: bool,
-    on_anim_end: EventHandler<Event<AnimationData>>,
-    #[props(default)]
-    class: Option<String>,
-    #[props(extends = GlobalAttributes)]
-    attributes: Vec<Attribute>,
-    children: Element,
-}
-
-#[component]
-fn PopoverContentInner(props: PopoverContentInnerProps) -> Element {
-    let popper = use_context::<PopperContentCtx>();
-    let side = (popper.placed_side)();
-    let align = (popper.placed_align)();
-
-    rsx! {
-        FocusScope {
-            trapped: props.trapped,
-            r#loop: props.trapped,
-            div {
-                id: props.id,
-                "data-slot": "popover-content",
-                "data-state": props.data_state,
-                "data-side": side.as_str(),
-                "data-align": align.as_str(),
-                role: "dialog",
-                aria_modal: if props.is_modal { "true" },
                 class: props.class,
-                onanimationend: move |e| props.on_anim_end.call(e),
-                ..props.attributes,
-                {props.children}
+                content_attributes: merged,
+                on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
+
+                FocusScope {
+                    trapped: trapped,
+                    r#loop: trapped,
+                    {props.children}
+                }
             }
         }
     }

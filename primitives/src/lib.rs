@@ -316,6 +316,38 @@ fn use_global_keydown_listener(key: &'static str, on_escape: impl FnMut() + Clon
     });
 }
 
+/// Calls `on_outside` when a pointer down event occurs outside the element
+/// with the given `id`. Matches Radix's `onPointerDownOutside` in
+/// `DismissableLayer`. The listener is active for the lifetime of the
+/// calling component.
+pub(crate) fn use_outside_click(
+    id: Memo<String>,
+    mut on_outside: impl FnMut() + Clone + 'static,
+) {
+    use_effect_with_cleanup(move || {
+        let mut eval = document::eval(
+            "let id = await dioxus.recv();
+            function listener(event) {
+                let el = document.getElementById(id);
+                if (el && !el.contains(event.target)) {
+                    dioxus.send(true);
+                }
+            }
+            document.addEventListener('pointerdown', listener, true);
+            await dioxus.recv();
+            document.removeEventListener('pointerdown', listener, true);",
+        );
+        let _ = eval.send(id.peek().clone());
+        let mut on_outside = on_outside.clone();
+        spawn(async move {
+            while let Ok(true) = eval.recv().await {
+                on_outside();
+            }
+        });
+        move || _ = eval.send(String::new())
+    });
+}
+
 // Deprecated: use `use_presence` instead. This legacy hook will be removed
 // once all remaining consumers (navbar, menubar, context_menu, dropdown_menu,
 // select) are migrated in Phase 2e/2f.

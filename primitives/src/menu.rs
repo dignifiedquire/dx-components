@@ -7,11 +7,11 @@ use std::rc::Rc;
 
 use crate::direction::Orientation;
 use crate::merge_attributes;
-use crate::popper::{Popper, PopperContent, PopperContentCtx, PopperCtx, Side};
+use crate::popper::{Popper, PopperContent, PopperCtx, Side};
 use crate::portal::Portal;
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
 use crate::typeahead::{use_typeahead, TypeaheadItem};
-use crate::{use_controlled, use_global_escape_listener, use_id_or, use_presence, use_unique_id};
+use crate::{use_controlled, use_id_or, use_presence, use_unique_id};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 
@@ -89,23 +89,14 @@ pub fn MenuPortal(props: MenuPortalProps) -> Element {
 // ---------------------------------------------------------------------------
 
 /// Props for [`MenuContent`].
+///
+/// This is a behavioral wrapper only — presence tracking, `class`, `data-state`,
+/// and `id` live on PopperContent's inner div (owned by the consumer component).
 #[derive(Props, Clone, PartialEq)]
 pub struct MenuContentProps {
-    /// User-provided id override.
-    #[props(default)]
-    pub id: ReadSignal<Option<String>>,
-
-    /// Keep content mounted even when closed.
-    #[props(default)]
-    pub force_mount: bool,
-
-    /// Additional CSS classes.
-    #[props(default)]
-    pub class: Option<String>,
-
-    /// Spread attributes.
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
+    /// Resolved content element ID. Not rendered as an attribute here — it is on
+    /// PopperContent's inner div. Used only for the focusout contains-check.
+    pub content_id: Memo<String>,
 
     /// Children (menu items).
     pub children: Element,
@@ -122,57 +113,28 @@ pub struct MenuContentProps {
     /// Called on ArrowRight in content (used by Menubar to switch menus).
     #[props(default)]
     pub on_arrow_right: Option<Callback<()>>,
-
-    /// Extra attributes merged into the content div (used internally by wrappers
-    /// like ContextMenuContent to inject position styling).
-    #[props(default)]
-    pub extra_attributes: Vec<Attribute>,
 }
 
-/// The menu content container. Has `role="menu"`.
+/// Menu behavior container. Has `role="menu"` with keyboard navigation.
 ///
-/// Wraps children in a vertical `RovingFocusGroup` for keyboard navigation.
-/// Uses `use_presence` for animation-aware mount/unmount.
+/// Wraps children in a vertical `RovingFocusGroup`. Does **not** manage presence
+/// or visual styling — those are owned by the consumer (DropdownMenuContent,
+/// ContextMenuContent, MenubarContent) which passes `class`/`data-state` to
+/// PopperContent.
 #[component]
 pub fn MenuContent(props: MenuContentProps) -> Element {
     let ctx: MenuCtx = use_context();
-    let id = use_id_or(ctx.content_id, props.id);
-    let mut presence = use_presence(ctx.open, id);
 
     // Typeahead: prefix search with 1s auto-clear (matching Radix menu behavior)
     let mut typeahead = use_typeahead(1000);
 
-    // Document-level Escape listener so the menu closes even when
-    // focus is not inside the content div.
-    {
-        let on_close = ctx.on_close;
-        let on_escape_override = props.on_escape_override;
-        let open = ctx.open;
-        use_global_escape_listener(move || {
-            if *open.peek() {
-                if let Some(on_esc) = on_escape_override {
-                    on_esc.call(());
-                } else {
-                    on_close.call(());
-                }
-            }
-        });
-    }
-
-    if !presence.is_present() && !props.force_mount {
-        return rsx! {};
-    }
-
-    let slot = format!("{}-content", ctx.slot_prefix);
     let on_close = ctx.on_close;
     let on_escape_override = props.on_escape_override;
     let on_arrow_left = props.on_arrow_left;
     let on_arrow_right = props.on_arrow_right;
     let children = props.children;
-    let class = props.class;
-    let user_attrs = props.attributes;
-    let extra_attrs = props.extra_attributes;
     let trigger_id = ctx.trigger_id;
+    let content_id = props.content_id;
 
     rsx! {
         RovingFocusGroup {
@@ -180,25 +142,16 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
             r#loop: Signal::new(true),
             r#as: {
                 let children = children.clone();
-                let class = class.clone();
-                let user_attrs = user_attrs.clone();
-                let extra_attrs = extra_attrs.clone();
-                let slot = slot.clone();
                 move |roving_attrs: Vec<Attribute>| {
-                    let content_attrs = attributes!(div {
-                        id: id,
+                    let menu_attrs = attributes!(div {
                         role: "menu",
-                        "data-slot": slot.clone(),
-                        "data-state": presence.data_state(),
                         aria_orientation: "vertical",
                         aria_labelledby: (trigger_id)(),
-                        class: class.clone(),
                     });
-                    let merged = merge_attributes(vec![roving_attrs, content_attrs, extra_attrs.clone(), user_attrs.clone()]);
+                    let merged = merge_attributes(vec![roving_attrs, menu_attrs]);
 
                     rsx! {
                         div {
-                            onanimationend: move |_| presence.on_animation_end(),
                             onkeydown: move |event: Event<KeyboardData>| {
                                 match event.key() {
                                     Key::Escape => {
@@ -253,7 +206,7 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
                                 }
                             },
                             onfocusout: move |_| {
-                                let id_str = id();
+                                let id_str = content_id();
                                 let open = ctx.open;
                                 let on_close = ctx.on_close;
                                 spawn(async move {
@@ -930,6 +883,7 @@ pub struct MenuSubContentProps {
 /// Positioned via [`PopperContent`] with `side: Right` (matching Radix).
 #[component]
 pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
+    let ctx: MenuCtx = use_context();
     let sub_ctx: MenuSubCtx = use_context();
     let id = use_id_or(sub_ctx.content_id, props.id);
     let mut presence = use_presence(sub_ctx.open, id);
@@ -938,96 +892,59 @@ pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
         return rsx! {};
     }
 
+    let slot = format!("{}-sub-content", ctx.slot_prefix);
     let data_state = presence.data_state();
+    let children = props.children;
+
+    let content_attrs = attributes!(div {
+        id: id,
+        "data-slot": slot,
+        "data-state": data_state,
+    });
+    let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
     rsx! {
         Portal {
             PopperContent {
                 side: Side::Right,
                 css_var_prefix: "menu",
+                class: props.class,
+                content_attributes: merged,
+                on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
 
-                MenuSubContentInner {
-                    id,
-                    data_state,
-                    on_anim_end: move |_: Event<AnimationData>| presence.on_animation_end(),
-                    class: props.class,
-                    attributes: props.attributes,
-                    children: props.children,
+                RovingFocusGroup {
+                    orientation: Signal::new(Some(Orientation::Vertical)),
+                    r#loop: Signal::new(true),
+                    r#as: {
+                        let children = children.clone();
+                        move |roving_attrs: Vec<Attribute>| {
+                            let menu_attrs = attributes!(div {
+                                role: "menu",
+                                aria_orientation: "vertical",
+                                aria_labelledby: sub_ctx.trigger_id.cloned(),
+                            });
+                            let merged = merge_attributes(vec![roving_attrs, menu_attrs]);
+
+                            rsx! {
+                                div {
+                                    onkeydown: move |event: Event<KeyboardData>| {
+                                        match event.key() {
+                                            Key::ArrowLeft | Key::Escape => {
+                                                sub_ctx.set_open.call(false);
+                                                event.prevent_default();
+                                                event.stop_propagation();
+                                            }
+                                            _ => {}
+                                        }
+                                    },
+                                    ..merged,
+                                    {children.clone()}
+                                }
+                            }
+                        }
+                    },
                 }
             }
-        }
-    }
-}
-
-/// Inner component that reads [`PopperContentCtx`] for sub-menu `data-side`/`data-align`.
-#[derive(Props, Clone, PartialEq)]
-struct MenuSubContentInnerProps {
-    id: Memo<String>,
-    data_state: &'static str,
-    on_anim_end: EventHandler<Event<AnimationData>>,
-    #[props(default)]
-    class: Option<String>,
-    #[props(extends = GlobalAttributes)]
-    attributes: Vec<Attribute>,
-    children: Element,
-}
-
-#[component]
-fn MenuSubContentInner(props: MenuSubContentInnerProps) -> Element {
-    let ctx: MenuCtx = use_context();
-    let sub_ctx: MenuSubCtx = use_context();
-    let popper = use_context::<PopperContentCtx>();
-    let side = (popper.placed_side)();
-    let align = (popper.placed_align)();
-
-    let slot = format!("{}-sub-content", ctx.slot_prefix);
-    let children = props.children;
-    let class = props.class;
-    let user_attrs = props.attributes;
-    let data_state = props.data_state;
-
-    rsx! {
-        RovingFocusGroup {
-            orientation: Signal::new(Some(Orientation::Vertical)),
-            r#loop: Signal::new(true),
-            r#as: {
-                let children = children.clone();
-                let class = class.clone();
-                let user_attrs = user_attrs.clone();
-                let slot = slot.clone();
-                move |roving_attrs: Vec<Attribute>| {
-                    let content_attrs = attributes!(div {
-                        id: props.id,
-                        role: "menu",
-                        "data-slot": slot.clone(),
-                        "data-state": data_state,
-                        "data-side": side.as_str(),
-                        "data-align": align.as_str(),
-                        aria_orientation: "vertical",
-                        aria_labelledby: sub_ctx.trigger_id.cloned(),
-                        class: class.clone(),
-                    });
-                    let merged = merge_attributes(vec![roving_attrs, content_attrs, user_attrs.clone()]);
-
-                    rsx! {
-                        div {
-                            onanimationend: move |e| props.on_anim_end.call(e),
-                            onkeydown: move |event: Event<KeyboardData>| {
-                                match event.key() {
-                                    Key::ArrowLeft | Key::Escape => {
-                                        sub_ctx.set_open.call(false);
-                                        event.prevent_default();
-                                        event.stop_propagation();
-                                    }
-                                    _ => {}
-                                }
-                            },
-                            ..merged,
-                            {children.clone()}
-                        }
-                    }
-                }
-            },
         }
     }
 }

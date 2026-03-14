@@ -27,9 +27,12 @@ use std::rc::Rc;
 
 use crate::direction::Orientation;
 use crate::menu::MenuCtx;
-use crate::popper::{Align, Popper, PopperContent, PopperContentCtx, PopperCtx, Side};
+use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
-use crate::{merge_attributes, use_unique_id};
+use crate::{
+    merge_attributes, use_global_escape_listener, use_id_or, use_outside_click, use_presence,
+    use_unique_id,
+};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 
@@ -468,11 +471,37 @@ pub struct MenubarContentProps {
 
 /// Menu content for a menubar menu.
 ///
-/// Wraps `MenuContent` in `PopperContent` with ArrowLeft/Right handlers
-/// for switching between menus.
+/// Owns presence tracking. Passes `class`, `data-state`, `data-slot` to
+/// PopperContent's inner div. Delegates keyboard/focus to `MenuContent` with
+/// ArrowLeft/Right handlers for switching between menus.
 #[component]
 pub fn MenubarContent(props: MenubarContentProps) -> Element {
+    let ctx: MenuCtx = use_context();
     let mut bar_ctx: MenubarInternalCtx = use_context();
+
+    let id = use_id_or(ctx.content_id, props.id);
+    let mut presence = use_presence(ctx.open, id);
+
+    // Document-level Escape listener
+    use_global_escape_listener(move || {
+        if *ctx.open.peek() {
+            bar_ctx.open_menu_id.set(None);
+        }
+    });
+
+    // Dismiss on click outside content
+    {
+        let open = ctx.open;
+        use_outside_click(id, move || {
+            if *open.peek() {
+                bar_ctx.open_menu_id.set(None);
+            }
+        });
+    }
+
+    if !presence.is_present() && !props.force_mount {
+        return rsx! {};
+    }
 
     let on_escape = Callback::new(move |()| {
         bar_ctx.open_menu_id.set(None);
@@ -484,6 +513,13 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
         bar_ctx.navigate(1);
     });
 
+    let content_attrs = attributes!(div {
+        id: id,
+        "data-slot": "menubar-content",
+        "data-state": presence.data_state(),
+    });
+    let merged = merge_attributes(vec![content_attrs, props.attributes]);
+
     rsx! {
         PopperContent {
             side: props.side,
@@ -493,61 +529,17 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
             avoid_collisions: props.avoid_collisions,
             collision_padding: props.collision_padding,
             css_var_prefix: "menubar",
+            class: props.class,
+            content_attributes: merged,
+            on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
 
-
-            MenubarContentInner {
-                id: props.id,
-                force_mount: props.force_mount,
-                class: props.class,
+            crate::menu::MenuContent {
+                content_id: id,
                 on_escape_override: on_escape,
                 on_arrow_left: on_arrow_left,
                 on_arrow_right: on_arrow_right,
-                attributes: props.attributes,
-                children: props.children,
+                {props.children}
             }
-        }
-    }
-}
-
-/// Inner component that reads [`PopperContentCtx`] for `data-side`/`data-align`.
-#[derive(Props, Clone, PartialEq)]
-struct MenubarContentInnerProps {
-    #[props(default)]
-    id: ReadSignal<Option<String>>,
-    #[props(default)]
-    force_mount: bool,
-    #[props(default)]
-    class: Option<String>,
-    on_escape_override: Callback<()>,
-    on_arrow_left: Callback<()>,
-    on_arrow_right: Callback<()>,
-    #[props(extends = GlobalAttributes)]
-    attributes: Vec<Attribute>,
-    children: Element,
-}
-
-#[component]
-fn MenubarContentInner(props: MenubarContentInnerProps) -> Element {
-    let popper = use_context::<PopperContentCtx>();
-    let side = (popper.placed_side)();
-    let align = (popper.placed_align)();
-
-    let popper_attrs = attributes!(div {
-        "data-side": side.as_str(),
-        "data-align": align.as_str(),
-    });
-
-    rsx! {
-        crate::menu::MenuContent {
-            id: props.id,
-            force_mount: props.force_mount,
-            class: props.class,
-            on_escape_override: props.on_escape_override,
-            on_arrow_left: props.on_arrow_left,
-            on_arrow_right: props.on_arrow_right,
-            extra_attributes: popper_attrs,
-            attributes: props.attributes,
-            {props.children}
         }
     }
 }

@@ -5,7 +5,7 @@
 //! - [`TooltipTrigger`]: Button element that shows/hides tooltip on hover/focus
 //! - [`TooltipContent`]: The tooltip content, rendered with `role="tooltip"`
 
-use crate::popper::{Align, Popper, PopperContent, PopperContentCtx, PopperCtx, Side};
+use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
 use crate::portal::Portal;
 use crate::use_unique_id;
 use crate::{merge_attributes, use_delayed_open, use_id_or, use_presence};
@@ -371,6 +371,14 @@ pub fn TooltipContent(props: TooltipContentProps) -> Element {
     let disable_hover = ctx.disable_hoverable_content;
     let data_state = presence.data_state();
 
+    let content_attrs = attributes!(div {
+        id: id,
+        role: "tooltip",
+        "data-slot": "tooltip-content",
+        "data-state": data_state,
+    });
+    let merged = merge_attributes(vec![content_attrs, props.attributes]);
+
     rsx! {
         Portal {
             PopperContent {
@@ -381,67 +389,22 @@ pub fn TooltipContent(props: TooltipContentProps) -> Element {
                 avoid_collisions: props.avoid_collisions,
                 collision_padding: props.collision_padding,
                 css_var_prefix: "tooltip",
+                class: props.class,
+                content_attributes: merged,
+                on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
+                on_pointer_enter: move |_| {
+                    if !disable_hover {
+                        ctx.set_open.call(true);
+                    }
+                },
+                on_pointer_leave: move |_| {
+                    if !disable_hover {
+                        ctx.handle_immediate_close.call(());
+                    }
+                },
 
-                TooltipContentInner {
-                    id,
-                    data_state,
-                    disable_hover,
-                    on_anim_end: move |_: Event<AnimationData>| presence.on_animation_end(),
-                    on_pointer_enter: move |_| {
-                        if !disable_hover {
-                            ctx.set_open.call(true);
-                        }
-                    },
-                    on_pointer_leave: move |_| {
-                        if !disable_hover {
-                            ctx.handle_immediate_close.call(());
-                        }
-                    },
-                    class: props.class,
-                    attributes: props.attributes,
-                    children: props.children,
-                }
+                {props.children}
             }
-        }
-    }
-}
-
-/// Inner component that reads [`PopperContentCtx`] for `data-side`/`data-align`.
-#[derive(Props, Clone, PartialEq)]
-struct TooltipContentInnerProps {
-    id: Memo<String>,
-    data_state: &'static str,
-    disable_hover: bool,
-    on_anim_end: EventHandler<Event<AnimationData>>,
-    on_pointer_enter: EventHandler<Event<PointerData>>,
-    on_pointer_leave: EventHandler<Event<PointerData>>,
-    #[props(default)]
-    class: Option<String>,
-    #[props(extends = GlobalAttributes)]
-    attributes: Vec<Attribute>,
-    children: Element,
-}
-
-#[component]
-fn TooltipContentInner(props: TooltipContentInnerProps) -> Element {
-    let popper = use_context::<PopperContentCtx>();
-    let side = (popper.placed_side)();
-    let align = (popper.placed_align)();
-
-    rsx! {
-        div {
-            id: props.id,
-            role: "tooltip",
-            "data-slot": "tooltip-content",
-            "data-state": props.data_state,
-            "data-side": side.as_str(),
-            "data-align": align.as_str(),
-            class: props.class,
-            onanimationend: move |e| props.on_anim_end.call(e),
-            onpointerenter: move |e| props.on_pointer_enter.call(e),
-            onpointerleave: move |e| props.on_pointer_leave.call(e),
-            ..props.attributes,
-            {props.children}
         }
     }
 }

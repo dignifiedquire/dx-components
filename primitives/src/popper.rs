@@ -129,6 +129,9 @@ impl PopperCtx {
 pub(crate) struct PopperContentCtx {
     pub placed_side: ReadSignal<Side>,
     pub placed_align: ReadSignal<Align>,
+    /// Whether floating-ui has computed position. Matches Radix `isPositioned`.
+    /// Children use this to suppress entry animations until placement is done.
+    pub is_positioned: ReadSignal<bool>,
 }
 
 // ---------------------------------------------------------------------------
@@ -189,6 +192,9 @@ pub fn PopperAnchor(props: PopperAnchorProps) -> Element {
 // PopperContent
 // ---------------------------------------------------------------------------
 
+/// Unique ID counter for wrapper elements (used to read computed styles via web-sys).
+static POPPER_ID_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 #[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
 pub struct PopperContentProps {
@@ -218,19 +224,55 @@ pub struct PopperContentProps {
     #[props(default)]
     pub portal: bool,
 
+    /// CSS class forwarded to the inner content div (matching upstream Primitive.div).
+    /// This is where consumers set their styling (e.g. `bg-popover z-50 ...`).
+    #[props(default)]
+    pub class: Option<String>,
+
+    /// Attributes merged onto the inner content div (matching upstream `{...contentProps}`).
+    /// Consumers build these with `attributes!` + `merge_attributes` to pass
+    /// `data-state`, `role`, `id`, etc.
+    #[props(default)]
+    pub content_attributes: Vec<Attribute>,
+
+    /// Called when an animation ends on the inner content div.
+    /// Used by consumers for presence animation tracking.
+    #[props(default)]
+    pub on_animation_end: Option<EventHandler<Event<AnimationData>>>,
+
+    /// Called when pointer enters the inner content div.
+    #[props(default)]
+    pub on_pointer_enter: Option<EventHandler<Event<PointerData>>>,
+
+    /// Called when pointer leaves the inner content div.
+    #[props(default)]
+    pub on_pointer_leave: Option<EventHandler<Event<PointerData>>>,
+
     pub children: Element,
 }
 
 /// Floating content positioned relative to the anchor.
 ///
-/// Uses `floating-ui` crate for positioning (offset, flip, shift, size middleware).
-/// Auto-updates on scroll/resize via web-sys event listeners.
-/// Sets CSS custom properties for transform-origin and available space.
+/// Renders two elements matching upstream `@radix-ui/react-popper`:
+/// 1. **Wrapper div** (`data-radix-popper-content-wrapper`): positioned by floating-ui
+///    with `position: fixed`, floatingStyles, `zIndex` mirrored from content,
+///    transform-origin CSS var, and available-size CSS vars.
+/// 2. **Inner content div** (`data-side`, `data-align`): receives consumer's class,
+///    attributes, and suppresses animations until positioned.
 #[component]
 pub fn PopperContent(props: PopperContentProps) -> Element {
     let ctx: PopperCtx = use_context();
 
-    let mut content_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+    // Wrapper ref — the floating element measured for positioning
+    let mut wrapper_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+
+    // Unique ID for the wrapper so we can query it via web-sys for contentZIndex
+    let wrapper_id = use_memo(|| {
+        format!(
+            "__popper_w_{}",
+            POPPER_ID_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        )
+    });
 
     // Position state
     let mut pos_x = use_signal(|| None::<f64>);
@@ -243,8 +285,12 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     let mut anchor_h = use_signal(|| 0.0f64);
     let mut transform_origin = use_signal(String::new);
 
-    // Context is provided by PopperContentCtxProvider inside the wrapper
-    // (works correctly even through Portal since it re-provides at render site)
+    // Matches upstream `isPositioned` — false until floating-ui computes position.
+    // Used to suppress entry animations on inner content div (upstream line 281).
+    let mut is_positioned = use_signal(|| false);
+
+    // Mirrors content's computed z-index to wrapper (matching upstream lines 232-235, 245).
+    let mut content_z_index = use_signal(|| Option::<String>::None);
 
     let side = props.side;
     let side_offset = props.side_offset;
@@ -257,25 +303,55 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     // Tick counter — incremented by auto_update scroll/resize listeners to trigger re-measurement
     let tick = use_signal(|| 0u64);
 
+    // Read content's computed z-index after inner div mounts (upstream lines 232-235).
+    // Uses wrapper ID to find the wrapper, then firstElementChild for the inner content div.
+    #[cfg(target_arch = "wasm32")]
+    {
+        let wrapper_id = wrapper_id.clone();
+        use_effect(move || {
+            // Subscribe to wrapper_ref so we run after mount
+            let _ = wrapper_ref();
+            let id = wrapper_id();
+            let Some(window) = web_sys::window() else {
+                return;
+            };
+            let Some(doc) = window.document() else {
+                return;
+            };
+            if let Some(wrapper_el) = doc.get_element_by_id(&id) {
+                if let Some(inner_el) = wrapper_el.first_element_child() {
+                    if let Ok(Some(style)) = window.get_computed_style(&inner_el) {
+                        if let Ok(z) = style.get_property_value("z-index") {
+                            if z != "auto" && !z.is_empty() {
+                                content_z_index.set(Some(z));
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     // Positioning effect: fires on tick changes (scroll/resize) and ref changes.
-    // Subscribes to content_ref and anchor signals so it re-runs when elements mount.
     use_effect(move || {
         let _tick = tick(); // Subscribe to scroll/resize updates
-        let Some(content_md) = content_ref.cloned() else {
+        let Some(wrapper_md) = wrapper_ref.cloned() else {
             return;
         };
 
         // Subscribe to anchor signal changes so we reposition when anchor mounts
         let anchor_kind = anchor;
         match anchor_kind {
-            PopperAnchorKind::Element(sig) => { let _ = sig(); }  // Subscribe
-            PopperAnchorKind::Virtual { x, y } => { let _ = (x(), y()); }  // Subscribe
+            PopperAnchorKind::Element(sig) => {
+                let _ = sig();
+            }
+            PopperAnchorKind::Virtual { x, y } => {
+                let _ = (x(), y());
+            }
         }
 
         spawn(async move {
             // Wait for browser layout to complete before measuring.
-            // Without this, getBoundingClientRect returns stale coordinates
-            // because the browser hasn't performed layout yet.
             #[cfg(target_arch = "wasm32")]
             {
                 let promise = js_sys::Promise::new(&mut |resolve, _| {
@@ -290,7 +366,9 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             let anchor_rect = match anchor_kind {
                 PopperAnchorKind::Element(sig) => {
                     let Some(md) = sig.cloned() else { return };
-                    let Ok(r) = md.get_client_rect().await else { return };
+                    let Ok(r) = md.get_client_rect().await else {
+                        return;
+                    };
                     floating_ui::Rect {
                         x: r.origin.x,
                         y: r.origin.y,
@@ -306,8 +384,10 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
                 },
             };
 
-            // Measure content
-            let Ok(cr) = content_md.get_client_rect().await else { return };
+            // Measure floating element (wrapper)
+            let Ok(cr) = wrapper_md.get_client_rect().await else {
+                return;
+            };
             let content_rect = floating_ui::Rect {
                 x: 0.0,
                 y: 0.0,
@@ -320,7 +400,7 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
                 floating: content_rect,
             };
 
-            // Build middleware chain matching Radix Popper.tsx
+            // Build middleware chain (matching upstream popper.tsx lines 192-216)
             let placement = to_floating_placement(side, align);
             let padding = floating_ui::Padding::Uniform(collision_padding);
 
@@ -362,15 +442,9 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
                 },
             }));
 
-            // Simple viewport-based overflow detection
-            // On wasm32, we'd use floating_ui::dom for full clipping rect.
-            // For now, use a viewport rect from content measurement.
             let detect_overflow_fn =
                 |state: &floating_ui::MiddlewareState,
                  opts: &floating_ui::DetectOverflowOptions| {
-                    // Viewport = the window dimensions.
-                    // Since we use strategy: fixed, getBoundingClientRect coords are viewport-relative.
-                    // We get viewport size from the content's measurement context.
                     #[cfg(target_arch = "wasm32")]
                     let viewport = {
                         let vp = floating_ui::dom::get_viewport_rect();
@@ -397,7 +471,7 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
 
             let (result_side, result_align) = from_floating_placement(result.placement);
 
-            // Compute transform origin (matching Radix's custom transformOrigin middleware)
+            // Compute transform origin (matching upstream transformOrigin middleware)
             let align_pct = match result_align {
                 Align::Start => "0%",
                 Align::Center => "50%",
@@ -426,11 +500,11 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             anchor_w.set(anchor_rect.width);
             anchor_h.set(anchor_rect.height);
             transform_origin.set(to);
+            is_positioned.set(true);
         });
     });
 
     // Auto-update: set up scroll/resize listeners that bump `tick`
-    // This is only available on wasm32 (uses web-sys)
     #[cfg(target_arch = "wasm32")]
     {
         use crate::use_effect_with_cleanup;
@@ -462,59 +536,120 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
 
     let prefix = props.css_var_prefix;
 
-    let style = if let (Some(x), Some(y)) = (pos_x(), pos_y()) {
-        let (to_var, aw_var, ah_var, anw_var, anh_var) = if let Some(p) = prefix {
-            (
-                format!("--radix-{p}-content-transform-origin"),
-                format!("--radix-{p}-content-available-width"),
-                format!("--radix-{p}-content-available-height"),
-                format!("--radix-{p}-trigger-width"),
-                format!("--radix-{p}-trigger-height"),
-            )
-        } else {
-            (
-                "--radix-popper-transform-origin".to_string(),
-                "--radix-popper-available-width".to_string(),
-                "--radix-popper-available-height".to_string(),
-                "--radix-popper-anchor-width".to_string(),
-                "--radix-popper-anchor-height".to_string(),
-            )
-        };
+    // --- Wrapper style (matching upstream lines 241-258) ---
+    // The wrapper is the floating element with position:fixed.
+    // CSS vars are set here (both --radix-popper-* and --radix-{prefix}-* aliases).
+    let wrapper_style = {
+        let is_pos = is_positioned();
+        let z_index = content_z_index();
 
-        format!(
-            "position: fixed; left: {x}px; top: {y}px; \
-             transform: none; \
-             min-width: max-content; \
-             {to_var}: {to}; \
-             {aw_var}: {aw}px; \
-             {ah_var}: {ah}px; \
-             {anw_var}: {anw}px; \
-             {anh_var}: {anh}px;",
-            to = transform_origin(),
-            aw = avail_w(),
-            ah = avail_h(),
-            anw = anchor_w(),
-            anh = anchor_h(),
-        )
-    } else {
-        // Off-screen while measuring
-        "position: fixed; left: 0; top: 0; transform: translate(0, -200%); min-width: max-content;"
-            .to_string()
+        if let (Some(x), Some(y)) = (pos_x(), pos_y()) {
+            let to = transform_origin();
+            let aw = avail_w();
+            let ah = avail_h();
+            let anw = anchor_w();
+            let anh = anchor_h();
+
+            let z_part = match &z_index {
+                Some(z) => format!("z-index: {z};"),
+                None => String::new(),
+            };
+
+            // Always set --radix-popper-* base vars on wrapper
+            let mut style = format!(
+                "position: fixed; left: {x}px; top: {y}px; \
+                 min-width: max-content; {z_part} \
+                 --radix-popper-transform-origin: {to}; \
+                 --radix-popper-available-width: {aw}px; \
+                 --radix-popper-available-height: {ah}px; \
+                 --radix-popper-anchor-width: {anw}px; \
+                 --radix-popper-anchor-height: {anh}px;"
+            );
+
+            // Also set component-specific aliases if css_var_prefix is set
+            if let Some(p) = prefix {
+                use std::fmt::Write;
+                let _ = write!(
+                    style,
+                    " --radix-{p}-content-transform-origin: {to}; \
+                     --radix-{p}-content-available-width: {aw}px; \
+                     --radix-{p}-content-available-height: {ah}px; \
+                     --radix-{p}-trigger-width: {anw}px; \
+                     --radix-{p}-trigger-height: {anh}px;"
+                );
+            }
+
+            // Upstream line 243: transform is floatingStyles.transform when positioned,
+            // otherwise translate(0, -200%) to keep off-page while measuring.
+            // floatingStyles.transform is empty/none when using strategy:fixed + left/top.
+            if !is_pos {
+                style.push_str(" transform: translate(0, -200%);");
+            }
+
+            style
+        } else {
+            // Not yet positioned — keep off-screen while measuring
+            let z_part = match &z_index {
+                Some(z) => format!("z-index: {z};"),
+                None => String::new(),
+            };
+            format!(
+                "position: fixed; left: 0; top: 0; \
+                 transform: translate(0, -200%); \
+                 min-width: max-content; {z_part}"
+            )
+        }
     };
 
-    // Capture context values as signals to re-provide through Portal
+    // --- Inner content style (matching upstream line 277-282) ---
+    // Suppresses animation until positioned so entry animations don't fire with wrong placement.
+    let content_style = if !is_positioned() {
+        "animation: none;"
+    } else {
+        ""
+    };
+
     let ctx_side: ReadSignal<Side> = placed_side.into();
     let ctx_align: ReadSignal<Align> = placed_align.into();
+    let ctx_is_positioned: ReadSignal<bool> = is_positioned.into();
 
     let wrapper = rsx! {
         PopperContentCtxProvider {
             placed_side: ctx_side,
             placed_align: ctx_align,
+            is_positioned: ctx_is_positioned,
+
             div {
-                onmounted: move |evt| content_ref.set(Some(evt.data())),
+                id: wrapper_id(),
+                onmounted: move |evt| wrapper_ref.set(Some(evt.data())),
                 "data-radix-popper-content-wrapper": "",
-                style: "{style}",
-                {props.children}
+                style: "{wrapper_style}",
+
+                // Inner content div — matches upstream Primitive.div (lines 272-283).
+                // Receives consumer's class, content_attributes, data-side, data-align.
+                div {
+                    "data-side": placed_side().as_str(),
+                    "data-align": placed_align().as_str(),
+                    class: props.class,
+                    style: "{content_style}",
+                    onanimationend: move |e| {
+                        if let Some(ref h) = props.on_animation_end {
+                            h.call(e);
+                        }
+                    },
+                    onpointerenter: move |e| {
+                        if let Some(ref h) = props.on_pointer_enter {
+                            h.call(e);
+                        }
+                    },
+                    onpointerleave: move |e| {
+                        if let Some(ref h) = props.on_pointer_leave {
+                            h.call(e);
+                        }
+                    },
+                    ..props.content_attributes,
+                    {props.children}
+                }
             }
         }
     };
@@ -533,6 +668,7 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
 struct PopperContentCtxProviderProps {
     placed_side: ReadSignal<Side>,
     placed_align: ReadSignal<Align>,
+    is_positioned: ReadSignal<bool>,
     children: Element,
 }
 
@@ -541,6 +677,7 @@ fn PopperContentCtxProvider(props: PopperContentCtxProviderProps) -> Element {
     use_context_provider(|| PopperContentCtx {
         placed_side: props.placed_side,
         placed_align: props.placed_align,
+        is_positioned: props.is_positioned,
     });
     props.children
 }

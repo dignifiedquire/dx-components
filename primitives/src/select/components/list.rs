@@ -1,11 +1,13 @@
 //! SelectContent (formerly SelectList) component implementation.
 
-use crate::popper::{Align, PopperContent, PopperContentCtx, Side};
+use crate::merge_attributes;
+use crate::popper::{Align, PopperContent, Side};
 use crate::portal::Portal;
 use crate::{
     select::context::SelectListContext, use_animated_open, use_effect, use_id_or, use_unique_id,
 };
 use dioxus::prelude::*;
+use dioxus_attributes::attributes;
 
 use super::super::context::SelectContext;
 
@@ -40,6 +42,10 @@ pub struct SelectContentProps {
     #[props(default)]
     pub collision_padding: f64,
 
+    /// Additional CSS classes.
+    #[props(default)]
+    pub class: Option<String>,
+
     /// Additional attributes for the content
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -63,7 +69,7 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
         ctx.list_id.set(Some(id()));
     });
 
-    let open = ctx.open;
+    let mut open = ctx.open;
 
     let render = use_animated_open(id, open);
     let render = use_memo(render);
@@ -80,49 +86,6 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
         }
     });
 
-    rsx! {
-        if render() {
-            Portal {
-                PopperContent {
-                    side: props.side,
-                    side_offset: props.side_offset,
-                    align: props.align,
-                    align_offset: props.align_offset,
-                    avoid_collisions: props.avoid_collisions,
-                    collision_padding: props.collision_padding,
-                    css_var_prefix: "select",
-
-                    SelectContentInner {
-                        id,
-                        attributes: props.attributes,
-                        children: props.children,
-                    }
-                }
-            }
-        } else {
-            {props.children}
-        }
-    }
-}
-
-/// Inner component that reads [`PopperContentCtx`] for `data-side`/`data-align`
-/// and renders the listbox div with keyboard/focus handling.
-#[derive(Props, Clone, PartialEq)]
-struct SelectContentInnerProps {
-    id: Memo<String>,
-    #[props(extends = GlobalAttributes)]
-    attributes: Vec<Attribute>,
-    children: Element,
-}
-
-#[component]
-fn SelectContentInner(props: SelectContentInnerProps) -> Element {
-    let mut ctx = use_context::<SelectContext>();
-    let popper = use_context::<PopperContentCtx>();
-    let side = (popper.placed_side)();
-    let align = (popper.placed_align)();
-
-    let mut open = ctx.open;
     let mut listbox_ref: Signal<Option<std::rc::Rc<MountedData>>> = use_signal(|| None);
     let focused = move || open() && !ctx.focus_state.any_focused();
 
@@ -206,26 +169,45 @@ fn SelectContentInner(props: SelectContentInnerProps) -> Element {
             .map(|opt| opt.id.clone())
     });
 
+    let content_attrs = attributes!(div {
+        "data-slot": "select-content",
+        "data-state": if open() { "open" } else { "closed" },
+    });
+    let merged = merge_attributes(vec![content_attrs, props.attributes]);
+
     rsx! {
-        div {
-            id: props.id,
-            role: "listbox",
-            "data-slot": "select-content",
-            "data-side": side.as_str(),
-            "data-align": align.as_str(),
-            tabindex: if focused() { "0" } else { "-1" },
-            "data-state": if open() { "open" } else { "closed" },
-            aria_activedescendant: active_descendant,
+        if render() {
+            Portal {
+                PopperContent {
+                    side: props.side,
+                    side_offset: props.side_offset,
+                    align: props.align,
+                    align_offset: props.align_offset,
+                    avoid_collisions: props.avoid_collisions,
+                    collision_padding: props.collision_padding,
+                    css_var_prefix: "select",
+                    class: props.class,
+                    content_attributes: merged,
 
-            onmounted: move |evt| listbox_ref.set(Some(evt.data())),
-            onkeydown,
-            onblur: move |_| {
-                if focused() {
-                    open.set(false);
+                    div {
+                        id: id,
+                        role: "listbox",
+                        tabindex: if focused() { "0" } else { "-1" },
+                        aria_activedescendant: active_descendant,
+
+                        onmounted: move |evt| listbox_ref.set(Some(evt.data())),
+                        onkeydown: onkeydown,
+                        onblur: move |_| {
+                            if focused() {
+                                open.set(false);
+                            }
+                        },
+
+                        {props.children}
+                    }
                 }
-            },
-
-            ..props.attributes,
+            }
+        } else {
             {props.children}
         }
     }
