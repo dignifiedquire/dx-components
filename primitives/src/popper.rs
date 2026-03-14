@@ -278,43 +278,24 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             // because the browser hasn't performed layout yet.
             #[cfg(target_arch = "wasm32")]
             {
-                let _ = document::eval(
-                    "await new Promise(r => requestAnimationFrame(r)); dioxus.send(0)"
-                )
-                .recv::<i32>()
-                .await;
+                let promise = js_sys::Promise::new(&mut |resolve, _| {
+                    let _ = web_sys::window()
+                        .unwrap()
+                        .request_animation_frame(&resolve);
+                });
+                let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
             }
 
-            // Measure anchor using get_client_rect (viewport-relative)
+            // Measure anchor (viewport-relative via getBoundingClientRect)
             let anchor_rect = match anchor_kind {
                 PopperAnchorKind::Element(sig) => {
                     let Some(md) = sig.cloned() else { return };
-                    // Use web-sys getBoundingClientRect for accurate viewport-relative coords
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        if let Some(el) = md.downcast::<web_sys::Element>() {
-                            let r = el.get_bounding_client_rect();
-                            floating_ui::Rect {
-                                x: r.x(),
-                                y: r.y(),
-                                width: r.width(),
-                                height: r.height(),
-                            }
-                        } else {
-                            let Ok(r) = md.get_client_rect().await else { return };
-                            floating_ui::Rect {
-                                x: r.origin.x, y: r.origin.y,
-                                width: r.size.width, height: r.size.height,
-                            }
-                        }
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        let Ok(r) = md.get_client_rect().await else { return };
-                        floating_ui::Rect {
-                            x: r.origin.x, y: r.origin.y,
-                            width: r.size.width, height: r.size.height,
-                        }
+                    let Ok(r) = md.get_client_rect().await else { return };
+                    floating_ui::Rect {
+                        x: r.origin.x,
+                        y: r.origin.y,
+                        width: r.size.width,
+                        height: r.size.height,
                     }
                 }
                 PopperAnchorKind::Virtual { x, y } => floating_ui::Rect {
@@ -326,29 +307,12 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             };
 
             // Measure content
-            #[cfg(target_arch = "wasm32")]
-            let content_rect = {
-                if let Some(el) = content_md.downcast::<web_sys::Element>() {
-                    let r = el.get_bounding_client_rect();
-                    floating_ui::Rect {
-                        x: 0.0, y: 0.0,
-                        width: r.width(), height: r.height(),
-                    }
-                } else {
-                    let Ok(r) = content_md.get_client_rect().await else { return };
-                    floating_ui::Rect {
-                        x: 0.0, y: 0.0,
-                        width: r.size.width, height: r.size.height,
-                    }
-                }
-            };
-            #[cfg(not(target_arch = "wasm32"))]
-            let content_rect = {
-                let Ok(r) = content_md.get_client_rect().await else { return };
-                floating_ui::Rect {
-                    x: 0.0, y: 0.0,
-                    width: r.size.width, height: r.size.height,
-                }
+            let Ok(cr) = content_md.get_client_rect().await else { return };
+            let content_rect = floating_ui::Rect {
+                x: 0.0,
+                y: 0.0,
+                width: cr.size.width,
+                height: cr.size.height,
             };
 
             let rects = floating_ui::ElementRects {

@@ -2286,10 +2286,13 @@ dependencies = [
  "dioxus-sdk-time",
  "dioxus-ssr",
  "floating-ui",
+ "js-sys",
  "num-integer",
  "regex-lite",
  "time",
  "tracing",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
