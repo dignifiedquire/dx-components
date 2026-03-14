@@ -254,15 +254,20 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     // Tick counter — incremented by auto_update scroll/resize listeners to trigger re-measurement
     let tick = use_signal(|| 0u64);
 
-    // Positioning effect: fires on tick changes (scroll/resize) and ref changes
+    // Positioning effect: fires on tick changes (scroll/resize) and ref changes.
+    // Subscribes to content_ref and anchor signals so it re-runs when elements mount.
     use_effect(move || {
         let _tick = tick(); // Subscribe to scroll/resize updates
         let Some(content_md) = content_ref.cloned() else {
             return;
         };
 
-        // Get anchor data
+        // Subscribe to anchor signal changes so we reposition when anchor mounts
         let anchor_kind = anchor;
+        match anchor_kind {
+            PopperAnchorKind::Element(sig) => { let _ = sig(); }  // Subscribe
+            PopperAnchorKind::Virtual { x, y } => { let _ = (x(), y()); }  // Subscribe
+        }
 
         spawn(async move {
             // Measure anchor
@@ -466,6 +471,7 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
 
         format!(
             "position: fixed; left: {x}px; top: {y}px; \
+             transform: none; \
              min-width: max-content; \
              {to_var}: {to}; \
              {aw_var}: {aw}px; \
