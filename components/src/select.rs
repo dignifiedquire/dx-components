@@ -61,6 +61,9 @@ pub fn SelectTrigger(props: SelectTriggerProps) -> Element {
 
 #[derive(Props, Clone, PartialEq)]
 pub struct SelectContentProps {
+    #[props(default = 4.0)]
+    pub side_offset: f64,
+
     #[props(default)]
     pub class: Option<String>,
 
@@ -82,6 +85,7 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
 
     rsx! {
         primitives::SelectContent {
+            side_offset: props.side_offset,
             attributes: attrs,
             {props.children}
         }

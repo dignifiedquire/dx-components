@@ -31,18 +31,18 @@
 
 [data-slot="drag-and-drop-list-item"][data-focus-visible] {
   border-radius: 0.5rem;
-  outline: 2px solid hsl(var(--ring));
+  outline: 2px solid var(--ring);
 }
 
 [data-slot="drag-and-drop-list-item"]:focus-visible {
   border-radius: 0.5rem;
-  outline: 2px solid hsl(var(--ring));
+  outline: 2px solid var(--ring);
 }
 
 [data-slot="drag-and-drop-list-item"][data-is-grabbing] {
   cursor: grabbing;
   opacity: 0.6;
-  outline: 2px dashed hsl(var(--ring));
+  outline: 2px dashed var(--ring);
 }
 
 [data-slot="drag-and-drop-list-drag-icon"] {
@@ -50,7 +50,7 @@
   width: 1.5rem;
   align-items: center;
   margin-right: 1rem;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
 }
 
 [data-slot="drag-and-drop-list-item-content"] {
@@ -69,13 +69,13 @@
   border-style: none;
   margin-left: 1rem;
   background-color: transparent;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   cursor: pointer;
 }
 
 [data-slot="drag-and-drop-list-remove"]:focus-visible {
   border-radius: 0.125rem;
-  outline: 2px solid hsl(var(--ring));
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
@@ -84,7 +84,7 @@
   z-index: 1;
   height: 2px;
   margin: -1px 0;
-  background-color: hsl(var(--ring));
+  background-color: var(--ring);
 }
 
 [data-slot="drag-and-drop-list-indicator"]::before {
@@ -95,6 +95,6 @@
   height: 0;
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
-  border-left: 6px solid hsl(var(--ring));
+  border-left: 6px solid var(--ring);
   content: "";
 }

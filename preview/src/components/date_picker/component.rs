@@ -4,7 +4,7 @@ pub use dioxus_primitives::calendar::DateRange;
 use dioxus_primitives::{
     date_picker::{self, DatePickerInputProps, DatePickerProps, DateRangePickerProps},
     popover::{PopoverRoot, PopoverTriggerProps},
-    ContentAlign,
+    popper::Align,
 };
 
 use super::super::calendar::*;
@@ -61,7 +61,7 @@ pub fn DatePickerInput(props: DatePickerInputProps) -> Element {
             attributes: props.attributes,
             {props.children}
             DatePickerPopoverTrigger {}
-            DatePickerPopoverContent { align: ContentAlign::Center,
+            DatePickerPopoverContent { align: Align::Center,
                 date_picker::DatePickerCalendar { calendar: Calendar,
                     CalendarView {
                         CalendarHeader {
@@ -91,7 +91,7 @@ pub fn DateRangePickerInput(props: DatePickerInputProps) -> Element {
             {props.children}
             DatePickerPopoverTrigger {}
             DatePickerPopoverContent {
-                align: ContentAlign::Center,
+                align: Align::Center,
                 date_picker::DateRangePickerCalendar {
                     calendar: RangeCalendar,
                     CalendarView {

@@ -423,6 +423,9 @@
   .-mt-4 {
     margin-top: calc(var(--spacing) * -4);
   }
+  .mt-1 {
+    margin-top: calc(var(--spacing) * 1);
+  }
   .mt-1\.5 {
     margin-top: calc(var(--spacing) * 1.5);
   }
@@ -632,6 +635,9 @@
   }
   .max-h-96 {
     max-height: calc(var(--spacing) * 96);
+  }
+  .max-h-\[60vh\] {
+    max-height: 60vh;
   }
   .max-h-\[80\%\] {
     max-height: 80%;
@@ -949,6 +955,13 @@
   }
   .gap-7 {
     gap: calc(var(--spacing) * 7);
+  }
+  .space-y-0\.5 {
+    :where(& > :not(:last-child)) {
+      --tw-space-y-reverse: 0;
+      margin-block-start: calc(calc(var(--spacing) * 0.5) * var(--tw-space-y-reverse));
+      margin-block-end: calc(calc(var(--spacing) * 0.5) * calc(1 - var(--tw-space-y-reverse)));
+    }
   }
   .space-y-1 {
     :where(& > :not(:last-child)) {
@@ -1426,6 +1439,10 @@
     --tw-leading: var(--leading-normal);
     line-height: var(--leading-normal);
   }
+  .leading-relaxed {
+    --tw-leading: var(--leading-relaxed);
+    line-height: var(--leading-relaxed);
+  }
   .leading-snug {
     --tw-leading: var(--leading-snug);
     line-height: var(--leading-snug);
@@ -1657,6 +1674,10 @@
     --tw-duration: 200ms;
     transition-duration: 200ms;
   }
+  .duration-300 {
+    --tw-duration: 300ms;
+    transition-duration: 300ms;
+  }
   .ease-in-out {
     --tw-ease: var(--ease-in-out);
     transition-timing-function: var(--ease-in-out);
@@ -1689,6 +1710,9 @@
   }
   .duration-200 {
     animation-duration: 200ms;
+  }
+  .duration-300 {
+    animation-duration: 300ms;
   }
   .ease-in-out {
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -2269,6 +2293,12 @@
       outline-color: var(--ring);
     }
   }
+  .focus-visible\:outline-none {
+    &:focus-visible {
+      --tw-outline-style: none;
+      outline-style: none;
+    }
+  }
   .disabled\:pointer-events-none {
     &:disabled {
       pointer-events: none;
@@ -2426,6 +2456,16 @@
       @supports (color: color-mix(in lab, red, red)) {
         --tw-ring-color: color-mix(in oklab, var(--destructive) 20%, transparent);
       }
+    }
+  }
+  .aria-selected\:bg-accent {
+    &[aria-selected="true"] {
+      background-color: var(--accent);
+    }
+  }
+  .aria-selected\:text-accent-foreground {
+    &[aria-selected="true"] {
+      color: var(--accent-foreground);
     }
   }
   .data-highlighted\:bg-accent {
@@ -3277,12 +3317,12 @@
     }
   }
   .dark\:border-input {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       border-color: var(--input);
     }
   }
   .dark\:bg-destructive\/60 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       background-color: var(--destructive);
       @supports (color: color-mix(in lab, red, red)) {
         background-color: color-mix(in oklab, var(--destructive) 60%, transparent);
@@ -3290,7 +3330,7 @@
     }
   }
   .dark\:bg-input\/30 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       background-color: var(--input);
       @supports (color: color-mix(in lab, red, red)) {
         background-color: color-mix(in oklab, var(--input) 30%, transparent);
@@ -3298,17 +3338,17 @@
     }
   }
   .dark\:bg-transparent {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       background-color: transparent;
     }
   }
   .dark\:text-muted-foreground {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       color: var(--muted-foreground);
     }
   }
   .dark\:hover\:bg-accent\/50 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &:hover {
         @media (hover: hover) {
           background-color: var(--accent);
@@ -3320,7 +3360,7 @@
     }
   }
   .dark\:hover\:bg-input\/50 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &:hover {
         @media (hover: hover) {
           background-color: var(--input);
@@ -3332,7 +3372,7 @@
     }
   }
   .dark\:hover\:text-foreground {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &:hover {
         @media (hover: hover) {
           color: var(--foreground);
@@ -3341,7 +3381,7 @@
     }
   }
   .dark\:focus-visible\:ring-destructive\/40 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &:focus-visible {
         --tw-ring-color: var(--destructive);
         @supports (color: color-mix(in lab, red, red)) {
@@ -3351,7 +3391,7 @@
     }
   }
   .dark\:has-data-\[state\=checked\]\:bg-primary\/10 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &:has(*[data-state="checked"]) {
         background-color: var(--primary);
         @supports (color: color-mix(in lab, red, red)) {
@@ -3361,7 +3401,7 @@
     }
   }
   .dark\:has-\[\[data-slot\]\[aria-invalid\=true\]\]\:ring-destructive\/40 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &:has(*:is([data-slot][aria-invalid=true])) {
         --tw-ring-color: var(--destructive);
         @supports (color: color-mix(in lab, red, red)) {
@@ -3371,7 +3411,7 @@
     }
   }
   .dark\:aria-invalid\:ring-destructive\/40 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &[aria-invalid="true"] {
         --tw-ring-color: var(--destructive);
         @supports (color: color-mix(in lab, red, red)) {
@@ -3381,7 +3421,7 @@
     }
   }
   .dark\:data-\[active\=true\]\:aria-invalid\:ring-destructive\/40 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &[data-active="true"] {
         &[aria-invalid="true"] {
           --tw-ring-color: var(--destructive);
@@ -3393,14 +3433,14 @@
     }
   }
   .dark\:data-\[state\=active\]\:border-input {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &[data-state="active"] {
         border-color: var(--input);
       }
     }
   }
   .dark\:data-\[state\=active\]\:bg-input\/30 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &[data-state="active"] {
         background-color: var(--input);
         @supports (color: color-mix(in lab, red, red)) {
@@ -3410,14 +3450,14 @@
     }
   }
   .dark\:data-\[state\=active\]\:text-foreground {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &[data-state="active"] {
         color: var(--foreground);
       }
     }
   }
   .dark\:group-data-\[variant\=line\]\/tabs-list\:data-\[state\=active\]\:border-transparent {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &:is(:where(.group\/tabs-list)[data-variant="line"] *) {
         &[data-state="active"] {
           border-color: transparent;
@@ -3426,7 +3466,7 @@
     }
   }
   .dark\:group-data-\[variant\=line\]\/tabs-list\:data-\[state\=active\]\:bg-transparent {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &:is(:where(.group\/tabs-list)[data-variant="line"] *) {
         &[data-state="active"] {
           background-color: transparent;
@@ -3435,28 +3475,28 @@
     }
   }
   .dark\:data-\[state\=checked\]\:bg-primary {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &[data-state="checked"] {
         background-color: var(--primary);
       }
     }
   }
   .dark\:data-\[state\=checked\]\:bg-primary-foreground {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &[data-state="checked"] {
         background-color: var(--primary-foreground);
       }
     }
   }
   .dark\:data-\[state\=unchecked\]\:bg-foreground {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &[data-state="unchecked"] {
         background-color: var(--foreground);
       }
     }
   }
   .dark\:data-\[state\=unchecked\]\:bg-input\/80 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &[data-state="unchecked"] {
         background-color: var(--input);
         @supports (color: color-mix(in lab, red, red)) {
@@ -3466,7 +3506,7 @@
     }
   }
   .dark\:data-\[variant\=destructive\]\:focus\:bg-destructive\/20 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &[data-variant="destructive"] {
         &:focus {
           background-color: var(--destructive);
@@ -3973,7 +4013,7 @@
     }
   }
   .dark\:\[\[data-slot\=tooltip-content\]_\&\]\:bg-background\/10 {
-    &:where(.dark, .dark *) {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       [data-slot=tooltip-content] & {
         background-color: var(--background);
         @supports (color: color-mix(in lab, red, red)) {

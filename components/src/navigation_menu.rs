@@ -136,7 +136,7 @@ pub struct NavigationMenuItemProps {
 /// Styled NavigationMenuItem — matches shadcn.
 #[component]
 pub fn NavigationMenuItem(props: NavigationMenuItemProps) -> Element {
-    let class = tw_merge!("relative", props.class);
+    let class = tw_merge!("", props.class);
 
     rsx! {
         primitives::NavigationMenuItem {
@@ -209,7 +209,7 @@ pub struct NavigationMenuContentProps {
 #[component]
 pub fn NavigationMenuContent(props: NavigationMenuContentProps) -> Element {
     let class = tw_merge!(
-        "top-0 left-0 w-full p-2 pr-2.5 md:absolute md:w-auto",
+        "absolute left-0 top-full w-full p-2 pr-2.5 md:w-auto",
         props.class,
     );
 

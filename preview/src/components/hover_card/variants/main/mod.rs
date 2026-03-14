@@ -11,7 +11,7 @@ pub fn Demo() -> Element {
                 "@dioxuslabs"
             }
             HoverCardContent {
-                side: ContentSide::Bottom,
+                side: Side::Bottom,
                 div { class: "flex justify-between gap-4",
                     div { class: "flex size-10 items-center justify-center rounded-full bg-muted text-sm font-semibold",
                         "DX"

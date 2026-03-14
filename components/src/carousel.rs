@@ -92,7 +92,17 @@ pub fn CarouselContent(props: CarouselContentProps) -> Element {
         CarouselOrientation::Vertical => "-mt-4 flex-col",
     };
 
-    let class = tw_merge!("flex", orient_class, props.class);
+    let class = tw_merge!(
+        "flex transition-transform duration-300 ease-in-out",
+        orient_class,
+        props.class
+    );
+
+    let offset = ctx.current_index as f64 * -100.0;
+    let transform = match ctx.orientation {
+        CarouselOrientation::Horizontal => format!("transform: translateX({offset}%);"),
+        CarouselOrientation::Vertical => format!("transform: translateY({offset}%);"),
+    };
 
     rsx! {
         div {
@@ -101,6 +111,7 @@ pub fn CarouselContent(props: CarouselContentProps) -> Element {
 
             primitives::CarouselContent {
                 class: class,
+                style: "{transform}",
                 attributes: props.attributes,
                 {props.children}
             }

@@ -4,7 +4,7 @@
 
 use dioxus::prelude::*;
 use dioxus_primitives::popover as primitives;
-pub use dioxus_primitives::{ContentAlign, ContentSide};
+pub use dioxus_primitives::popper::{Align, Side};
 use tailwind_fuse::*;
 
 // ---------------------------------------------------------------------------
@@ -76,11 +76,15 @@ pub struct PopoverContentProps {
     #[props(default)]
     pub force_mount: bool,
 
-    #[props(default = ContentSide::Bottom)]
-    pub side: ContentSide,
+    #[props(default)]
+    pub side: Side,
 
-    #[props(default = ContentAlign::Center)]
-    pub align: ContentAlign,
+    /// Offset from the trigger edge in pixels. Defaults to 0.
+    #[props(default)]
+    pub side_offset: f64,
+
+    #[props(default)]
+    pub align: Align,
 
     #[props(default)]
     pub class: Option<String>,
@@ -102,6 +106,7 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
         primitives::PopoverContent {
             force_mount: props.force_mount,
             side: props.side,
+            side_offset: props.side_offset,
             align: props.align,
             class: class,
             attributes: props.attributes,

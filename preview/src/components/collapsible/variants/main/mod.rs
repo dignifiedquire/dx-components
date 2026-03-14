@@ -4,6 +4,7 @@ use dioxus_components::collapsible::{Collapsible, CollapsibleContent, Collapsibl
 #[component]
 pub fn Demo() -> Element {
     rsx! {
+        document::Link { rel: "stylesheet", href: asset!("../../style.css") }
         Collapsible {
             CollapsibleTrigger {
                 b { "Recent Activity" }

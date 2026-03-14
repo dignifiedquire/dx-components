@@ -59,7 +59,7 @@ fn tooltip_content_side_attribute() {
             Tooltip {
                 default_open: true,
                 TooltipContent {
-                    side: ContentSide::Bottom,
+                    side: Side::Bottom,
                     "Tooltip"
                 }
             }

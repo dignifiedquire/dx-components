@@ -44,12 +44,14 @@ pub struct ComboboxProps {
 /// Styled Combobox root — matches shadcn.
 #[component]
 pub fn Combobox(props: ComboboxProps) -> Element {
+    let class = tw_merge!("relative", props.class);
+
     rsx! {
         primitives::Combobox {
             value: props.value,
             on_value_change: props.on_value_change,
             disabled: props.disabled,
-            class: props.class,
+            class: class,
             attributes: props.attributes,
             {props.children}
         }
@@ -79,7 +81,10 @@ pub struct ComboboxInputProps {
 /// Styled ComboboxInput — matches shadcn.
 #[component]
 pub fn ComboboxInput(props: ComboboxInputProps) -> Element {
-    let class = tw_merge!("w-auto", props.class);
+    let class = tw_merge!(
+        "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+        props.class,
+    );
 
     rsx! {
         primitives::ComboboxInput {
@@ -113,7 +118,7 @@ pub struct ComboboxContentProps {
 #[component]
 pub fn ComboboxContent(props: ComboboxContentProps) -> Element {
     let class = tw_merge!(
-        "z-50 overflow-hidden rounded-md bg-popover text-popover-foreground shadow-md",
+        "absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
         props.class,
     );
 
@@ -193,7 +198,7 @@ pub struct ComboboxItemProps {
 #[component]
 pub fn ComboboxItem(props: ComboboxItemProps) -> Element {
     let class = tw_merge!(
-        "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex w-full cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         props.class,
     );
 

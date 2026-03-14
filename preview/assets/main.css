@@ -1,4 +1,8 @@
 /* Base resets */
+html {
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   padding: 0;

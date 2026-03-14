@@ -3,8 +3,14 @@ use dioxus::prelude::*;
 
 #[component]
 pub fn Demo() -> Element {
+    let mut value = use_signal(String::new);
+
     rsx! {
-        InputOTP { max_length: 6, pattern: "^[0-9]*$",
+        InputOTP {
+            max_length: 6,
+            pattern: "[0-9]",
+            value: value(),
+            on_change: move |v: String| value.set(v),
             InputOTPGroup {
                 InputOTPSlot { index: 0 }
                 InputOTPSlot { index: 1 }

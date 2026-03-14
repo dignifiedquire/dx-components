@@ -61,7 +61,7 @@ fn popover_content_side_attribute() {
             Popover {
                 default_open: true,
                 PopoverContent {
-                    side: ContentSide::Top,
+                    side: Side::Top,
                     "Content"
                 }
             }
@@ -81,7 +81,7 @@ fn popover_content_align_attribute() {
             Popover {
                 default_open: true,
                 PopoverContent {
-                    align: ContentAlign::Start,
+                    align: Align::Start,
                     "Content"
                 }
             }

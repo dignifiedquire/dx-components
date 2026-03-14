@@ -3,8 +3,8 @@
 //! Wraps `dioxus_primitives::tooltip` with shadcn Tailwind classes.
 
 use dioxus::prelude::*;
+pub use dioxus_primitives::popper::{Align, Side};
 use dioxus_primitives::tooltip as primitives;
-pub use dioxus_primitives::{ContentAlign, ContentSide};
 use tailwind_fuse::*;
 
 // ---------------------------------------------------------------------------
@@ -80,11 +80,14 @@ pub struct TooltipContentProps {
     #[props(default)]
     pub force_mount: bool,
 
-    #[props(default = ContentSide::Top)]
-    pub side: ContentSide,
+    #[props(default = Side::Top)]
+    pub side: Side,
 
-    #[props(default = ContentAlign::Center)]
-    pub align: ContentAlign,
+    #[props(default)]
+    pub side_offset: f64,
+
+    #[props(default)]
+    pub align: Align,
 
     #[props(default)]
     pub class: Option<String>,
@@ -106,6 +109,7 @@ pub fn TooltipContent(props: TooltipContentProps) -> Element {
         primitives::TooltipContent {
             force_mount: props.force_mount,
             side: props.side,
+            side_offset: props.side_offset,
             align: props.align,
             class: class,
             attributes: props.attributes,

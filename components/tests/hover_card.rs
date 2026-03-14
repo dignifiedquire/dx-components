@@ -59,7 +59,7 @@ fn hover_card_content_side_attribute() {
             HoverCard {
                 default_open: true,
                 HoverCardContent {
-                    side: ContentSide::Top,
+                    side: Side::Top,
                     "Content"
                 }
             }

@@ -3,8 +3,9 @@
   box-sizing: border-box;
   align-items: center;
   padding: 0.25rem;
-  border: none;
-  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background-color: var(--background);
   gap: 0.25rem;
 }
 
@@ -21,7 +22,7 @@
   border: none;
   border-radius: 0.375rem;
   background: none;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
@@ -32,8 +33,8 @@
 [data-slot="navbar-nav"][data-state="open"] [data-slot="navbar-trigger"],
 [data-slot="navbar-trigger"]:hover,
 [data-slot="navbar-trigger"]:focus-visible {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
+  background-color: var(--accent);
+  color: var(--accent-foreground);
 }
 
 /* Include the top margin in the navbar content pointer events */
@@ -55,9 +56,9 @@
   padding: 0.25rem;
   border-radius: 0.375rem;
   margin-top: 0.5rem;
-  background: hsl(var(--popover));
-  border: 1px solid hsl(var(--border));
-  color: hsl(var(--popover-foreground));
+  background: var(--popover);
+  border: 1px solid var(--border);
+  color: var(--popover-foreground);
   box-shadow:
     0 4px 6px -1px rgb(0 0 0 / 0.1),
     0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -111,8 +112,8 @@
 
 [data-slot="navbar-item"]:hover,
 [data-slot="navbar-item"]:focus-visible {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
+  background-color: var(--accent);
+  color: var(--accent-foreground);
 }
 
 [data-slot="navbar-item"][data-disabled] {

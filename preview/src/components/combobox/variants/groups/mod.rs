@@ -6,6 +6,7 @@ pub fn Demo() -> Element {
     let mut value = use_signal(String::new);
 
     rsx! {
+        document::Link { rel: "stylesheet", href: asset!("../../style.css") }
         Combobox {
             value: value(),
             on_value_change: move |v: String| value.set(v),
@@ -14,21 +15,21 @@ pub fn Demo() -> Element {
                 ComboboxList {
                     ComboboxEmpty { "No timezone found." }
                     ComboboxGroup { heading: "Americas",
-                        ComboboxItem { value: "est", "Eastern Standard Time (EST)" }
-                        ComboboxItem { value: "cst", "Central Standard Time (CST)" }
-                        ComboboxItem { value: "pst", "Pacific Standard Time (PST)" }
+                        ComboboxItem { value: "est", text_value: "Eastern Standard Time (EST)", "Eastern Standard Time (EST)" }
+                        ComboboxItem { value: "cst", text_value: "Central Standard Time (CST)", "Central Standard Time (CST)" }
+                        ComboboxItem { value: "pst", text_value: "Pacific Standard Time (PST)", "Pacific Standard Time (PST)" }
                     }
                     ComboboxSeparator {}
                     ComboboxGroup { heading: "Europe",
-                        ComboboxItem { value: "gmt", "Greenwich Mean Time (GMT)" }
-                        ComboboxItem { value: "cet", "Central European Time (CET)" }
-                        ComboboxItem { value: "eet", "Eastern European Time (EET)" }
+                        ComboboxItem { value: "gmt", text_value: "Greenwich Mean Time (GMT)", "Greenwich Mean Time (GMT)" }
+                        ComboboxItem { value: "cet", text_value: "Central European Time (CET)", "Central European Time (CET)" }
+                        ComboboxItem { value: "eet", text_value: "Eastern European Time (EET)", "Eastern European Time (EET)" }
                     }
                     ComboboxSeparator {}
                     ComboboxGroup { heading: "Asia / Pacific",
-                        ComboboxItem { value: "ist", "India Standard Time (IST)" }
-                        ComboboxItem { value: "jst", "Japan Standard Time (JST)" }
-                        ComboboxItem { value: "aest", "Australian Eastern Standard Time (AEST)" }
+                        ComboboxItem { value: "ist", text_value: "India Standard Time (IST)", "India Standard Time (IST)" }
+                        ComboboxItem { value: "jst", text_value: "Japan Standard Time (JST)", "Japan Standard Time (JST)" }
+                        ComboboxItem { value: "aest", text_value: "Australian Eastern Standard Time (AEST)", "Australian Eastern Standard Time (AEST)" }
                     }
                 }
             }
