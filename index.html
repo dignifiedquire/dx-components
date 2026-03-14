@@ -17,16 +17,21 @@
     <script>
       // Apply saved theme before any rendering to prevent flash of wrong theme.
       (function () {
+        var t = null;
         var c = document.cookie.split(";");
         for (var i = 0; i < c.length; i++) {
           var p = c[i].trim();
           if (p.indexOf("dx_theme=") === 0) {
-            var t = decodeURIComponent(p.slice(9));
-            if (t === "dark" || t === "light")
-              document.documentElement.setAttribute("data-theme", t);
+            t = decodeURIComponent(p.slice(9));
             break;
           }
         }
+        // Fall back to system preference when no cookie is set
+        if (!t && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          t = "dark";
+        }
+        if (t === "dark" || t === "light")
+          document.documentElement.setAttribute("data-theme", t);
       })();
     </script>
     <script>
