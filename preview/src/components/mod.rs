@@ -155,6 +155,7 @@ examples!(
     sidebar(block)[floating, inset],
     skeleton,
     slider[dynamic_range],
+    slot,
     switch[with_label],
     tabs,
     textarea[outline, fade, ghost],

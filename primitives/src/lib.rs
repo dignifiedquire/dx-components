@@ -65,7 +65,7 @@ mod scroll_lock;
 pub mod select;
 pub mod separator;
 pub mod slider;
-pub(crate) mod slot;
+pub mod slot;
 pub mod switch;
 pub mod tabs;
 pub mod toast;
