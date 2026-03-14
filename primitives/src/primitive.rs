@@ -3,9 +3,22 @@
 //! Provides [`compose_event_handlers`] for composing two event handlers
 //! where the original fires first, then the component's handler fires
 //! (unless the event was marked as handled).
+//!
+//! Also provides DOM utility functions (`can_use_dom`, `get_owner_document`,
+//! `get_owner_window`, `get_active_element`, `is_frame`) used internally
+//! by other primitives.
 
 use std::cell::Cell;
 use std::rc::Rc;
+
+/// Returns `true` when DOM APIs are available.
+///
+/// Matches Radix's `canUseDOM`. In a Dioxus/wasm context this is always
+/// `true` at runtime because the code executes in the browser. On the
+/// server (SSR) it returns `false`.
+pub fn can_use_dom() -> bool {
+    cfg!(target_arch = "wasm32")
+}
 
 /// Composes two event handlers so both fire in sequence.
 ///
@@ -72,6 +85,101 @@ pub fn compose_callbacks<E: 'static>(
             s(&event);
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// DOM utilities (wasm32 only)
+// ---------------------------------------------------------------------------
+
+/// Returns the `ownerDocument` of the given DOM node, falling back to the
+/// global `document`.
+///
+/// Matches Radix's `getOwnerDocument`. Returns `None` if DOM APIs are
+/// unavailable.
+#[cfg(target_arch = "wasm32")]
+pub fn get_owner_document(node: Option<&web_sys::Node>) -> Option<web_sys::Document> {
+    if !can_use_dom() {
+        return None;
+    }
+    Some(
+        node.and_then(|n| n.owner_document())
+            .or_else(|| web_sys::window()?.document())?,
+    )
+}
+
+/// Returns the `defaultView` (window) for the given DOM node, falling back
+/// to the global `window`.
+///
+/// Matches Radix's `getOwnerWindow`. Returns `None` if DOM APIs are
+/// unavailable.
+#[cfg(target_arch = "wasm32")]
+pub fn get_owner_window(node: Option<&web_sys::Node>) -> Option<web_sys::Window> {
+    if !can_use_dom() {
+        return None;
+    }
+    get_owner_document(node)?
+        .default_view()
+        .or_else(web_sys::window)
+}
+
+/// Returns the currently active element, with support for iframes and
+/// `aria-activedescendant`.
+///
+/// Matches Radix's `getActiveElement`, which was adapted from
+/// [Ariakit](https://github.com/ariakit/ariakit) (MIT).
+///
+/// When `active_descendant` is `true` and the active element has an
+/// `aria-activedescendant` attribute, the element referenced by that id
+/// is returned instead.
+#[cfg(target_arch = "wasm32")]
+pub fn get_active_element(
+    node: Option<&web_sys::Node>,
+    active_descendant: bool,
+) -> Option<web_sys::HtmlElement> {
+    use wasm_bindgen::JsCast;
+
+    let doc = get_owner_document(node)?;
+    let active = doc.active_element()?;
+
+    // `activeElement` can be an empty object when interacting with elements
+    // inside an iframe.
+    if active.node_name().is_empty() {
+        return None;
+    }
+
+    // If the active element is an iframe, recurse into its content document.
+    if is_frame(&active) {
+        let iframe: &web_sys::HtmlIFrameElement = active.unchecked_ref();
+        if let Some(content_doc) = iframe.content_document() {
+            if let Some(body) = content_doc.body() {
+                let body_node: &web_sys::Node = body.as_ref();
+                return get_active_element(Some(body_node), active_descendant);
+            }
+        }
+    }
+
+    if active_descendant {
+        if let Some(id) = active
+            .get_attribute("aria-activedescendant")
+            .filter(|id| !id.is_empty())
+        {
+            if let Some(owner) = get_owner_document(Some(active.as_ref())) {
+                if let Some(el) = owner.get_element_by_id(&id) {
+                    return el.dyn_into::<web_sys::HtmlElement>().ok();
+                }
+            }
+        }
+    }
+
+    active.dyn_into::<web_sys::HtmlElement>().ok()
+}
+
+/// Returns `true` if the element is an `<iframe>`.
+///
+/// Matches Radix's `isFrame`.
+#[cfg(target_arch = "wasm32")]
+pub fn is_frame(element: &web_sys::Element) -> bool {
+    element.tag_name() == "IFRAME"
 }
 
 #[cfg(test)]
