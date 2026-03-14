@@ -26,7 +26,7 @@ dioxus-ssr = "0.7.0"
 regex-lite = "0.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { version = "0.3", features = ["Document", "DomRect", "Element", "CssStyleDeclaration", "HtmlElement", "HtmlIFrameElement", "Node", "Window"] }
+web-sys = { version = "0.3", features = ["Document", "DomRect", "Element", "CssStyleDeclaration", "HtmlElement", "HtmlIFrameElement", "Node", "NodeList", "Window"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
