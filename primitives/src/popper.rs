@@ -3,34 +3,30 @@
 //! Provides floating positioning for content relative to an anchor element.
 //! This is the foundation for Popover, Tooltip, DropdownMenu, Select, etc.
 //!
-//! Radix uses `@floating-ui/react-dom` for positioning. This Dioxus port
-//! provides the component API surface with CSS-based positioning using
-//! `position: fixed` and `MountedData::get_client_rect()` for anchor
-//! measurement.
+//! Uses the `floating-ui` crate for all positioning math and DOM measurement.
+//! Zero JavaScript strings.
 
-use dioxus::prelude::*;
 use std::rc::Rc;
 
+use dioxus::prelude::*;
+
+use floating_ui::utils::{get_alignment, get_side};
+
 // ---------------------------------------------------------------------------
-// Enums
+// Enums (re-export from floating-ui with Dioxus-friendly API)
 // ---------------------------------------------------------------------------
 
 /// Which side of the anchor the content appears on.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum Side {
-    /// Content appears above the anchor.
     Top,
-    /// Content appears to the right of the anchor.
     Right,
-    /// Content appears below the anchor.
     #[default]
     Bottom,
-    /// Content appears to the left of the anchor.
     Left,
 }
 
 impl Side {
-    /// Returns the string representation.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Top => "top",
@@ -40,7 +36,6 @@ impl Side {
         }
     }
 
-    /// Returns the opposite side.
     pub fn opposite(&self) -> Self {
         match self {
             Self::Top => Self::Bottom,
@@ -54,17 +49,13 @@ impl Side {
 /// Alignment of the content along the anchor edge.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum Align {
-    /// Aligned to the start edge.
     Start,
-    /// Centered (default).
     #[default]
     Center,
-    /// Aligned to the end edge.
     End,
 }
 
 impl Align {
-    /// Returns the string representation.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Start => "start",
@@ -74,53 +65,87 @@ impl Align {
     }
 }
 
+// Conversions between popper's Side/Align and floating-ui's Placement
+fn to_floating_placement(side: Side, align: Align) -> floating_ui::Placement {
+    use floating_ui::Placement;
+    match (side, align) {
+        (Side::Top, Align::Center) => Placement::Top,
+        (Side::Top, Align::Start) => Placement::TopStart,
+        (Side::Top, Align::End) => Placement::TopEnd,
+        (Side::Right, Align::Center) => Placement::Right,
+        (Side::Right, Align::Start) => Placement::RightStart,
+        (Side::Right, Align::End) => Placement::RightEnd,
+        (Side::Bottom, Align::Center) => Placement::Bottom,
+        (Side::Bottom, Align::Start) => Placement::BottomStart,
+        (Side::Bottom, Align::End) => Placement::BottomEnd,
+        (Side::Left, Align::Center) => Placement::Left,
+        (Side::Left, Align::Start) => Placement::LeftStart,
+        (Side::Left, Align::End) => Placement::LeftEnd,
+    }
+}
+
+fn from_floating_placement(placement: floating_ui::Placement) -> (Side, Align) {
+    let side = match get_side(placement) {
+        floating_ui::types::Side::Top => Side::Top,
+        floating_ui::types::Side::Right => Side::Right,
+        floating_ui::types::Side::Bottom => Side::Bottom,
+        floating_ui::types::Side::Left => Side::Left,
+    };
+    let align = match get_alignment(placement) {
+        None => Align::Center,
+        Some(floating_ui::types::Alignment::Start) => Align::Start,
+        Some(floating_ui::types::Alignment::End) => Align::End,
+    };
+    (side, align)
+}
+
 // ---------------------------------------------------------------------------
 // Context
 // ---------------------------------------------------------------------------
 
-#[derive(Clone)]
-struct PopperCtx {
-    anchor_mounted: Signal<Option<Rc<MountedData>>>,
+/// How the anchor is specified.
+#[derive(Clone, Copy)]
+pub(crate) enum PopperAnchorKind {
+    Element(Signal<Option<Rc<MountedData>>>),
+    Virtual { x: Signal<f64>, y: Signal<f64> },
 }
 
-#[derive(Clone)]
-struct PopperContentCtx {
-    placed_side: Side,
+/// Root context shared between anchor and content.
+#[derive(Clone, Copy)]
+pub(crate) struct PopperCtx {
+    pub anchor: PopperAnchorKind,
+}
+
+impl PopperCtx {
+    pub fn set_anchor_ref(&self, data: Rc<MountedData>) {
+        if let PopperAnchorKind::Element(mut sig) = self.anchor {
+            sig.set(Some(data));
+        }
+    }
+}
+
+/// Context provided by [`PopperContent`] to children.
+#[derive(Clone, Copy)]
+pub(crate) struct PopperContentCtx {
+    pub placed_side: ReadSignal<Side>,
+    pub placed_align: ReadSignal<Align>,
 }
 
 // ---------------------------------------------------------------------------
 // Popper (root)
 // ---------------------------------------------------------------------------
 
-/// Props for [`Popper`].
 #[derive(Props, Clone, PartialEq)]
 pub struct PopperProps {
-    /// Children.
     pub children: Element,
 }
 
-/// Root context provider for floating positioning.
-///
-/// Matches Radix's `Popper` — provides the anchor/content relationship context.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::popper::{Popper, PopperAnchor, PopperContent, Side};
-/// rsx! {
-///     Popper {
-///         PopperAnchor { button { "Toggle" } }
-///         PopperContent { side: Side::Bottom,
-///             div { "Floating content" }
-///         }
-///     }
-/// };
-/// ```
 #[component]
 pub fn Popper(props: PopperProps) -> Element {
-    let anchor_mounted: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
-
-    use_context_provider(|| PopperCtx { anchor_mounted });
-
+    let anchor_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+    use_context_provider(|| PopperCtx {
+        anchor: PopperAnchorKind::Element(anchor_ref),
+    });
     props.children
 }
 
@@ -128,35 +153,32 @@ pub fn Popper(props: PopperProps) -> Element {
 // PopperAnchor
 // ---------------------------------------------------------------------------
 
-/// Props for [`PopperAnchor`].
 #[derive(Props, Clone, PartialEq)]
 pub struct PopperAnchorProps {
-    /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Spread attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// Children.
     pub children: Element,
 }
 
-/// Marks the anchor element for floating positioning.
-///
-/// Matches Radix's `PopperAnchor`.
 #[component]
 pub fn PopperAnchor(props: PopperAnchorProps) -> Element {
-    let mut ctx: PopperCtx = use_context();
+    let ctx: PopperCtx = use_context();
+
+    let onmounted = move |evt: Event<MountedData>| {
+        if let PopperAnchorKind::Element(mut sig) = ctx.anchor {
+            sig.set(Some(evt.data()));
+        }
+    };
 
     rsx! {
         div {
+            onmounted: onmounted,
             "data-slot": "popper-anchor",
             class: props.class,
-            onmounted: move |event: Event<MountedData>| {
-                ctx.anchor_mounted.set(Some(event.data()));
-            },
             ..props.attributes,
             {props.children}
         }
@@ -167,139 +189,306 @@ pub fn PopperAnchor(props: PopperAnchorProps) -> Element {
 // PopperContent
 // ---------------------------------------------------------------------------
 
-/// Props for [`PopperContent`].
 #[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
 pub struct PopperContentProps {
-    /// Which side of the anchor to place content. Defaults to `Bottom`.
     #[props(default)]
     pub side: Side,
 
-    /// Offset from the anchor edge in pixels. Defaults to 0.
     #[props(default)]
     pub side_offset: f64,
 
-    /// Alignment along the anchor edge. Defaults to `Center`.
     #[props(default)]
     pub align: Align,
 
-    /// Offset along the alignment axis in pixels. Defaults to 0.
     #[props(default)]
     pub align_offset: f64,
 
-    /// Whether to avoid collisions with viewport edges. Defaults to `true`.
     #[props(default = true)]
     pub avoid_collisions: bool,
 
     #[props(default)]
-    pub class: Option<String>,
+    pub collision_padding: f64,
 
-    #[props(extends = GlobalAttributes)]
-    pub attributes: Vec<Attribute>,
+    #[props(default)]
+    pub css_var_prefix: Option<&'static str>,
 
     pub children: Element,
 }
 
 /// Floating content positioned relative to the anchor.
 ///
-/// Matches Radix's `PopperContent`. Positions itself using `position: fixed`
-/// and measures the anchor element via `MountedData::get_client_rect()`.
-/// Sets CSS custom properties `--radix-popper-anchor-width` and
-/// `--radix-popper-anchor-height`.
+/// Uses `floating-ui` crate for positioning (offset, flip, shift, size middleware).
+/// Auto-updates on scroll/resize via web-sys event listeners.
+/// Sets CSS custom properties for transform-origin and available space.
 #[component]
 pub fn PopperContent(props: PopperContentProps) -> Element {
     let ctx: PopperCtx = use_context();
-    let mut position = use_signal(|| None::<(f64, f64)>);
-    let mut anchor_size = use_signal(|| (0.0f64, 0.0f64));
+
+    let mut content_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+
+    // Position state
+    let mut pos_x = use_signal(|| None::<f64>);
+    let mut pos_y = use_signal(|| None::<f64>);
+    let mut placed_side = use_signal(|| props.side);
+    let mut placed_align = use_signal(|| props.align);
+    let mut avail_w = use_signal(|| 0.0f64);
+    let mut avail_h = use_signal(|| 0.0f64);
+    let mut anchor_w = use_signal(|| 0.0f64);
+    let mut anchor_h = use_signal(|| 0.0f64);
+    let mut transform_origin = use_signal(String::new);
+
+    use_context_provider(|| PopperContentCtx {
+        placed_side: placed_side.into(),
+        placed_align: placed_align.into(),
+    });
 
     let side = props.side;
     let side_offset = props.side_offset;
     let align = props.align;
     let align_offset = props.align_offset;
+    let avoid_collisions = props.avoid_collisions;
+    let collision_padding = props.collision_padding;
+    let anchor = ctx.anchor;
 
-    // Measure anchor position
+    // Tick counter — incremented by auto_update scroll/resize listeners to trigger re-measurement
+    let mut tick = use_signal(|| 0u64);
+
+    // Positioning effect: fires on tick changes (scroll/resize) and ref changes
     use_effect(move || {
-        if let Some(md) = ctx.anchor_mounted.cloned() {
-            spawn(async move {
-                if let Ok(rect) = md.get_client_rect().await {
-                    let anchor_x = rect.origin.x;
-                    let anchor_y = rect.origin.y;
-                    let anchor_w = rect.size.width;
-                    let anchor_h = rect.size.height;
-
-                    anchor_size.set((anchor_w, anchor_h));
-
-                    let (x, y) = match side {
-                        Side::Bottom => {
-                            let x = match align {
-                                Align::Start => anchor_x + align_offset,
-                                Align::Center => anchor_x + anchor_w / 2.0,
-                                Align::End => anchor_x + anchor_w - align_offset,
-                            };
-                            (x, anchor_y + anchor_h + side_offset)
-                        }
-                        Side::Top => {
-                            let x = match align {
-                                Align::Start => anchor_x + align_offset,
-                                Align::Center => anchor_x + anchor_w / 2.0,
-                                Align::End => anchor_x + anchor_w - align_offset,
-                            };
-                            (x, anchor_y - side_offset)
-                        }
-                        Side::Right => {
-                            let y = match align {
-                                Align::Start => anchor_y + align_offset,
-                                Align::Center => anchor_y + anchor_h / 2.0,
-                                Align::End => anchor_y + anchor_h - align_offset,
-                            };
-                            (anchor_x + anchor_w + side_offset, y)
-                        }
-                        Side::Left => {
-                            let y = match align {
-                                Align::Start => anchor_y + align_offset,
-                                Align::Center => anchor_y + anchor_h / 2.0,
-                                Align::End => anchor_y + anchor_h - align_offset,
-                            };
-                            (anchor_x - side_offset, y)
-                        }
-                    };
-
-                    position.set(Some((x, y)));
-                }
-            });
-        }
-    });
-
-    use_context_provider(|| PopperContentCtx {
-        placed_side: props.side,
-    });
-
-    let (aw, ah) = anchor_size();
-
-    let style = if let Some((x, y)) = position() {
-        let transform = match (side, align) {
-            (Side::Bottom | Side::Top, Align::Center) => "translateX(-50%)",
-            (Side::Bottom | Side::Top, Align::End) => "translateX(-100%)",
-            (Side::Right | Side::Left, Align::Center) => "translateY(-50%)",
-            (Side::Right | Side::Left, Align::End) => "translateY(-100%)",
-            (Side::Top, Align::Start) => "translateY(-100%)",
-            (Side::Left, Align::Start) => "translateX(-100%)",
-            _ => "",
+        let _tick = tick(); // Subscribe to scroll/resize updates
+        let Some(content_md) = content_ref.cloned() else {
+            return;
         };
 
-        // For top/left sides, we also need to translate
-        let extra_transform = match side {
-            Side::Top if !matches!(align, Align::Start) => "translateY(-100%) ",
-            Side::Left if !matches!(align, Align::Start) => "translateX(-100%) ",
-            _ => "",
+        // Get anchor data
+        let anchor_kind = anchor;
+
+        spawn(async move {
+            // Measure anchor
+            let anchor_rect = match anchor_kind {
+                PopperAnchorKind::Element(sig) => {
+                    let Some(md) = sig.cloned() else { return };
+                    let Ok(r) = md.get_client_rect().await else {
+                        return;
+                    };
+                    floating_ui::Rect {
+                        x: r.origin.x,
+                        y: r.origin.y,
+                        width: r.size.width,
+                        height: r.size.height,
+                    }
+                }
+                PopperAnchorKind::Virtual { x, y } => floating_ui::Rect {
+                    x: x(),
+                    y: y(),
+                    width: 0.0,
+                    height: 0.0,
+                },
+            };
+
+            // Measure content
+            let Ok(content_r) = content_md.get_client_rect().await else {
+                return;
+            };
+            let content_rect = floating_ui::Rect {
+                x: 0.0,
+                y: 0.0,
+                width: content_r.size.width,
+                height: content_r.size.height,
+            };
+
+            let rects = floating_ui::ElementRects {
+                reference: anchor_rect,
+                floating: content_rect,
+            };
+
+            // Build middleware chain matching Radix Popper.tsx
+            let placement = to_floating_placement(side, align);
+            let padding = floating_ui::Padding::Uniform(collision_padding);
+
+            let mut middleware = vec![floating_ui::Middleware::Offset(
+                floating_ui::OffsetOptions {
+                    main_axis: side_offset,
+                    alignment_axis: if align_offset != 0.0 {
+                        Some(align_offset)
+                    } else {
+                        None
+                    },
+                    ..Default::default()
+                },
+            )];
+
+            if avoid_collisions {
+                middleware.push(floating_ui::Middleware::Shift(floating_ui::ShiftOptions {
+                    main_axis: true,
+                    cross_axis: false,
+                    limiter: Some(floating_ui::LimitShift::default()),
+                    detect_overflow: floating_ui::DetectOverflowOptions {
+                        padding,
+                        ..Default::default()
+                    },
+                }));
+                middleware.push(floating_ui::Middleware::Flip(floating_ui::FlipOptions {
+                    detect_overflow: floating_ui::DetectOverflowOptions {
+                        padding,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }));
+            }
+
+            middleware.push(floating_ui::Middleware::Size(floating_ui::SizeOptions {
+                detect_overflow: floating_ui::DetectOverflowOptions {
+                    padding,
+                    ..Default::default()
+                },
+            }));
+
+            // Simple viewport-based overflow detection
+            // On wasm32, we'd use floating_ui::dom for full clipping rect.
+            // For now, use a viewport rect from content measurement.
+            let detect_overflow_fn =
+                |state: &floating_ui::MiddlewareState,
+                 opts: &floating_ui::DetectOverflowOptions| {
+                    // Viewport = the window dimensions.
+                    // Since we use strategy: fixed, getBoundingClientRect coords are viewport-relative.
+                    // We get viewport size from the content's measurement context.
+                    #[cfg(target_arch = "wasm32")]
+                    let viewport = {
+                        let vp = floating_ui::dom::get_viewport_rect();
+                        floating_ui::utils::rect_to_client_rect(vp)
+                    };
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let viewport = floating_ui::utils::rect_to_client_rect(floating_ui::Rect {
+                        x: 0.0,
+                        y: 0.0,
+                        width: 1024.0,
+                        height: 768.0,
+                    });
+
+                    floating_ui::core::detect_overflow::detect_overflow(state, viewport, opts)
+                };
+
+            let result = floating_ui::compute_position(
+                rects,
+                placement,
+                floating_ui::Strategy::Fixed,
+                &middleware,
+                &detect_overflow_fn,
+            );
+
+            let (result_side, result_align) = from_floating_placement(result.placement);
+
+            // Compute transform origin (matching Radix's custom transformOrigin middleware)
+            let align_pct = match result_align {
+                Align::Start => "0%",
+                Align::Center => "50%",
+                Align::End => "100%",
+            };
+            let to = match result_side {
+                Side::Bottom => format!("{align_pct} 0px"),
+                Side::Top => format!("{align_pct} {}px", content_r.size.height),
+                Side::Right => format!("0px {align_pct}"),
+                Side::Left => format!("{}px {align_pct}", content_r.size.width),
+            };
+
+            let (aw, ah) = result
+                .middleware_data
+                .size
+                .map(|s| (s.available_width, s.available_height))
+                .unwrap_or((0.0, 0.0));
+
+            // Update signals
+            pos_x.set(Some(result.x));
+            pos_y.set(Some(result.y));
+            placed_side.set(result_side);
+            placed_align.set(result_align);
+            avail_w.set(aw);
+            avail_h.set(ah);
+            anchor_w.set(anchor_rect.width);
+            anchor_h.set(anchor_rect.height);
+            transform_origin.set(to);
+        });
+    });
+
+    // Auto-update: set up scroll/resize listeners that bump `tick`
+    // This is only available on wasm32 (uses web-sys)
+    #[cfg(target_arch = "wasm32")]
+    {
+        use crate::use_effect_with_cleanup;
+        use_effect_with_cleanup(move || {
+            // We need the content element to be mounted for auto_update.
+            // Set up listeners on the window to catch all scroll/resize events.
+            let cleanup = floating_ui::dom::auto_update(
+                // For auto_update we need web_sys::Element refs.
+                // Since we don't have direct access to the DOM elements from MountedData,
+                // we use a simpler approach: listen on the window for scroll/resize.
+                // This matches the upstream behavior for the common case.
+                &web_sys::window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .document_element()
+                    .unwrap(),
+                &web_sys::window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .document_element()
+                    .unwrap(),
+                move || {
+                    tick += 1;
+                },
+                floating_ui::dom::AutoUpdateOptions {
+                    ancestor_scroll: true,
+                    ancestor_resize: true,
+                    element_resize: false, // We don't have real Element refs here
+                    layout_shift: false,
+                    animation_frame: false,
+                },
+            );
+
+            move || {
+                cleanup();
+            }
+        });
+    }
+
+    let prefix = props.css_var_prefix;
+
+    let style = if let (Some(x), Some(y)) = (pos_x(), pos_y()) {
+        let (to_var, aw_var, ah_var, anw_var, anh_var) = if let Some(p) = prefix {
+            (
+                format!("--radix-{p}-content-transform-origin"),
+                format!("--radix-{p}-content-available-width"),
+                format!("--radix-{p}-content-available-height"),
+                format!("--radix-{p}-trigger-width"),
+                format!("--radix-{p}-trigger-height"),
+            )
+        } else {
+            (
+                "--radix-popper-transform-origin".to_string(),
+                "--radix-popper-available-width".to_string(),
+                "--radix-popper-available-height".to_string(),
+                "--radix-popper-anchor-width".to_string(),
+                "--radix-popper-anchor-height".to_string(),
+            )
         };
 
         format!(
             "position: fixed; left: {x}px; top: {y}px; \
-             transform: {extra_transform}{transform}; \
              min-width: max-content; \
-             --radix-popper-anchor-width: {aw}px; \
-             --radix-popper-anchor-height: {ah}px;"
+             {to_var}: {to}; \
+             {aw_var}: {aw}px; \
+             {ah_var}: {ah}px; \
+             {anw_var}: {anw}px; \
+             {anh_var}: {anh}px;",
+            to = transform_origin(),
+            aw = avail_w(),
+            ah = avail_h(),
+            anw = anchor_w(),
+            anh = anchor_h(),
         )
     } else {
         // Off-screen while measuring
@@ -309,17 +498,10 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
 
     rsx! {
         div {
+            onmounted: move |evt| content_ref.set(Some(evt.data())),
             "data-radix-popper-content-wrapper": "",
             style: "{style}",
-
-            div {
-                "data-slot": "popper-content",
-                "data-side": side.as_str(),
-                "data-align": align.as_str(),
-                class: props.class,
-                ..props.attributes,
-                {props.children}
-            }
+            {props.children}
         }
     }
 }
@@ -328,35 +510,28 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
 // PopperArrow
 // ---------------------------------------------------------------------------
 
-/// Props for [`PopperArrow`].
 #[derive(Props, Clone, PartialEq)]
 pub struct PopperArrowProps {
-    /// Width of the arrow. Defaults to 10.
     #[props(default = 10.0)]
     pub width: f64,
 
-    /// Height of the arrow. Defaults to 5.
     #[props(default = 5.0)]
     pub height: f64,
 
-    /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Spread attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 }
 
-/// Arrow pointing from the content toward the anchor.
-///
-/// Matches Radix's `PopperArrow`. Must be rendered inside [`PopperContent`].
 #[component]
 pub fn PopperArrow(props: PopperArrowProps) -> Element {
     let content_ctx: PopperContentCtx = use_context();
-    let base_side = content_ctx.placed_side.opposite();
+    let side = (content_ctx.placed_side)();
+    let base_side = side.opposite();
 
-    let transform = match content_ctx.placed_side {
+    let transform = match side {
         Side::Top => "translateY(100%)",
         Side::Right => "translateY(50%) rotate(90deg) translateX(-50%)",
         Side::Bottom => "rotate(180deg)",
@@ -364,12 +539,13 @@ pub fn PopperArrow(props: PopperArrowProps) -> Element {
     };
 
     let style = format!(
-        "position: absolute; {base}: 0; transform: {transform};",
+        "position: absolute; {base}: 0; left: 50%; transform: translateX(-50%) {transform};",
         base = base_side.as_str(),
     );
 
     rsx! {
         span {
+            "data-slot": "popper-arrow",
             style: "{style}",
 
             crate::arrow::Arrow {

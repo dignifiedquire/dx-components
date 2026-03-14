@@ -149,7 +149,7 @@ fn content_has_fixed_position() {
 
     let html = render(App);
     assert!(
-        html.contains("position:fixed"),
+        html.contains("position: fixed") || html.contains("position:fixed"),
         "content has fixed position: {html}"
     );
 }
