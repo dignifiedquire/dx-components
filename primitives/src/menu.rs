@@ -26,6 +26,20 @@ pub(crate) struct MenuTypeaheadEntry {
     pub element_ref: Signal<Option<Rc<MountedData>>>,
 }
 
+/// A point in 2D space.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Point {
+    x: f64,
+    y: f64,
+}
+
+/// Grace area intent — polygon from pointer to sub-content edges.
+/// When set, pointer moves inside this polygon don't close the sub-menu.
+#[derive(Clone, Debug)]
+pub(crate) struct GraceIntent {
+    pub area: Vec<Point>,
+}
+
 /// Provided by each wrapper (DropdownMenu, ContextMenu, Menubar).
 #[derive(Clone, Copy)]
 pub(crate) struct MenuCtx {
@@ -36,6 +50,8 @@ pub(crate) struct MenuCtx {
     pub slot_prefix: &'static str,
     /// Registry for typeahead search — items register their text_value + element ref.
     pub typeahead_items: Signal<Vec<MenuTypeaheadEntry>>,
+    /// Grace area for sub-menu pointer navigation.
+    pub grace_intent: Signal<Option<GraceIntent>>,
 }
 
 /// Provided by MenuCheckboxItem / MenuRadioItem for MenuItemIndicator.
@@ -113,6 +129,11 @@ pub struct MenuContentProps {
     /// Called on ArrowRight in content (used by Menubar to switch menus).
     #[props(default)]
     pub on_arrow_right: Option<Callback<()>>,
+
+    /// CSS selector for elements that should NOT trigger focusout dismiss.
+    /// Used by Menubar to prevent close when focus moves to another trigger.
+    #[props(default)]
+    pub focus_exclude_selector: Option<&'static str>,
 }
 
 /// Menu behavior container. Has `role="menu"` with keyboard navigation.
@@ -132,6 +153,7 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
     let on_escape_override = props.on_escape_override;
     let on_arrow_left = props.on_arrow_left;
     let on_arrow_right = props.on_arrow_right;
+    let focus_exclude_selector = props.focus_exclude_selector;
     let children = props.children;
     let trigger_id = ctx.trigger_id;
     let content_id = props.content_id;
@@ -209,15 +231,23 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
                                 let id_str = content_id();
                                 let open = ctx.open;
                                 let on_close = ctx.on_close;
+                                let exclude = focus_exclude_selector;
                                 spawn(async move {
-                                    // Wait a frame for focus to settle
+                                    // Wait a frame for focus to settle, then check if focus
+                                    // is still inside the content or moved to an excluded element
+                                    let exclude_check = match exclude {
+                                        Some(sel) => format!(
+                                            "||document.activeElement&&document.activeElement.closest('{sel}')"
+                                        ),
+                                        None => String::new(),
+                                    };
                                     let js = format!(
                                         "var e=document.getElementById('{id_str}');\
-                                         dioxus.send(e?e.contains(document.activeElement):false)"
+                                         dioxus.send(e&&e.contains(document.activeElement){exclude_check})"
                                     );
                                     let mut eval = document::eval(&js);
-                                    if let Ok(still_inside) = eval.recv::<bool>().await {
-                                        if !still_inside && *open.peek() {
+                                    if let Ok(skip_close) = eval.recv::<bool>().await {
+                                        if !skip_close && *open.peek() {
                                             on_close.call(());
                                         }
                                     }
@@ -227,6 +257,27 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
                                 event.prevent_default();
                                 event.stop_propagation();
                             },
+                            // Grace area: if pointer is inside the grace polygon, don't close sub-menu
+                            onpointermove: {
+                                let mut grace = ctx.grace_intent;
+                                move |event: Event<PointerData>| {
+                                    let should_clear = {
+                                        let read = grace.read();
+                                        if let Some(ref intent) = *read {
+                                            let px = event.data().client_coordinates().x;
+                                            let py = event.data().client_coordinates().y;
+                                            !is_point_in_polygon(px, py, &intent.area)
+                                        } else {
+                                            false
+                                        }
+                                    };
+                                    if should_clear {
+                                        grace.set(None);
+                                    }
+                                }
+                            },
+                            // Upstream: outline: 'none' on menu content (menu.tsx:508)
+                            outline: "none",
                             ..merged,
                             {children.clone()}
                         }
@@ -709,9 +760,20 @@ pub struct MenuSubProps {
 /// No-DOM context provider for a sub-menu.
 #[component]
 pub fn MenuSub(props: MenuSubProps) -> Element {
+    let ctx: MenuCtx = use_context();
     let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
     let content_id = use_unique_id();
     let trigger_id = use_unique_id();
+
+    // Upstream menu.tsx:982-985: close sub when parent closes
+    {
+        let parent_open = ctx.open;
+        use_effect(move || {
+            if !parent_open() {
+                set_open.call(false);
+            }
+        });
+    }
 
     use_context_provider(|| MenuSubCtx {
         open,
@@ -826,19 +888,47 @@ pub fn MenuSubTrigger(props: MenuSubTriggerProps) -> Element {
                                     // Cancel any previous open timer
                                     let gen = *open_gen.peek() + 1;
                                     open_gen.set(gen);
-                                    // Open after 300ms delay (matching Radix SELECTION_OPEN_DELAY)
+                                    // Open after 100ms delay (matching Radix SELECTION_OPEN_DELAY)
                                     spawn(async move {
-                                        dioxus_sdk_time::sleep(std::time::Duration::from_millis(300)).await;
+                                        dioxus_sdk_time::sleep(std::time::Duration::from_millis(100)).await;
                                         if *open_gen.peek() == gen {
                                             sub_ctx.set_open.call(true);
                                         }
                                     });
                                 }
                             },
-                            onpointerleave: move |_| {
+                            onpointerleave: move |event: Event<PointerData>| {
                                 // Cancel pending open timer
                                 let current = *open_gen.peek();
                                 open_gen.set(current + 1);
+
+                                // Compute grace area triangle from pointer to sub-content edges
+                                // (upstream menu.tsx:1082-1122)
+                                if is_open() {
+                                    let px = event.data().client_coordinates().x;
+                                    let py = event.data().client_coordinates().y;
+                                    let content_id_str = (sub_ctx.content_id)();
+                                    let mut grace = ctx.grace_intent;
+                                    spawn(async move {
+                                        let js = format!(
+                                            "var e=document.getElementById('{content_id_str}');\
+                                             if(e){{var r=e.getBoundingClientRect();\
+                                             dioxus.send([r.left,r.top,r.right,r.bottom])}}else{{dioxus.send(null)}}"
+                                        );
+                                        let mut eval = document::eval(&js);
+                                        if let Ok(Some([left, top, right, bottom])) = eval.recv::<Option<[f64; 4]>>().await {
+                                            // Polygon: pointer position → sub-content bounding box corners
+                                            let area = vec![
+                                                Point { x: px, y: py },
+                                                Point { x: left, y: top },
+                                                Point { x: right, y: top },
+                                                Point { x: right, y: bottom },
+                                                Point { x: left, y: bottom },
+                                            ];
+                                            grace.set(Some(GraceIntent { area }));
+                                        }
+                                    });
+                                }
                             },
                             ..merged,
                             {children.clone()}
@@ -1086,4 +1176,28 @@ pub fn MenuShortcut(props: MenuShortcutProps) -> Element {
             {props.children}
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Grace area utilities (upstream menu.tsx pointer grace area)
+// ---------------------------------------------------------------------------
+
+/// Ray-casting point-in-polygon test.
+/// Returns true if point (px, py) is inside the polygon defined by `vertices`.
+fn is_point_in_polygon(px: f64, py: f64, vertices: &[Point]) -> bool {
+    let n = vertices.len();
+    if n < 3 {
+        return false;
+    }
+    let mut inside = false;
+    let mut j = n - 1;
+    for i in 0..n {
+        let vi = &vertices[i];
+        let vj = &vertices[j];
+        if (vi.y > py) != (vj.y > py) && px < (vj.x - vi.x) * (py - vi.y) / (vj.y - vi.y) + vi.x {
+            inside = !inside;
+        }
+        j = i;
+    }
+    inside
 }

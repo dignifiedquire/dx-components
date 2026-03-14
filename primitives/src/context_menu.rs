@@ -22,11 +22,13 @@
 //! - [`ContextMenuSubContent`] (re-export)
 //! - [`ContextMenuPortal`] (re-export)
 
+use crate::focus_scope::FocusScope;
 use crate::menu::MenuCtx;
 use crate::popper::{Align, PopperAnchorKind, PopperContent, PopperCtx, Side};
+use crate::scroll_lock::use_scroll_lock;
 use crate::{
     merge_attributes, use_controlled, use_global_escape_listener, use_id_or, use_outside_click,
-    use_presence, use_unique_id,
+    use_presence, use_refocus_on_close, use_unique_id,
 };
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
@@ -70,6 +72,7 @@ pub use crate::menu::MenuSubTrigger as ContextMenuSubTrigger;
 struct ContextMenuInternalCtx {
     set_open: Callback<bool>,
     disabled: bool,
+    modal: bool,
     virtual_x: Signal<f64>,
     virtual_y: Signal<f64>,
     trigger_id: Signal<String>,
@@ -97,6 +100,10 @@ pub struct ContextMenuRootProps {
     /// Whether the context menu is disabled.
     #[props(default)]
     pub disabled: bool,
+
+    /// Whether the menu is modal (traps focus and locks scroll). Defaults to `true`.
+    #[props(default = true)]
+    pub modal: bool,
 
     /// Children (should include [`ContextMenuTrigger`] and [`ContextMenuContent`]).
     pub children: Element,
@@ -133,6 +140,7 @@ pub fn ContextMenuRoot(props: ContextMenuRootProps) -> Element {
 
     let set_open_cb = set_open;
     let typeahead_items = use_signal(Vec::new);
+    let grace_intent = use_signal(|| None);
     use_context_provider(|| MenuCtx {
         open,
         on_close: Callback::new(move |()| set_open_cb.call(false)),
@@ -140,6 +148,7 @@ pub fn ContextMenuRoot(props: ContextMenuRootProps) -> Element {
         trigger_id,
         slot_prefix: "context-menu",
         typeahead_items,
+        grace_intent,
     });
 
     // Provide PopperCtx with virtual anchor (click coordinates)
@@ -153,6 +162,7 @@ pub fn ContextMenuRoot(props: ContextMenuRootProps) -> Element {
     use_context_provider(|| ContextMenuInternalCtx {
         set_open,
         disabled: props.disabled,
+        modal: props.modal,
         virtual_x,
         virtual_y,
         trigger_id,
@@ -184,11 +194,13 @@ pub struct ContextMenuTriggerProps {
 
 /// The trigger element. Renders as `<span>` matching Radix `Primitive.span`.
 ///
-/// Opens the context menu on right-click (`oncontextmenu`).
+/// Opens the context menu on right-click (`oncontextmenu`) or touch long-press (700ms).
 #[component]
 pub fn ContextMenuTrigger(props: ContextMenuTriggerProps) -> Element {
     let ctx: MenuCtx = use_context();
     let mut internal: ContextMenuInternalCtx = use_context();
+    // Generation counter for long-press timer cancellation
+    let mut long_press_gen = use_signal(|| 0u64);
 
     let is_open = (ctx.open)();
 
@@ -198,6 +210,8 @@ pub fn ContextMenuTrigger(props: ContextMenuTriggerProps) -> Element {
             "data-slot": "context-menu-trigger",
             "data-state": if is_open { "open" } else { "closed" },
             "data-disabled": if internal.disabled { "true" } else { "" },
+            // Disable iOS callout on long press
+            "-webkit-touch-callout": "none",
             oncontextmenu: move |event: Event<MouseData>| {
                 if internal.disabled {
                     return;
@@ -206,6 +220,41 @@ pub fn ContextMenuTrigger(props: ContextMenuTriggerProps) -> Element {
                 internal.virtual_y.set(event.data().client_coordinates().y);
                 internal.set_open.call(true);
                 event.prevent_default();
+            },
+            // Upstream context-menu.tsx:135-161: 700ms long-press for touch/pen
+            onpointerdown: move |event: Event<PointerData>| {
+                if internal.disabled {
+                    return;
+                }
+                let pt = event.data().pointer_type();
+                if pt == "touch" || pt == "pen" {
+                    let gen = *long_press_gen.peek() + 1;
+                    long_press_gen.set(gen);
+                    let x = event.data().client_coordinates().x;
+                    let y = event.data().client_coordinates().y;
+                    // Prevent context menu event from also firing
+                    event.prevent_default();
+                    spawn(async move {
+                        dioxus_sdk_time::sleep(std::time::Duration::from_millis(700)).await;
+                        if *long_press_gen.peek() == gen {
+                            internal.virtual_x.set(x);
+                            internal.virtual_y.set(y);
+                            internal.set_open.call(true);
+                        }
+                    });
+                }
+            },
+            onpointermove: move |_| {
+                let g = *long_press_gen.peek() + 1;
+                long_press_gen.set(g);
+            },
+            onpointercancel: move |_| {
+                let g = *long_press_gen.peek() + 1;
+                long_press_gen.set(g);
+            },
+            onpointerup: move |_| {
+                let g = *long_press_gen.peek() + 1;
+                long_press_gen.set(g);
             },
             ..props.attributes,
             {props.children}
@@ -271,8 +320,17 @@ pub struct ContextMenuContentProps {
 #[component]
 pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
     let ctx: MenuCtx = use_context();
+    let internal: ContextMenuInternalCtx = use_context();
     let id = use_id_or(ctx.content_id, props.id);
     let mut presence = use_presence(ctx.open, id);
+    let is_modal = internal.modal;
+
+    // Modal: lock scroll when open
+    let scroll_lock_active = use_memo(move || is_modal && (ctx.open)());
+    use_scroll_lock(scroll_lock_active);
+
+    // Refocus trigger when menu closes (upstream onCloseAutoFocus)
+    use_refocus_on_close(ctx.open, ctx.trigger_id);
 
     // Document-level Escape listener (closes menu even without focus inside)
     {
@@ -320,9 +378,13 @@ pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
             content_attributes: merged,
             on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
 
-            crate::menu::MenuContent {
-                content_id: id,
-                {props.children}
+            FocusScope {
+                trapped: is_modal && (ctx.open)(),
+                r#loop: is_modal && (ctx.open)(),
+                crate::menu::MenuContent {
+                    content_id: id,
+                    {props.children}
+                }
             }
         }
     }

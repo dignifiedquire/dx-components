@@ -30,9 +30,10 @@ use crate::menu::MenuCtx;
 use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
 use crate::{
-    merge_attributes, use_global_escape_listener, use_id_or, use_outside_click, use_presence,
-    use_unique_id,
+    merge_attributes, use_global_escape_listener, use_id_or, use_outside_click_with_exclude,
+    use_presence, use_refocus_on_close, use_unique_id,
 };
+use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 
@@ -256,6 +257,7 @@ pub fn MenubarMenu(props: MenubarMenuProps) -> Element {
 
     // Provide MenuCtx for the shared menu base components (MenuItem, etc.)
     let typeahead_items = use_signal(Vec::new);
+    let grace_intent = use_signal(|| None);
     use_context_provider(|| MenuCtx {
         open: is_open,
         on_close,
@@ -263,6 +265,7 @@ pub fn MenubarMenu(props: MenubarMenuProps) -> Element {
         trigger_id,
         slot_prefix: "menubar",
         typeahead_items,
+        grace_intent,
     });
 
     use_context_provider(|| MenubarMenuInternalCtx {
@@ -333,6 +336,7 @@ pub fn MenubarTrigger(props: MenubarTriggerProps) -> Element {
     let class = props.class;
     let user_attrs = props.attributes;
     let children = props.children;
+    let mut is_focused = use_signal(|| false);
 
     rsx! {
         RovingFocusGroupItem {
@@ -348,6 +352,7 @@ pub fn MenubarTrigger(props: MenubarTriggerProps) -> Element {
                         role: "menuitem",
                         "data-slot": "menubar-trigger",
                         "data-state": if is_open() { "open" } else { "closed" },
+                        "data-highlighted": if is_focused() { Some("") } else { None },
                         "data-disabled": if disabled { Some("true") } else { None },
                         disabled: disabled,
                         aria_haspopup: "menu",
@@ -365,15 +370,27 @@ pub fn MenubarTrigger(props: MenubarTriggerProps) -> Element {
                                 menu_ctx.trigger_element.set(Some(data.clone()));
                                 popper_ctx.set_anchor_ref(data);
                             },
-                            onfocus: move |e| slot_props.on_focus.call(e),
+                            onfocus: move |e| {
+                                is_focused.set(true);
+                                slot_props.on_focus.call(e);
+                            },
+                            onfocusout: move |_| {
+                                is_focused.set(false);
+                            },
                             onmousedown: move |e| slot_props.on_mousedown.call(e),
-                            onpointerup: move |_| {
-                                if !disabled {
-                                    if is_open() {
-                                        bar_ctx.open_menu_id.set(None);
-                                    } else {
-                                        bar_ctx.open_menu_id.set(Some((menu_id)()));
-                                    }
+                            onpointerdown: move |event: Event<PointerData>| {
+                                // Upstream: only react to left-click without Ctrl (menubar.tsx:243-251)
+                                if disabled
+                                    || event.trigger_button() != Some(MouseButton::Primary)
+                                    || event.modifiers().ctrl()
+                                {
+                                    return;
+                                }
+                                event.prevent_default();
+                                if is_open() {
+                                    bar_ctx.open_menu_id.set(None);
+                                } else {
+                                    bar_ctx.open_menu_id.set(Some((menu_id)()));
                                 }
                             },
                             onmouseenter: move |_| {
@@ -441,8 +458,8 @@ pub struct MenubarContentProps {
     #[props(default)]
     pub side_offset: f64,
 
-    /// Alignment relative to the trigger. Defaults to `Center`.
-    #[props(default)]
+    /// Alignment relative to the trigger. Defaults to `Start`.
+    #[props(default = Align::Start)]
     pub align: Align,
 
     /// Offset along the alignment axis. Defaults to 0.
@@ -482,6 +499,9 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
     let id = use_id_or(ctx.content_id, props.id);
     let mut presence = use_presence(ctx.open, id);
 
+    // Refocus trigger when menu closes (upstream onCloseAutoFocus)
+    use_refocus_on_close(ctx.open, ctx.trigger_id);
+
     // Document-level Escape listener
     use_global_escape_listener(move || {
         if *ctx.open.peek() {
@@ -489,10 +509,10 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
         }
     });
 
-    // Dismiss on click outside content
+    // Dismiss on click outside content (but not when clicking another menubar trigger)
     {
         let open = ctx.open;
-        use_outside_click(id, move || {
+        use_outside_click_with_exclude(id, "[data-slot=\"menubar-trigger\"]", move || {
             if *open.peek() {
                 bar_ctx.open_menu_id.set(None);
             }
@@ -538,6 +558,7 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
                 on_escape_override: on_escape,
                 on_arrow_left: on_arrow_left,
                 on_arrow_right: on_arrow_right,
+                focus_exclude_selector: "[data-slot=\"menubar-trigger\"]",
                 {props.children}
             }
         }

@@ -24,12 +24,15 @@
 
 use std::rc::Rc;
 
+use crate::focus_scope::FocusScope;
 use crate::menu::MenuCtx;
 use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
+use crate::scroll_lock::use_scroll_lock;
 use crate::{
     merge_attributes, use_controlled, use_global_escape_listener, use_id_or, use_outside_click,
-    use_presence, use_unique_id,
+    use_presence, use_refocus_on_close, use_unique_id,
 };
+use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 
@@ -74,6 +77,7 @@ pub use crate::menu::MenuSubTrigger as DropdownMenuSubTrigger;
 struct DropdownMenuInternalCtx {
     set_open: Callback<bool>,
     disabled: bool,
+    modal: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +102,10 @@ pub struct DropdownMenuRootProps {
     /// Whether the dropdown menu is disabled.
     #[props(default)]
     pub disabled: bool,
+
+    /// Whether the menu is modal (traps focus and locks scroll). Defaults to `true`.
+    #[props(default = true)]
+    pub modal: bool,
 
     /// Children (should include [`DropdownMenuTrigger`] and [`DropdownMenuContent`]).
     pub children: Element,
@@ -132,6 +140,7 @@ pub fn DropdownMenuRoot(props: DropdownMenuRootProps) -> Element {
 
     let set_open_cb = set_open;
     let typeahead_items = use_signal(Vec::new);
+    let grace_intent = use_signal(|| None);
     use_context_provider(|| MenuCtx {
         open,
         on_close: Callback::new(move |()| set_open_cb.call(false)),
@@ -139,11 +148,13 @@ pub fn DropdownMenuRoot(props: DropdownMenuRootProps) -> Element {
         trigger_id,
         slot_prefix: "dropdown-menu",
         typeahead_items,
+        grace_intent,
     });
 
     use_context_provider(|| DropdownMenuInternalCtx {
         set_open,
         disabled: props.disabled,
+        modal: props.modal,
     });
 
     rsx! {
@@ -203,10 +214,16 @@ pub fn DropdownMenuTrigger(props: DropdownMenuTriggerProps) -> Element {
             element.set(Some(data.clone()));
             popper_ctx.set_anchor_ref(data);
         },
-        onclick: move |_| {
-            if internal.disabled {
+        onpointerdown: move |event: Event<PointerData>| {
+            // Upstream: only react to left-click without Ctrl (dropdown-menu.tsx:117-126)
+            if internal.disabled
+                || event.trigger_button() != Some(MouseButton::Primary)
+                || event.modifiers().ctrl()
+            {
                 return;
             }
+            // Prevent trigger from stealing focus when opening
+            event.prevent_default();
             let new_open = !is_open;
             internal.set_open.call(new_open);
             if let Some(data) = element() {
@@ -303,8 +320,17 @@ pub struct DropdownMenuContentProps {
 #[component]
 pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
     let ctx: MenuCtx = use_context();
+    let internal: DropdownMenuInternalCtx = use_context();
     let id = use_id_or(ctx.content_id, props.id);
     let mut presence = use_presence(ctx.open, id);
+    let is_modal = internal.modal;
+
+    // Modal: lock scroll when open
+    let scroll_lock_active = use_memo(move || is_modal && (ctx.open)());
+    use_scroll_lock(scroll_lock_active);
+
+    // Refocus trigger when menu closes (upstream onCloseAutoFocus)
+    use_refocus_on_close(ctx.open, ctx.trigger_id);
 
     // Document-level Escape listener (closes menu even without focus inside)
     {
@@ -336,6 +362,7 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
         id: id,
         "data-slot": "dropdown-menu-content",
         "data-state": presence.data_state(),
+        aria_labelledby: (ctx.trigger_id)(),
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
@@ -352,9 +379,13 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
             content_attributes: merged,
             on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
 
-            crate::menu::MenuContent {
-                content_id: id,
-                {props.children}
+            FocusScope {
+                trapped: is_modal && (ctx.open)(),
+                r#loop: is_modal && (ctx.open)(),
+                crate::menu::MenuContent {
+                    content_id: id,
+                    {props.children}
+                }
             }
         }
     }

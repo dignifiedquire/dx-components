@@ -164,6 +164,22 @@ pub fn use_previous<T: Clone + PartialEq + 'static>(value: ReadSignal<T>) -> Mem
     })
 }
 
+/// Refocus the trigger element when a menu closes.
+///
+/// Matches upstream's `onCloseAutoFocus` behavior: when `open` transitions
+/// from `true` → `false`, focus is returned to the trigger element by ID.
+pub fn use_refocus_on_close(open: Memo<bool>, trigger_id: Signal<String>) {
+    let prev_open = use_previous(open.into());
+    use_effect(move || {
+        if prev_open() && !open() {
+            let id = trigger_id();
+            document::eval(&format!(
+                "var e=document.getElementById('{id}');if(e)e.focus()"
+            ));
+        }
+    });
+}
+
 /// Returns `true` once the component has mounted on the client.
 ///
 /// Matches Radix's `useIsHydrated()`: returns `false` during SSR and on
@@ -320,10 +336,7 @@ fn use_global_keydown_listener(key: &'static str, on_escape: impl FnMut() + Clon
 /// with the given `id`. Matches Radix's `onPointerDownOutside` in
 /// `DismissableLayer`. The listener is active for the lifetime of the
 /// calling component.
-pub(crate) fn use_outside_click(
-    id: Memo<String>,
-    mut on_outside: impl FnMut() + Clone + 'static,
-) {
+pub(crate) fn use_outside_click(id: Memo<String>, on_outside: impl FnMut() + Clone + 'static) {
     use_effect_with_cleanup(move || {
         let mut eval = document::eval(
             "let id = await dioxus.recv();
@@ -337,6 +350,40 @@ pub(crate) fn use_outside_click(
             await dioxus.recv();
             document.removeEventListener('pointerdown', listener, true);",
         );
+        let _ = eval.send(id.peek().clone());
+        let mut on_outside = on_outside.clone();
+        spawn(async move {
+            while let Ok(true) = eval.recv().await {
+                on_outside();
+            }
+        });
+        move || _ = eval.send(String::new())
+    });
+}
+
+/// Like [`use_outside_click`] but ignores clicks on elements matching `exclude_selector`.
+///
+/// Used by menubar to prevent dismiss when clicking another menubar trigger.
+pub(crate) fn use_outside_click_with_exclude(
+    id: Memo<String>,
+    exclude_selector: &'static str,
+    on_outside: impl FnMut() + Clone + 'static,
+) {
+    use_effect_with_cleanup(move || {
+        let js = format!(
+            "let id = await dioxus.recv();
+            function listener(event) {{
+                let el = document.getElementById(id);
+                if (el && !el.contains(event.target)) {{
+                    if (event.target.closest('{exclude_selector}')) return;
+                    dioxus.send(true);
+                }}
+            }}
+            document.addEventListener('pointerdown', listener, true);
+            await dioxus.recv();
+            document.removeEventListener('pointerdown', listener, true);"
+        );
+        let mut eval = document::eval(&js);
         let _ = eval.send(id.peek().clone());
         let mut on_outside = on_outside.clone();
         spawn(async move {

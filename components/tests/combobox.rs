@@ -38,7 +38,7 @@ fn combobox_input_has_shadcn_classes() {
     }
 
     let html = render(TestApp);
-    assert!(html.contains("w-auto"), "input has w-auto: {html}");
+    assert!(html.contains("w-full"), "input has w-full: {html}");
     assert!(html.contains("role=\"combobox\""), "input role: {html}");
 }
 
@@ -78,7 +78,7 @@ fn combobox_item_has_shadcn_classes() {
     }
 
     let html = render(TestApp);
-    assert!(html.contains("cursor-default"), "item class: {html}");
+    assert!(html.contains("cursor-pointer"), "item class: {html}");
     assert!(html.contains("rounded-sm"), "item rounded: {html}");
 }
 

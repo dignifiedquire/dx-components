@@ -7,8 +7,8 @@
 use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
 use crate::portal::Portal;
 use crate::{merge_attributes, use_delayed_open, use_id_or, use_presence, use_unique_id};
-use dioxus_attributes::attributes;
 use dioxus::prelude::*;
+use dioxus_attributes::attributes;
 
 // ---------------------------------------------------------------------------
 // Context

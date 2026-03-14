@@ -19,14 +19,19 @@ use floating_ui::utils::{get_alignment, get_side};
 /// Which side of the anchor the content appears on.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum Side {
+    /// Content above the anchor.
     Top,
+    /// Content to the right of the anchor.
     Right,
+    /// Content below the anchor (default).
     #[default]
     Bottom,
+    /// Content to the left of the anchor.
     Left,
 }
 
 impl Side {
+    /// Returns the CSS string representation.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Top => "top",
@@ -36,6 +41,7 @@ impl Side {
         }
     }
 
+    /// Returns the opposite side.
     pub fn opposite(&self) -> Self {
         match self {
             Self::Top => Self::Bottom,
@@ -49,13 +55,17 @@ impl Side {
 /// Alignment of the content along the anchor edge.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum Align {
+    /// Align to the start edge.
     Start,
+    /// Align to the center (default).
     #[default]
     Center,
+    /// Align to the end edge.
     End,
 }
 
 impl Align {
+    /// Returns the CSS string representation.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Start => "start",
@@ -126,23 +136,33 @@ impl PopperCtx {
 
 /// Context provided by [`PopperContent`] to children.
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 pub(crate) struct PopperContentCtx {
     pub placed_side: ReadSignal<Side>,
     pub placed_align: ReadSignal<Align>,
     /// Whether floating-ui has computed position. Matches Radix `isPositioned`.
     /// Children use this to suppress entry animations until placement is done.
     pub is_positioned: ReadSignal<bool>,
+    /// Arrow x offset from arrow middleware.
+    pub arrow_x: ReadSignal<Option<f64>>,
+    /// Arrow y offset from arrow middleware.
+    pub arrow_y: ReadSignal<Option<f64>>,
+    /// Whether the arrow should be hidden (centerOffset !== 0).
+    pub should_hide_arrow: ReadSignal<bool>,
 }
 
 // ---------------------------------------------------------------------------
 // Popper (root)
 // ---------------------------------------------------------------------------
 
+/// Props for [`Popper`].
 #[derive(Props, Clone, PartialEq)]
 pub struct PopperProps {
+    /// Children.
     pub children: Element,
 }
 
+/// Root context provider for popper positioning.
 #[component]
 pub fn Popper(props: PopperProps) -> Element {
     let anchor_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
@@ -156,17 +176,22 @@ pub fn Popper(props: PopperProps) -> Element {
 // PopperAnchor
 // ---------------------------------------------------------------------------
 
+/// Props for [`PopperAnchor`].
 #[derive(Props, Clone, PartialEq)]
 pub struct PopperAnchorProps {
+    /// CSS class.
     #[props(default)]
     pub class: Option<String>,
 
+    /// Additional attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
+    /// Children.
     pub children: Element,
 }
 
+/// The anchor element that the floating content positions relative to.
 #[component]
 pub fn PopperAnchor(props: PopperAnchorProps) -> Element {
     let ctx: PopperCtx = use_context();
@@ -248,6 +273,36 @@ pub struct PopperContentProps {
     #[props(default)]
     pub on_pointer_leave: Option<EventHandler<Event<PointerData>>>,
 
+    /// Width of the arrow element (along alignment axis).
+    /// Pass the same value as `PopperArrow::width` when using an arrow.
+    #[props(default)]
+    pub arrow_width: f64,
+
+    /// Height of the arrow element (perpendicular to alignment axis).
+    /// Pass the same value as `PopperArrow::height` when using an arrow.
+    #[props(default)]
+    pub arrow_height: f64,
+
+    /// Padding between arrow and floating element edges.
+    /// Upstream: `arrowPadding` (default `0`).
+    #[props(default)]
+    pub arrow_padding: f64,
+
+    /// Hide the content when the anchor is fully detached from viewport.
+    /// Upstream: `hideWhenDetached` (default `false`).
+    #[props(default)]
+    pub hide_when_detached: bool,
+
+    /// Called once when the content is first positioned.
+    /// Upstream: `onPlaced` callback.
+    #[props(default)]
+    pub on_placed: Option<Callback<()>>,
+
+    /// Position update strategy: `"optimized"` (default) or `"always"`.
+    /// When `"always"`, uses `animation_frame: true` for continuous updates.
+    #[props(default)]
+    pub update_position_strategy: Option<&'static str>,
+
     pub children: Element,
 }
 
@@ -293,7 +348,16 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     let is_positioned = use_memo(move || pos_x().is_some() && pos_y().is_some());
 
     // Mirrors content's computed z-index to wrapper (matching upstream lines 232-235, 245).
+    #[allow(unused_mut)]
     let mut content_z_index = use_signal(|| Option::<String>::None);
+
+    // Hide-when-detached state
+    let mut reference_hidden = use_signal(|| false);
+
+    // Arrow middleware state
+    let mut arrow_x = use_signal(|| None::<f64>);
+    let mut arrow_y = use_signal(|| None::<f64>);
+    let mut should_hide_arrow = use_signal(|| false);
 
     let side = props.side;
     let side_offset = props.side_offset;
@@ -301,6 +365,14 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     let align_offset = props.align_offset;
     let avoid_collisions = props.avoid_collisions;
     let collision_padding = props.collision_padding;
+    let arrow_w = props.arrow_width;
+    let arrow_h = props.arrow_height;
+    let arrow_padding = props.arrow_padding;
+    let has_arrow = arrow_w > 0.0 || arrow_h > 0.0;
+    let hide_when_detached = props.hide_when_detached;
+    let on_placed = props.on_placed;
+    #[cfg(target_arch = "wasm32")]
+    let animation_frame = props.update_position_strategy == Some("always");
     let anchor = ctx.anchor;
 
     // Tick counter — incremented by auto_update scroll/resize listeners to trigger re-measurement
@@ -358,9 +430,7 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             #[cfg(target_arch = "wasm32")]
             {
                 let promise = js_sys::Promise::new(&mut |resolve, _| {
-                    let _ = web_sys::window()
-                        .unwrap()
-                        .request_animation_frame(&resolve);
+                    let _ = web_sys::window().unwrap().request_animation_frame(&resolve);
                 });
                 let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
             }
@@ -407,9 +477,10 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             let placement = to_floating_placement(side, align);
             let padding = floating_ui::Padding::Uniform(collision_padding);
 
+            // Upstream: offset({ mainAxis: sideOffset + arrowHeight, alignmentAxis: alignOffset })
             let mut middleware = vec![floating_ui::Middleware::Offset(
                 floating_ui::OffsetOptions {
-                    main_axis: side_offset,
+                    main_axis: side_offset + arrow_h,
                     alignment_axis: if align_offset != 0.0 {
                         Some(align_offset)
                     } else {
@@ -444,6 +515,26 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
                     ..Default::default()
                 },
             }));
+
+            // Upstream: arrow && floatingUIarrow({ element: arrow, padding: arrowPadding })
+            if has_arrow {
+                middleware.push(floating_ui::Middleware::Arrow(floating_ui::ArrowOptions {
+                    width: arrow_w,
+                    height: arrow_h,
+                    padding: floating_ui::Padding::Uniform(arrow_padding),
+                }));
+            }
+
+            // Upstream: hideWhenDetached && hide({ strategy: 'referenceHidden', ...detectOverflowOptions })
+            if hide_when_detached {
+                middleware.push(floating_ui::Middleware::Hide(floating_ui::HideOptions {
+                    strategy: floating_ui::HideStrategy::ReferenceHidden,
+                    detect_overflow: floating_ui::DetectOverflowOptions {
+                        padding,
+                        ..Default::default()
+                    },
+                }));
+            }
 
             let detect_overflow_fn =
                 |state: &floating_ui::MiddlewareState,
@@ -493,6 +584,19 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
                 .map(|s| (s.available_width, s.available_height))
                 .unwrap_or((0.0, 0.0));
 
+            // Read hide middleware data
+            let is_ref_hidden = result
+                .middleware_data
+                .hide
+                .is_some_and(|h| h.reference_hidden);
+
+            // Read arrow middleware data
+            let (ax, ay, center_off) = result
+                .middleware_data
+                .arrow
+                .map(|a| (a.x, a.y, a.center_offset))
+                .unwrap_or((None, None, 0.0));
+
             // Update signals
             pos_x.set(Some(result.x));
             pos_y.set(Some(result.y));
@@ -503,6 +607,10 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             anchor_w.set(anchor_rect.width);
             anchor_h.set(anchor_rect.height);
             transform_origin.set(to);
+            reference_hidden.set(is_ref_hidden);
+            arrow_x.set(ax);
+            arrow_y.set(ay);
+            should_hide_arrow.set(center_off != 0.0);
         });
     });
 
@@ -526,12 +634,24 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
                     ancestor_resize: true,
                     element_resize: false,
                     layout_shift: false,
-                    animation_frame: false,
+                    animation_frame,
                 },
             );
 
             move || {
                 cleanup();
+            }
+        });
+    }
+
+    // Upstream: onPlaced fires once when isPositioned becomes true
+    {
+        let prev_positioned = crate::use_previous(is_positioned.into());
+        use_effect(move || {
+            if is_positioned() && !prev_positioned() {
+                if let Some(cb) = on_placed {
+                    cb.call(());
+                }
             }
         });
     }
@@ -567,6 +687,11 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
              transform: {transform}; \
              min-width: max-content; {z_part}"
         );
+
+        // Upstream: hide when reference is detached
+        if reference_hidden() {
+            style.push_str(" visibility: hidden; pointer-events: none;");
+        }
 
         if is_pos {
             let to = transform_origin();
@@ -612,12 +737,18 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     let ctx_side: ReadSignal<Side> = placed_side.into();
     let ctx_align: ReadSignal<Align> = placed_align.into();
     let ctx_is_positioned: ReadSignal<bool> = is_positioned.into();
+    let ctx_arrow_x: ReadSignal<Option<f64>> = arrow_x.into();
+    let ctx_arrow_y: ReadSignal<Option<f64>> = arrow_y.into();
+    let ctx_should_hide_arrow: ReadSignal<bool> = should_hide_arrow.into();
 
     let wrapper = rsx! {
         PopperContentCtxProvider {
             placed_side: ctx_side,
             placed_align: ctx_align,
             is_positioned: ctx_is_positioned,
+            arrow_x: ctx_arrow_x,
+            arrow_y: ctx_arrow_y,
+            should_hide_arrow: ctx_should_hide_arrow,
 
             div {
                 id: wrapper_id(),
@@ -669,6 +800,9 @@ struct PopperContentCtxProviderProps {
     placed_side: ReadSignal<Side>,
     placed_align: ReadSignal<Align>,
     is_positioned: ReadSignal<bool>,
+    arrow_x: ReadSignal<Option<f64>>,
+    arrow_y: ReadSignal<Option<f64>>,
+    should_hide_arrow: ReadSignal<bool>,
     children: Element,
 }
 
@@ -678,6 +812,9 @@ fn PopperContentCtxProvider(props: PopperContentCtxProviderProps) -> Element {
         placed_side: props.placed_side,
         placed_align: props.placed_align,
         is_positioned: props.is_positioned,
+        arrow_x: props.arrow_x,
+        arrow_y: props.arrow_y,
+        should_hide_arrow: props.should_hide_arrow,
     });
     props.children
 }
@@ -686,26 +823,35 @@ fn PopperContentCtxProvider(props: PopperContentCtxProviderProps) -> Element {
 // PopperArrow
 // ---------------------------------------------------------------------------
 
+/// Props for [`PopperArrow`].
 #[derive(Props, Clone, PartialEq)]
 pub struct PopperArrowProps {
+    /// Arrow width in pixels.
     #[props(default = 10.0)]
     pub width: f64,
 
+    /// Arrow height in pixels.
     #[props(default = 5.0)]
     pub height: f64,
 
+    /// CSS class.
     #[props(default)]
     pub class: Option<String>,
 
+    /// Additional attributes.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 }
 
+/// Upstream `PopperArrow` — positioned by arrow middleware data from context.
 #[component]
 pub fn PopperArrow(props: PopperArrowProps) -> Element {
     let content_ctx: PopperContentCtx = use_context();
     let side = (content_ctx.placed_side)();
     let base_side = side.opposite();
+    let ax = (content_ctx.arrow_x)();
+    let ay = (content_ctx.arrow_y)();
+    let hide = (content_ctx.should_hide_arrow)();
 
     let transform = match side {
         Side::Top => "translateY(100%)",
@@ -714,8 +860,19 @@ pub fn PopperArrow(props: PopperArrowProps) -> Element {
         Side::Left => "translateY(50%) rotate(-90deg) translateX(50%)",
     };
 
+    // Upstream: positions via arrow middleware x/y, falls back to centered
+    let left_part = match ax {
+        Some(x) => format!("left: {x}px;"),
+        None => "left: 50%; transform-origin: center;".to_string(),
+    };
+    let top_part = match ay {
+        Some(y) => format!("top: {y}px;"),
+        None => String::new(),
+    };
+    let visibility = if hide { " visibility: hidden;" } else { "" };
+
     let style = format!(
-        "position: absolute; {base}: 0; left: 50%; transform: translateX(-50%) {transform};",
+        "position: absolute; {left_part} {top_part} {base}: 0; transform: {transform};{visibility}",
         base = base_side.as_str(),
     );
 
