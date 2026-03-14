@@ -1,5 +1,6 @@
 //! SelectTrigger component implementation.
 
+use crate::popper::PopperCtx;
 use dioxus::prelude::*;
 
 use super::super::context::SelectContext;
@@ -19,6 +20,7 @@ pub struct SelectTriggerProps {
 #[component]
 pub fn SelectTrigger(props: SelectTriggerProps) -> Element {
     let mut ctx = use_context::<SelectContext>();
+    let popper_ctx: PopperCtx = use_context();
     let mut open = ctx.open;
     let is_disabled = ctx.disabled;
     let has_value = !(ctx.value)().is_empty();
@@ -36,6 +38,10 @@ pub fn SelectTrigger(props: SelectTriggerProps) -> Element {
             aria_expanded: open(),
             aria_controls: ctx.list_id,
             aria_autocomplete: "none",
+
+            onmounted: move |e: MountedEvent| {
+                popper_ctx.set_anchor_ref(e.data());
+            },
 
             onclick: move |_| {
                 if !is_disabled {

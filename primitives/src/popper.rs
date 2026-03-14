@@ -213,6 +213,11 @@ pub struct PopperContentProps {
     #[props(default)]
     pub css_var_prefix: Option<&'static str>,
 
+    /// Whether to render through a Portal (escapes parent overflow).
+    /// Default: false. Set to true for components like DropdownMenu, ContextMenu.
+    #[props(default)]
+    pub portal: bool,
+
     pub children: Element,
 }
 
@@ -238,10 +243,8 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     let mut anchor_h = use_signal(|| 0.0f64);
     let mut transform_origin = use_signal(String::new);
 
-    use_context_provider(|| PopperContentCtx {
-        placed_side: placed_side.into(),
-        placed_align: placed_align.into(),
-    });
+    // Context is provided by PopperContentCtxProvider inside the wrapper
+    // (works correctly even through Portal since it re-provides at render site)
 
     let side = props.side;
     let side_offset = props.side_offset;
@@ -490,14 +493,47 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             .to_string()
     };
 
-    rsx! {
-        div {
-            onmounted: move |evt| content_ref.set(Some(evt.data())),
-            "data-radix-popper-content-wrapper": "",
-            style: "{style}",
-            {props.children}
+    // Capture context values as signals to re-provide through Portal
+    let ctx_side: ReadSignal<Side> = placed_side.into();
+    let ctx_align: ReadSignal<Align> = placed_align.into();
+
+    let wrapper = rsx! {
+        PopperContentCtxProvider {
+            placed_side: ctx_side,
+            placed_align: ctx_align,
+            div {
+                onmounted: move |evt| content_ref.set(Some(evt.data())),
+                "data-radix-popper-content-wrapper": "",
+                style: "{style}",
+                {props.children}
+            }
         }
+    };
+
+    if props.portal {
+        rsx! {
+            crate::portal::Portal { {wrapper} }
+        }
+    } else {
+        wrapper
     }
+}
+
+/// Re-provides PopperContentCtx for children that may be inside a Portal.
+#[derive(Props, Clone, PartialEq)]
+struct PopperContentCtxProviderProps {
+    placed_side: ReadSignal<Side>,
+    placed_align: ReadSignal<Align>,
+    children: Element,
+}
+
+#[component]
+fn PopperContentCtxProvider(props: PopperContentCtxProviderProps) -> Element {
+    use_context_provider(|| PopperContentCtx {
+        placed_side: props.placed_side,
+        placed_align: props.placed_align,
+    });
+    props.children
 }
 
 // ---------------------------------------------------------------------------

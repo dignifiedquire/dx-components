@@ -771,50 +771,13 @@ pub(crate) fn use_collapsible_content_dimensions(
     }
 }
 
-/// The side where the content will be displayed relative to the trigger
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ContentSide {
-    /// The content will appear above the trigger
-    Top,
-    /// The content will appear to the right of the trigger
-    Right,
-    /// The content will appear below the trigger
-    Bottom,
-    /// The content will appear to the left of the trigger
-    Left,
-}
+/// The side where the content will be displayed relative to the trigger.
+/// Type alias for [`popper::Side`].
+pub type ContentSide = popper::Side;
 
-impl ContentSide {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Top => "top",
-            Self::Right => "right",
-            Self::Bottom => "bottom",
-            Self::Left => "left",
-        }
-    }
-}
-
-/// The alignment of the content relative to the trigger
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ContentAlign {
-    /// The content will be aligned to the start of the trigger
-    Start,
-    /// The content will be centered relative to the trigger
-    Center,
-    /// The content will be aligned to the end of the trigger
-    End,
-}
-
-impl ContentAlign {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Start => "start",
-            Self::Center => "center",
-            Self::End => "end",
-        }
-    }
-}
+/// The alignment of the content relative to the trigger.
+/// Type alias for [`popper::Align`].
+pub type ContentAlign = popper::Align;
 
 pub(crate) trait LocalDateExt {
     /// A small extension method function to get the local date with a fallback to UTC date if this fails

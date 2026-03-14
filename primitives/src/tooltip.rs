@@ -5,9 +5,10 @@
 //! - [`TooltipTrigger`]: Button element that shows/hides tooltip on hover/focus
 //! - [`TooltipContent`]: The tooltip content, rendered with `role="tooltip"`
 
+use crate::popper::{Align, Popper, PopperContent, PopperContentCtx, PopperCtx, Side};
 use crate::portal::Portal;
+use crate::use_unique_id;
 use crate::{merge_attributes, use_delayed_open, use_id_or, use_presence};
-use crate::{use_unique_id, ContentAlign, ContentSide};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 
@@ -22,7 +23,6 @@ struct TooltipProviderCtx {
     skip_delay_duration: u64,
     disable_hoverable_content: bool,
     /// Tracks whether we're within the skip-delay window (recently closed a tooltip).
-    /// When false, the next tooltip opens instantly (within skip window).
     is_open_delayed: Signal<bool>,
     /// Generation counter for skip-delay timer cancellation.
     skip_delay_gen: Signal<u64>,
@@ -118,24 +118,7 @@ pub struct TooltipRootProps {
     pub children: Element,
 }
 
-/// No-DOM context provider for a tooltip.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::tooltip::{TooltipRoot, TooltipTrigger, TooltipContent};
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         TooltipRoot {
-///             TooltipTrigger { "Hover me" }
-///             TooltipContent { "Tooltip text" }
-///         }
-///     }
-/// }
-/// ```
+/// No-DOM context provider for a tooltip. Wraps children in [`Popper`].
 #[component]
 pub fn TooltipRoot(props: TooltipRootProps) -> Element {
     use std::time::Duration;
@@ -163,20 +146,15 @@ pub fn TooltipRoot(props: TooltipRootProps) -> Element {
     }
 
     // Skip-delay: notify provider when tooltip opens/closes.
-    // When one tooltip closes, subsequent tooltips within skip_delay_duration
-    // open instantly (matching Radix's TooltipProvider behavior).
     {
         let open = delayed.open;
         use_effect(move || {
             let is_open = open();
             if let Some(mut provider) = provider {
                 if is_open {
-                    // Cancel any pending skip-delay timer
                     *provider.skip_delay_gen.write() += 1;
-                    // Next tooltip should open instantly (within skip window)
                     provider.is_open_delayed.set(false);
                 } else {
-                    // Start skip-delay timer: re-enable delay after skip_delay_duration
                     let gen = {
                         let mut g = provider.skip_delay_gen.write();
                         *g += 1;
@@ -207,7 +185,11 @@ pub fn TooltipRoot(props: TooltipRootProps) -> Element {
         disable_hoverable_content: disable_hoverable,
     });
 
-    rsx! { {props.children} }
+    rsx! {
+        Popper {
+            {props.children}
+        }
+    }
 }
 
 /// Backward-compatible alias for [`TooltipRoot`].
@@ -242,21 +224,18 @@ pub struct TooltipTriggerProps {
 /// The trigger element. Renders as a `<button>` by default.
 ///
 /// Shows the tooltip on hover/focus, hides on leave/blur/escape.
-/// `aria-describedby` is set only when the tooltip is open (matching Radix).
+/// Also sets the Popper anchor ref for positioning.
 #[component]
 pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
     let ctx: TooltipCtx = use_context();
+    let popper_ctx: PopperCtx = use_context();
 
-    // Use pointermove instead of pointerenter — matches Radix,
-    // avoids touch events, and tracks pointer movement more precisely.
     let mut pointer_in = use_signal(|| false);
-
     let provider: Option<TooltipProviderCtx> = try_use_context();
 
     let handle_pointer_move = move |_: Event<PointerData>| {
         if !(ctx.disabled)() && !pointer_in() {
             pointer_in.set(true);
-            // If within skip-delay window, open instantly; otherwise use delay
             let should_skip = provider.is_some_and(|p| !(p.is_open_delayed)());
             if should_skip {
                 ctx.handle_immediate_open.call(());
@@ -275,7 +254,6 @@ pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
 
     let handle_focus = move |_: Event<FocusData>| {
         if !(ctx.disabled)() {
-            // Focus opens instantly (no delay) — matches Radix
             ctx.set_open.call(true);
         }
     };
@@ -310,6 +288,9 @@ pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
         onfocus: handle_focus,
         onblur: handle_blur,
         onkeydown: handle_keydown,
+        onmounted: move |e: Event<MountedData>| {
+            popper_ctx.set_anchor_ref(e.data());
+        },
     });
     let merged = merge_attributes(vec![base, props.attributes]);
 
@@ -337,12 +318,28 @@ pub struct TooltipContentProps {
     pub force_mount: bool,
 
     /// Side of the trigger to place the tooltip (default: Top).
-    #[props(default = ContentSide::Top)]
-    pub side: ContentSide,
+    #[props(default = Side::Top)]
+    pub side: Side,
+
+    /// Offset from the trigger edge in pixels. Defaults to 0.
+    #[props(default)]
+    pub side_offset: f64,
 
     /// Alignment relative to the trigger (default: Center).
-    #[props(default = ContentAlign::Center)]
-    pub align: ContentAlign,
+    #[props(default)]
+    pub align: Align,
+
+    /// Offset along the alignment axis. Defaults to 0.
+    #[props(default)]
+    pub align_offset: f64,
+
+    /// Whether to avoid viewport edge collisions. Defaults to `true`.
+    #[props(default = true)]
+    pub avoid_collisions: bool,
+
+    /// Collision padding in pixels. Defaults to 0.
+    #[props(default)]
+    pub collision_padding: f64,
 
     /// Additional classes.
     #[props(default)]
@@ -358,9 +355,9 @@ pub struct TooltipContentProps {
 
 /// The tooltip content. Only rendered when the tooltip is open.
 ///
-/// Has `role="tooltip"`, `data-state`, `data-side`, `data-align`.
-/// When hoverable content is enabled (default), moving pointer into
-/// the content keeps the tooltip open.
+/// Positioned via [`PopperContent`]. Has `role="tooltip"`, `data-state`,
+/// `data-side`, `data-align`. When hoverable content is enabled (default),
+/// moving pointer into the content keeps the tooltip open.
 #[component]
 pub fn TooltipContent(props: TooltipContentProps) -> Element {
     let ctx: TooltipCtx = use_context();
@@ -372,35 +369,79 @@ pub fn TooltipContent(props: TooltipContentProps) -> Element {
     }
 
     let disable_hover = ctx.disable_hoverable_content;
+    let data_state = presence.data_state();
 
-    // Radix deviation: Radix uses ReactDOM.createPortal to render the tooltip
-    // at document.body. We use our Portal component which teleports content to
-    // the nearest PortalHost via context-based signal system.
     rsx! {
         Portal {
-            div {
-                id,
-                role: "tooltip",
-                "data-slot": "tooltip-content",
-                "data-state": presence.data_state(),
-                "data-side": props.side.as_str(),
-                "data-align": props.align.as_str(),
-                class: props.class,
-                onanimationend: move |_| presence.on_animation_end(),
-                // Keep tooltip open when hovering content (unless disabled)
-                onpointerenter: move |_| {
-                    if !disable_hover {
-                        ctx.set_open.call(true);
-                    }
-                },
-                onpointerleave: move |_| {
-                    if !disable_hover {
-                        ctx.handle_immediate_close.call(());
-                    }
-                },
-                ..props.attributes,
-                {props.children}
+            PopperContent {
+                side: props.side,
+                side_offset: props.side_offset,
+                align: props.align,
+                align_offset: props.align_offset,
+                avoid_collisions: props.avoid_collisions,
+                collision_padding: props.collision_padding,
+                css_var_prefix: "tooltip",
+
+                TooltipContentInner {
+                    id,
+                    data_state,
+                    disable_hover,
+                    on_anim_end: move |_: Event<AnimationData>| presence.on_animation_end(),
+                    on_pointer_enter: move |_| {
+                        if !disable_hover {
+                            ctx.set_open.call(true);
+                        }
+                    },
+                    on_pointer_leave: move |_| {
+                        if !disable_hover {
+                            ctx.handle_immediate_close.call(());
+                        }
+                    },
+                    class: props.class,
+                    attributes: props.attributes,
+                    children: props.children,
+                }
             }
+        }
+    }
+}
+
+/// Inner component that reads [`PopperContentCtx`] for `data-side`/`data-align`.
+#[derive(Props, Clone, PartialEq)]
+struct TooltipContentInnerProps {
+    id: Memo<String>,
+    data_state: &'static str,
+    disable_hover: bool,
+    on_anim_end: EventHandler<Event<AnimationData>>,
+    on_pointer_enter: EventHandler<Event<PointerData>>,
+    on_pointer_leave: EventHandler<Event<PointerData>>,
+    #[props(default)]
+    class: Option<String>,
+    #[props(extends = GlobalAttributes)]
+    attributes: Vec<Attribute>,
+    children: Element,
+}
+
+#[component]
+fn TooltipContentInner(props: TooltipContentInnerProps) -> Element {
+    let popper = use_context::<PopperContentCtx>();
+    let side = (popper.placed_side)();
+    let align = (popper.placed_align)();
+
+    rsx! {
+        div {
+            id: props.id,
+            role: "tooltip",
+            "data-slot": "tooltip-content",
+            "data-state": props.data_state,
+            "data-side": side.as_str(),
+            "data-align": align.as_str(),
+            class: props.class,
+            onanimationend: move |e| props.on_anim_end.call(e),
+            onpointerenter: move |e| props.on_pointer_enter.call(e),
+            onpointerleave: move |e| props.on_pointer_leave.call(e),
+            ..props.attributes,
+            {props.children}
         }
     }
 }

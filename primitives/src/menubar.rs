@@ -27,6 +27,7 @@ use std::rc::Rc;
 
 use crate::direction::Orientation;
 use crate::menu::MenuCtx;
+use crate::popper::{Align, Popper, PopperContent, PopperContentCtx, PopperCtx, Side};
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
 use crate::{merge_attributes, use_unique_id};
 use dioxus::prelude::*;
@@ -285,7 +286,11 @@ pub fn MenubarMenu(props: MenubarMenuProps) -> Element {
             .retain(|m| m.menu_id != menu_id_cleanup);
     });
 
-    rsx! { {props.children} }
+    rsx! {
+        Popper {
+            {props.children}
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -315,6 +320,7 @@ pub fn MenubarTrigger(props: MenubarTriggerProps) -> Element {
     let mut bar_ctx: MenubarInternalCtx = use_context();
     let ctx: MenuCtx = use_context();
     let mut menu_ctx: MenubarMenuInternalCtx = use_context();
+    let popper_ctx: PopperCtx = use_context();
 
     let disabled = bar_ctx.disabled;
     let is_open = ctx.open;
@@ -352,7 +358,9 @@ pub fn MenubarTrigger(props: MenubarTriggerProps) -> Element {
                         button {
                             onmounted: move |e: MountedEvent| {
                                 slot_props.on_mounted.call(e.clone());
-                                menu_ctx.trigger_element.set(Some(e.data()));
+                                let data = e.data();
+                                menu_ctx.trigger_element.set(Some(data.clone()));
+                                popper_ctx.set_anchor_ref(data);
                             },
                             onfocus: move |e| slot_props.on_focus.call(e),
                             onmousedown: move |e| slot_props.on_mousedown.call(e),
@@ -414,6 +422,38 @@ pub fn MenubarTrigger(props: MenubarTriggerProps) -> Element {
 /// Props for [`MenubarContent`].
 #[derive(Props, Clone, PartialEq)]
 pub struct MenubarContentProps {
+    /// User-provided id override.
+    #[props(default)]
+    pub id: ReadSignal<Option<String>>,
+
+    /// Keep content mounted even when closed.
+    #[props(default)]
+    pub force_mount: bool,
+
+    /// Side of the trigger to place content. Defaults to `Bottom`.
+    #[props(default)]
+    pub side: Side,
+
+    /// Offset from the trigger edge in pixels. Defaults to 0.
+    #[props(default)]
+    pub side_offset: f64,
+
+    /// Alignment relative to the trigger. Defaults to `Center`.
+    #[props(default)]
+    pub align: Align,
+
+    /// Offset along the alignment axis. Defaults to 0.
+    #[props(default)]
+    pub align_offset: f64,
+
+    /// Whether to avoid viewport edge collisions. Defaults to `true`.
+    #[props(default = true)]
+    pub avoid_collisions: bool,
+
+    /// Collision padding in pixels. Defaults to 0.
+    #[props(default)]
+    pub collision_padding: f64,
+
     /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
@@ -428,7 +468,8 @@ pub struct MenubarContentProps {
 
 /// Menu content for a menubar menu.
 ///
-/// Wraps `MenuContent` with ArrowLeft/Right handlers for switching between menus.
+/// Wraps `MenuContent` in `PopperContent` with ArrowLeft/Right handlers
+/// for switching between menus.
 #[component]
 pub fn MenubarContent(props: MenubarContentProps) -> Element {
     let mut bar_ctx: MenubarInternalCtx = use_context();
@@ -444,12 +485,68 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
     });
 
     rsx! {
+        PopperContent {
+            side: props.side,
+            side_offset: props.side_offset,
+            align: props.align,
+            align_offset: props.align_offset,
+            avoid_collisions: props.avoid_collisions,
+            collision_padding: props.collision_padding,
+            css_var_prefix: "menubar",
+
+
+            MenubarContentInner {
+                id: props.id,
+                force_mount: props.force_mount,
+                class: props.class,
+                on_escape_override: on_escape,
+                on_arrow_left: on_arrow_left,
+                on_arrow_right: on_arrow_right,
+                attributes: props.attributes,
+                children: props.children,
+            }
+        }
+    }
+}
+
+/// Inner component that reads [`PopperContentCtx`] for `data-side`/`data-align`.
+#[derive(Props, Clone, PartialEq)]
+struct MenubarContentInnerProps {
+    #[props(default)]
+    id: ReadSignal<Option<String>>,
+    #[props(default)]
+    force_mount: bool,
+    #[props(default)]
+    class: Option<String>,
+    on_escape_override: Callback<()>,
+    on_arrow_left: Callback<()>,
+    on_arrow_right: Callback<()>,
+    #[props(extends = GlobalAttributes)]
+    attributes: Vec<Attribute>,
+    children: Element,
+}
+
+#[component]
+fn MenubarContentInner(props: MenubarContentInnerProps) -> Element {
+    let popper = use_context::<PopperContentCtx>();
+    let side = (popper.placed_side)();
+    let align = (popper.placed_align)();
+
+    let popper_attrs = attributes!(div {
+        "data-side": side.as_str(),
+        "data-align": align.as_str(),
+    });
+
+    rsx! {
         crate::menu::MenuContent {
+            id: props.id,
+            force_mount: props.force_mount,
             class: props.class,
-            on_escape_override: on_escape,
-            on_arrow_left: on_arrow_left,
-            on_arrow_right: on_arrow_right,
-            extra_attributes: props.attributes,
+            on_escape_override: props.on_escape_override,
+            on_arrow_left: props.on_arrow_left,
+            on_arrow_right: props.on_arrow_right,
+            extra_attributes: popper_attrs,
+            attributes: props.attributes,
             {props.children}
         }
     }

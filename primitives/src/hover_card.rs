@@ -4,9 +4,9 @@
 //! - [`HoverCardTrigger`]: Anchor element that shows/hides card on hover/focus
 //! - [`HoverCardContent`]: The card content, visible on hover
 
+use crate::popper::{Align, Popper, PopperContent, PopperContentCtx, PopperCtx, Side};
 use crate::portal::Portal;
 use crate::{use_delayed_open, use_id_or, use_presence, use_unique_id};
-use crate::{ContentAlign, ContentSide};
 use dioxus::prelude::*;
 
 // ---------------------------------------------------------------------------
@@ -54,28 +54,7 @@ pub struct HoverCardRootProps {
     pub children: Element,
 }
 
-/// No-DOM context provider for a hover card.
-///
-/// ## Example
-///
-/// ```rust
-/// use dioxus::prelude::*;
-/// use dioxus_primitives::hover_card::{HoverCardRoot, HoverCardTrigger, HoverCardContent};
-/// use dioxus_primitives::ContentSide;
-///
-/// #[component]
-/// fn Demo() -> Element {
-///     rsx! {
-///         HoverCardRoot {
-///             HoverCardTrigger { "Hover me" }
-///             HoverCardContent {
-///                 side: ContentSide::Bottom,
-///                 "Card content"
-///             }
-///         }
-///     }
-/// }
-/// ```
+/// No-DOM context provider for a hover card. Wraps children in [`Popper`].
 #[component]
 pub fn HoverCardRoot(props: HoverCardRootProps) -> Element {
     let content_id = use_unique_id();
@@ -96,7 +75,11 @@ pub fn HoverCardRoot(props: HoverCardRootProps) -> Element {
         content_id,
     });
 
-    rsx! { {props.children} }
+    rsx! {
+        Popper {
+            {props.children}
+        }
+    }
 }
 
 /// Backward-compatible alias for [`HoverCardRoot`].
@@ -129,13 +112,14 @@ pub struct HoverCardTriggerProps {
     pub children: Element,
 }
 
-/// The trigger element. Renders as an `<a>` by default (matching Radix `Primitive.a`).
+/// The trigger element. Renders as an `<a>` by default (matching Radix).
 ///
 /// Shows the hover card on pointer enter / focus, hides on leave / blur.
-/// Touch events are excluded — hover cards are a pointer-only interaction.
+/// Also sets the Popper anchor ref for positioning.
 #[component]
 pub fn HoverCardTrigger(props: HoverCardTriggerProps) -> Element {
     let ctx: HoverCardCtx = use_context();
+    let popper_ctx: PopperCtx = use_context();
 
     let is_open = (ctx.open)();
 
@@ -145,7 +129,6 @@ pub fn HoverCardTrigger(props: HoverCardTriggerProps) -> Element {
             "data-slot": "hover-card-trigger",
             "data-state": if is_open { "open" } else { "closed" },
             onpointerenter: move |e: Event<PointerData>| {
-                // Skip touch events — hover cards are pointer-only
                 if e.data().pointer_type() == "touch" {
                     return;
                 }
@@ -162,6 +145,9 @@ pub fn HoverCardTrigger(props: HoverCardTriggerProps) -> Element {
             },
             onblur: move |_: Event<FocusData>| {
                 ctx.handle_immediate_close.call(());
+            },
+            onmounted: move |e: Event<MountedData>| {
+                popper_ctx.set_anchor_ref(e.data());
             },
             ..props.attributes,
             {props.children}
@@ -184,12 +170,28 @@ pub struct HoverCardContentProps {
     pub force_mount: bool,
 
     /// Side of the trigger to place the hover card (default: Bottom).
-    #[props(default = ContentSide::Bottom)]
-    pub side: ContentSide,
+    #[props(default)]
+    pub side: Side,
+
+    /// Offset from the trigger edge in pixels. Defaults to 0.
+    #[props(default)]
+    pub side_offset: f64,
 
     /// Alignment relative to the trigger (default: Center).
-    #[props(default = ContentAlign::Center)]
-    pub align: ContentAlign,
+    #[props(default)]
+    pub align: Align,
+
+    /// Offset along the alignment axis. Defaults to 0.
+    #[props(default)]
+    pub align_offset: f64,
+
+    /// Whether to avoid viewport edge collisions. Defaults to `true`.
+    #[props(default = true)]
+    pub avoid_collisions: bool,
+
+    /// Collision padding in pixels. Defaults to 0.
+    #[props(default)]
+    pub collision_padding: f64,
 
     /// Additional classes.
     #[props(default)]
@@ -205,8 +207,8 @@ pub struct HoverCardContentProps {
 
 /// The hover card content. Only rendered when the card is open.
 ///
-/// Keeps the card open while the pointer is inside the content area.
-/// Has `data-state`, `data-side`, `data-align` attributes.
+/// Positioned via [`PopperContent`]. Keeps the card open while the pointer
+/// is inside the content area.
 #[component]
 pub fn HoverCardContent(props: HoverCardContentProps) -> Element {
     let ctx: HoverCardCtx = use_context();
@@ -217,29 +219,72 @@ pub fn HoverCardContent(props: HoverCardContentProps) -> Element {
         return rsx! {};
     }
 
-    // Radix deviation: Radix uses ReactDOM.createPortal to render the content
-    // at document.body. We use our Portal component which teleports content to
-    // the nearest PortalHost via context-based signal system.
+    let data_state = presence.data_state();
+
     rsx! {
         Portal {
-            div {
-                id,
-                "data-slot": "hover-card-content",
-                "data-state": presence.data_state(),
-                "data-side": props.side.as_str(),
-                "data-align": props.align.as_str(),
-                class: props.class,
-                // Keep card open while pointer is in content, close on leave
-                onpointerenter: move |_| {
-                    ctx.set_open.call(true);
-                },
-                onpointerleave: move |_| {
-                    ctx.handle_delayed_close.call(());
-                },
-                onanimationend: move |_| presence.on_animation_end(),
-                ..props.attributes,
-                {props.children}
+            PopperContent {
+                side: props.side,
+                side_offset: props.side_offset,
+                align: props.align,
+                align_offset: props.align_offset,
+                avoid_collisions: props.avoid_collisions,
+                collision_padding: props.collision_padding,
+                css_var_prefix: "hover-card",
+
+                HoverCardContentInner {
+                    id,
+                    data_state,
+                    on_anim_end: move |_: Event<AnimationData>| presence.on_animation_end(),
+                    on_pointer_enter: move |_| {
+                        ctx.set_open.call(true);
+                    },
+                    on_pointer_leave: move |_| {
+                        ctx.handle_delayed_close.call(());
+                    },
+                    class: props.class,
+                    attributes: props.attributes,
+                    children: props.children,
+                }
             }
+        }
+    }
+}
+
+/// Inner component that reads [`PopperContentCtx`] for `data-side`/`data-align`.
+#[derive(Props, Clone, PartialEq)]
+struct HoverCardContentInnerProps {
+    id: Memo<String>,
+    data_state: &'static str,
+    on_anim_end: EventHandler<Event<AnimationData>>,
+    on_pointer_enter: EventHandler<Event<PointerData>>,
+    on_pointer_leave: EventHandler<Event<PointerData>>,
+    #[props(default)]
+    class: Option<String>,
+    #[props(extends = GlobalAttributes)]
+    attributes: Vec<Attribute>,
+    children: Element,
+}
+
+#[component]
+fn HoverCardContentInner(props: HoverCardContentInnerProps) -> Element {
+    let popper = use_context::<PopperContentCtx>();
+    let side = (popper.placed_side)();
+    let align = (popper.placed_align)();
+
+    rsx! {
+        div {
+            id: props.id,
+            "data-slot": "hover-card-content",
+            "data-state": props.data_state,
+            "data-side": side.as_str(),
+            "data-align": align.as_str(),
+            class: props.class,
+            onanimationend: move |e| props.on_anim_end.call(e),
+            onpointerenter: move |e| props.on_pointer_enter.call(e),
+            onpointerleave: move |e| props.on_pointer_leave.call(e),
+            ..props.attributes,
+            {props.children}
         }
     }
 }

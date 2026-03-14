@@ -7,9 +7,10 @@ use std::rc::Rc;
 use dioxus::prelude::*;
 
 use crate::focus_scope::FocusScope;
+use crate::popper::{Align, Popper, PopperContent, PopperContentCtx, PopperCtx, Side};
 use crate::portal::Portal;
 use crate::use_global_escape_listener;
-use crate::{use_controlled, use_id_or, use_presence, use_unique_id, ContentAlign, ContentSide};
+use crate::{use_controlled, use_id_or, use_presence, use_unique_id};
 
 // ---------------------------------------------------------------------------
 // Context
@@ -65,22 +66,7 @@ pub struct PopoverRootProps {
 
 /// The root of the popover. Manages state and provides context.
 ///
-/// Renders **no DOM element** — purely a context provider matching
-/// Radix's `Popover.Root`.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::popover::*;
-/// rsx! {
-///     PopoverRoot {
-///         PopoverTrigger { "Open" }
-///         PopoverContent {
-///             p { "Content here" }
-///             PopoverClose { "Close" }
-///         }
-///     }
-/// };
-/// ```
+/// Wraps children in [`Popper`] for positioning.
 #[component]
 pub fn PopoverRoot(props: PopoverRootProps) -> Element {
     let content_id = use_unique_id();
@@ -97,7 +83,9 @@ pub fn PopoverRoot(props: PopoverRootProps) -> Element {
     });
 
     rsx! {
-        {props.children}
+        Popper {
+            {props.children}
+        }
     }
 }
 
@@ -120,26 +108,11 @@ pub struct PopoverTriggerProps {
     pub children: Element,
 }
 
-/// A button that toggles the popover.
-///
-/// Matches Radix's `PopoverTrigger`. Renders `<button>` with
-/// `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls`, `data-state`.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::popover::*;
-/// rsx! {
-///     PopoverRoot {
-///         PopoverTrigger { "Toggle" }
-///         PopoverContent {
-///             p { "Popover content" }
-///         }
-///     }
-/// };
-/// ```
+/// A button that toggles the popover. Also sets the Popper anchor ref.
 #[component]
 pub fn PopoverTrigger(props: PopoverTriggerProps) -> Element {
     let ctx: PopoverCtx = use_context();
+    let popper_ctx: PopperCtx = use_context();
     let open = ctx.open;
     let set_open = ctx.set_open;
     let mut trigger_ref = ctx.trigger_ref;
@@ -154,7 +127,11 @@ pub fn PopoverTrigger(props: PopoverTriggerProps) -> Element {
             aria_controls: ctx.content_id,
             class: props.class,
             onclick: move |_| set_open.call(!open()),
-            onmounted: move |e| trigger_ref.set(Some(e.data())),
+            onmounted: move |e| {
+                let data = e.data();
+                trigger_ref.set(Some(data.clone()));
+                popper_ctx.set_anchor_ref(data);
+            },
             ..props.attributes,
             {props.children}
         }
@@ -175,13 +152,29 @@ pub struct PopoverContentProps {
     #[props(default)]
     pub force_mount: bool,
 
-    /// Side of the trigger to place the popover.
-    #[props(default = ContentSide::Bottom)]
-    pub side: ContentSide,
+    /// Side of the trigger to place the popover. Defaults to `Bottom`.
+    #[props(default)]
+    pub side: Side,
 
-    /// Alignment relative to the trigger.
-    #[props(default = ContentAlign::Center)]
-    pub align: ContentAlign,
+    /// Offset from the trigger edge in pixels. Defaults to 0.
+    #[props(default)]
+    pub side_offset: f64,
+
+    /// Alignment relative to the trigger. Defaults to `Center`.
+    #[props(default)]
+    pub align: Align,
+
+    /// Offset along the alignment axis. Defaults to 0.
+    #[props(default)]
+    pub align_offset: f64,
+
+    /// Whether to avoid viewport edge collisions. Defaults to `true`.
+    #[props(default = true)]
+    pub avoid_collisions: bool,
+
+    /// Collision padding in pixels. Defaults to 0.
+    #[props(default)]
+    pub collision_padding: f64,
 
     /// Additional classes.
     #[props(default)]
@@ -197,29 +190,8 @@ pub struct PopoverContentProps {
 
 /// The content panel of the popover.
 ///
-/// Matches Radix's `PopoverContent`. Renders with `role="dialog"`,
-/// `data-state`, `data-side`, `data-align`. Focus trap when modal,
-/// closes on Escape.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::popover::*;
-/// rsx! {
-///     PopoverRoot {
-///         PopoverTrigger { "Open" }
-///         PopoverContent {
-///             side: dioxus_primitives::ContentSide::Bottom,
-///             p { "Content" }
-///             PopoverClose { "Close" }
-///         }
-///     }
-/// };
-/// ```
-///
-/// ## Data Attributes
-/// - `data-state`: `"open"` or `"closed"`.
-/// - `data-side`: `"top"`, `"right"`, `"bottom"`, or `"left"`.
-/// - `data-align`: `"start"`, `"center"`, or `"end"`.
+/// Positioned via [`PopperContent`]. Renders with `role="dialog"`,
+/// `data-state`, `data-side`, `data-align`. Focus trap when modal, closes on Escape.
 #[component]
 pub fn PopoverContent(props: PopoverContentProps) -> Element {
     let ctx: PopoverCtx = use_context();
@@ -237,8 +209,6 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
     let mut was_open = use_signal(|| false);
     use_effect(move || {
         let is_open = open();
-        // Use peek() to avoid subscribing to was_open — we only want to
-        // re-run when `open` changes, not when we write was_open below.
         if *was_open.peek() && !is_open {
             if let Some(ref trigger) = *ctx.trigger_ref.read() {
                 let trigger = trigger.clone();
@@ -255,28 +225,71 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
     }
 
     let trapped = is_modal && open();
+    let data_state = presence.data_state();
 
-    // Radix deviation: Radix uses ReactDOM.createPortal to render the content
-    // at document.body. We use our Portal component which teleports content to
-    // the nearest PortalHost via context-based signal system.
     rsx! {
         Portal {
-            FocusScope {
-                trapped: trapped,
-                r#loop: trapped,
-                div {
+            PopperContent {
+                side: props.side,
+                side_offset: props.side_offset,
+                align: props.align,
+                align_offset: props.align_offset,
+                avoid_collisions: props.avoid_collisions,
+                collision_padding: props.collision_padding,
+                css_var_prefix: "popover",
+
+                PopoverContentInner {
                     id,
-                    "data-slot": "popover-content",
-                    "data-state": presence.data_state(),
-                    "data-side": props.side.as_str(),
-                    "data-align": props.align.as_str(),
-                    role: "dialog",
-                    aria_modal: if is_modal { "true" },
+                    data_state,
+                    is_modal,
+                    trapped,
+                    on_anim_end: move |_: Event<AnimationData>| presence.on_animation_end(),
                     class: props.class,
-                    onanimationend: move |_| presence.on_animation_end(),
-                    ..props.attributes,
-                    {props.children}
+                    attributes: props.attributes,
+                    children: props.children,
                 }
+            }
+        }
+    }
+}
+
+/// Inner component that reads [`PopperContentCtx`] for `data-side`/`data-align`.
+#[derive(Props, Clone, PartialEq)]
+struct PopoverContentInnerProps {
+    id: Memo<String>,
+    data_state: &'static str,
+    is_modal: bool,
+    trapped: bool,
+    on_anim_end: EventHandler<Event<AnimationData>>,
+    #[props(default)]
+    class: Option<String>,
+    #[props(extends = GlobalAttributes)]
+    attributes: Vec<Attribute>,
+    children: Element,
+}
+
+#[component]
+fn PopoverContentInner(props: PopoverContentInnerProps) -> Element {
+    let popper = use_context::<PopperContentCtx>();
+    let side = (popper.placed_side)();
+    let align = (popper.placed_align)();
+
+    rsx! {
+        FocusScope {
+            trapped: props.trapped,
+            r#loop: props.trapped,
+            div {
+                id: props.id,
+                "data-slot": "popover-content",
+                "data-state": props.data_state,
+                "data-side": side.as_str(),
+                "data-align": align.as_str(),
+                role: "dialog",
+                aria_modal: if props.is_modal { "true" },
+                class: props.class,
+                onanimationend: move |e| props.on_anim_end.call(e),
+                ..props.attributes,
+                {props.children}
             }
         }
     }
@@ -304,20 +317,6 @@ pub struct PopoverCloseProps {
 /// A button that closes the popover.
 ///
 /// Matches Radix's `PopoverClose`.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::popover::*;
-/// rsx! {
-///     PopoverRoot {
-///         PopoverTrigger { "Open" }
-///         PopoverContent {
-///             p { "Content" }
-///             PopoverClose { "Close" }
-///         }
-///     }
-/// };
-/// ```
 #[component]
 pub fn PopoverClose(props: PopoverCloseProps) -> Element {
     let ctx: PopoverCtx = use_context();

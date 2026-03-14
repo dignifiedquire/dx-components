@@ -1,5 +1,6 @@
 //! SelectContent (formerly SelectList) component implementation.
 
+use crate::popper::{Align, PopperContent, PopperContentCtx, Side};
 use crate::portal::Portal;
 use crate::{
     select::context::SelectListContext, use_animated_open, use_effect, use_id_or, use_unique_id,
@@ -14,6 +15,30 @@ pub struct SelectContentProps {
     /// The ID of the content for ARIA attributes
     #[props(default)]
     pub id: ReadSignal<Option<String>>,
+
+    /// Side of the trigger to place content. Defaults to `Bottom`.
+    #[props(default)]
+    pub side: Side,
+
+    /// Offset from the trigger edge in pixels. Defaults to 0.
+    #[props(default)]
+    pub side_offset: f64,
+
+    /// Alignment relative to the trigger. Defaults to `Center`.
+    #[props(default)]
+    pub align: Align,
+
+    /// Offset along the alignment axis. Defaults to 0.
+    #[props(default)]
+    pub align_offset: f64,
+
+    /// Whether to avoid viewport edge collisions. Defaults to `true`.
+    #[props(default = true)]
+    pub avoid_collisions: bool,
+
+    /// Collision padding in pixels. Defaults to 0.
+    #[props(default)]
+    pub collision_padding: f64,
 
     /// Additional attributes for the content
     #[props(extends = GlobalAttributes)]
@@ -37,6 +62,65 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
     use_effect(move || {
         ctx.list_id.set(Some(id()));
     });
+
+    let open = ctx.open;
+
+    let render = use_animated_open(id, open);
+    let render = use_memo(render);
+
+    use_context_provider(|| SelectListContext {
+        render: render.into(),
+    });
+
+    use_effect(move || {
+        if render() {
+            ctx.focus_state.set_focus(ctx.initial_focus.cloned());
+        } else {
+            ctx.initial_focus.set(None);
+        }
+    });
+
+    rsx! {
+        if render() {
+            Portal {
+                PopperContent {
+                    side: props.side,
+                    side_offset: props.side_offset,
+                    align: props.align,
+                    align_offset: props.align_offset,
+                    avoid_collisions: props.avoid_collisions,
+                    collision_padding: props.collision_padding,
+                    css_var_prefix: "select",
+
+                    SelectContentInner {
+                        id,
+                        attributes: props.attributes,
+                        children: props.children,
+                    }
+                }
+            }
+        } else {
+            {props.children}
+        }
+    }
+}
+
+/// Inner component that reads [`PopperContentCtx`] for `data-side`/`data-align`
+/// and renders the listbox div with keyboard/focus handling.
+#[derive(Props, Clone, PartialEq)]
+struct SelectContentInnerProps {
+    id: Memo<String>,
+    #[props(extends = GlobalAttributes)]
+    attributes: Vec<Attribute>,
+    children: Element,
+}
+
+#[component]
+fn SelectContentInner(props: SelectContentInnerProps) -> Element {
+    let mut ctx = use_context::<SelectContext>();
+    let popper = use_context::<PopperContentCtx>();
+    let side = (popper.placed_side)();
+    let align = (popper.placed_align)();
 
     let mut open = ctx.open;
     let mut listbox_ref: Signal<Option<std::rc::Rc<MountedData>>> = use_signal(|| None);
@@ -113,21 +197,6 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
         }
     };
 
-    let render = use_animated_open(id, open);
-    let render = use_memo(render);
-
-    use_context_provider(|| SelectListContext {
-        render: render.into(),
-    });
-
-    use_effect(move || {
-        if render() {
-            ctx.focus_state.set_focus(ctx.initial_focus.cloned());
-        } else {
-            ctx.initial_focus.set(None);
-        }
-    });
-
     let active_descendant = use_memo(move || {
         let focus_idx = ctx.focus_state.current_focus()?;
         let options = ctx.options.read();
@@ -137,33 +206,26 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
             .map(|opt| opt.id.clone())
     });
 
-    // Radix deviation: Radix uses ReactDOM.createPortal to render the select
-    // content at document.body. We use our Portal component which teleports
-    // content to the nearest PortalHost via context-based signal system.
     rsx! {
-        if render() {
-            Portal {
-                div {
-                    id,
-                    role: "listbox",
-                    "data-slot": "select-content",
-                    tabindex: if focused() { "0" } else { "-1" },
-                    "data-state": if open() { "open" } else { "closed" },
-                    aria_activedescendant: active_descendant,
+        div {
+            id: props.id,
+            role: "listbox",
+            "data-slot": "select-content",
+            "data-side": side.as_str(),
+            "data-align": align.as_str(),
+            tabindex: if focused() { "0" } else { "-1" },
+            "data-state": if open() { "open" } else { "closed" },
+            aria_activedescendant: active_descendant,
 
-                    onmounted: move |evt| listbox_ref.set(Some(evt.data())),
-                    onkeydown,
-                    onblur: move |_| {
-                        if focused() {
-                            open.set(false);
-                        }
-                    },
-
-                    ..props.attributes,
-                    {props.children}
+            onmounted: move |evt| listbox_ref.set(Some(evt.data())),
+            onkeydown,
+            onblur: move |_| {
+                if focused() {
+                    open.set(false);
                 }
-            }
-        } else {
+            },
+
+            ..props.attributes,
             {props.children}
         }
     }

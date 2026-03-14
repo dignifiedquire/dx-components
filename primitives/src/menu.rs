@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 use crate::direction::Orientation;
 use crate::merge_attributes;
+use crate::popper::{Popper, PopperContent, PopperContentCtx, PopperCtx, Side};
 use crate::portal::Portal;
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
 use crate::typeahead::{use_typeahead, TypeaheadItem};
@@ -766,7 +767,11 @@ pub fn MenuSub(props: MenuSubProps) -> Element {
         trigger_id,
     });
 
-    rsx! { {props.children} }
+    rsx! {
+        Popper {
+            {props.children}
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -807,6 +812,7 @@ pub struct MenuSubTriggerProps {
 pub fn MenuSubTrigger(props: MenuSubTriggerProps) -> Element {
     let ctx: MenuCtx = use_context();
     let sub_ctx: MenuSubCtx = use_context();
+    let popper_ctx: PopperCtx = use_context();
     let slot = format!("{}-sub-trigger", ctx.slot_prefix);
     let disabled = props.disabled;
     let is_open = sub_ctx.open;
@@ -842,7 +848,10 @@ pub fn MenuSubTrigger(props: MenuSubTriggerProps) -> Element {
 
                     rsx! {
                         div {
-                            onmounted: move |e| slot_props.on_mounted.call(e),
+                            onmounted: move |e: MountedEvent| {
+                                slot_props.on_mounted.call(e.clone());
+                                popper_ctx.set_anchor_ref(e.data());
+                            },
                             onfocus: move |e| slot_props.on_focus.call(e),
                             onmousedown: move |e| slot_props.on_mousedown.call(e),
                             onkeydown: move |event: Event<KeyboardData>| {
@@ -918,9 +927,9 @@ pub struct MenuSubContentProps {
 /// Sub-menu content. Has `role="menu"`. Like `MenuContent` but for sub-menus.
 ///
 /// ArrowLeft closes the sub-menu. Escape closes the sub-menu.
+/// Positioned via [`PopperContent`] with `side: Right` (matching Radix).
 #[component]
 pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
-    let ctx: MenuCtx = use_context();
     let sub_ctx: MenuSubCtx = use_context();
     let id = use_id_or(sub_ctx.content_id, props.id);
     let mut presence = use_presence(sub_ctx.open, id);
@@ -929,56 +938,96 @@ pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
         return rsx! {};
     }
 
+    let data_state = presence.data_state();
+
+    rsx! {
+        Portal {
+            PopperContent {
+                side: Side::Right,
+                css_var_prefix: "menu",
+
+                MenuSubContentInner {
+                    id,
+                    data_state,
+                    on_anim_end: move |_: Event<AnimationData>| presence.on_animation_end(),
+                    class: props.class,
+                    attributes: props.attributes,
+                    children: props.children,
+                }
+            }
+        }
+    }
+}
+
+/// Inner component that reads [`PopperContentCtx`] for sub-menu `data-side`/`data-align`.
+#[derive(Props, Clone, PartialEq)]
+struct MenuSubContentInnerProps {
+    id: Memo<String>,
+    data_state: &'static str,
+    on_anim_end: EventHandler<Event<AnimationData>>,
+    #[props(default)]
+    class: Option<String>,
+    #[props(extends = GlobalAttributes)]
+    attributes: Vec<Attribute>,
+    children: Element,
+}
+
+#[component]
+fn MenuSubContentInner(props: MenuSubContentInnerProps) -> Element {
+    let ctx: MenuCtx = use_context();
+    let sub_ctx: MenuSubCtx = use_context();
+    let popper = use_context::<PopperContentCtx>();
+    let side = (popper.placed_side)();
+    let align = (popper.placed_align)();
+
     let slot = format!("{}-sub-content", ctx.slot_prefix);
     let children = props.children;
     let class = props.class;
     let user_attrs = props.attributes;
+    let data_state = props.data_state;
 
-    // Radix deviation: Radix uses ReactDOM.createPortal to render sub-menu
-    // content at document.body. We use our Portal component which teleports
-    // content to the nearest PortalHost via context-based signal system.
     rsx! {
-        Portal {
-            RovingFocusGroup {
-                orientation: Signal::new(Some(Orientation::Vertical)),
-                r#loop: Signal::new(true),
-                r#as: {
-                    let children = children.clone();
-                    let class = class.clone();
-                    let user_attrs = user_attrs.clone();
-                    let slot = slot.clone();
-                    move |roving_attrs: Vec<Attribute>| {
-                        let content_attrs = attributes!(div {
-                            id: id,
-                            role: "menu",
-                            "data-slot": slot.clone(),
-                            "data-state": presence.data_state(),
-                            aria_orientation: "vertical",
-                            aria_labelledby: sub_ctx.trigger_id.cloned(),
-                            class: class.clone(),
-                        });
-                        let merged = merge_attributes(vec![roving_attrs, content_attrs, user_attrs.clone()]);
+        RovingFocusGroup {
+            orientation: Signal::new(Some(Orientation::Vertical)),
+            r#loop: Signal::new(true),
+            r#as: {
+                let children = children.clone();
+                let class = class.clone();
+                let user_attrs = user_attrs.clone();
+                let slot = slot.clone();
+                move |roving_attrs: Vec<Attribute>| {
+                    let content_attrs = attributes!(div {
+                        id: props.id,
+                        role: "menu",
+                        "data-slot": slot.clone(),
+                        "data-state": data_state,
+                        "data-side": side.as_str(),
+                        "data-align": align.as_str(),
+                        aria_orientation: "vertical",
+                        aria_labelledby: sub_ctx.trigger_id.cloned(),
+                        class: class.clone(),
+                    });
+                    let merged = merge_attributes(vec![roving_attrs, content_attrs, user_attrs.clone()]);
 
-                        rsx! {
-                            div {
-                                onanimationend: move |_| presence.on_animation_end(),
-                                onkeydown: move |event: Event<KeyboardData>| {
-                                    match event.key() {
-                                        Key::ArrowLeft | Key::Escape => {
-                                            sub_ctx.set_open.call(false);
-                                            event.prevent_default();
-                                            event.stop_propagation();
-                                        }
-                                        _ => {}
+                    rsx! {
+                        div {
+                            onanimationend: move |e| props.on_anim_end.call(e),
+                            onkeydown: move |event: Event<KeyboardData>| {
+                                match event.key() {
+                                    Key::ArrowLeft | Key::Escape => {
+                                        sub_ctx.set_open.call(false);
+                                        event.prevent_default();
+                                        event.stop_propagation();
                                     }
-                                },
-                                ..merged,
-                                {children.clone()}
-                            }
+                                    _ => {}
+                                }
+                            },
+                            ..merged,
+                            {children.clone()}
                         }
                     }
-                },
-            }
+                }
+            },
         }
     }
 }

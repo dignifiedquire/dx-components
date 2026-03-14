@@ -2,6 +2,7 @@
 
 use std::time::Duration;
 
+use crate::popper::Popper;
 use crate::{use_controlled, use_effect};
 use dioxus::prelude::*;
 use dioxus_core::Task;
@@ -149,7 +150,9 @@ pub fn Select(props: SelectProps) -> Element {
     let disabled = props.disabled;
 
     rsx! {
-        {props.children}
+        Popper {
+            {props.children}
+        }
 
         // Hidden native <select> for form participation (matching Radix's BubbleSelect).
         if !name().is_empty() {

@@ -62,6 +62,10 @@ pub struct ComboboxCtx {
     pub listbox_id: String,
 }
 
+/// Newtype wrapper for selected display text signal so it doesn't conflict with other `Signal<String>` in context.
+#[derive(Clone, Copy)]
+pub struct SelectedDisplay(pub Signal<String>);
+
 impl PartialEq for ComboboxCtx {
     fn eq(&self, other: &Self) -> bool {
         self.open == other.open
@@ -115,6 +119,7 @@ pub fn Combobox(props: ComboboxProps) -> Element {
     let listbox_id = crate::use_unique_id();
     let open = use_signal(|| false);
     let filter_text = use_signal(String::new);
+    let selected_display = use_signal(String::new);
 
     let ctx = ComboboxCtx {
         open: open(),
@@ -128,6 +133,7 @@ pub fn Combobox(props: ComboboxProps) -> Element {
     use_context_provider(|| open);
     use_context_provider(|| filter_text);
     use_context_provider(|| props.on_value_change);
+    use_context_provider(|| SelectedDisplay(selected_display));
 
     // Update context when state changes
     let mut ctx_signal = use_context::<Signal<ComboboxCtx>>();
@@ -176,9 +182,17 @@ pub fn ComboboxInput(props: ComboboxInputProps) -> Element {
     let ctx = use_context::<Signal<ComboboxCtx>>();
     let mut open = use_context::<Signal<bool>>();
     let mut filter_text = use_context::<Signal<String>>();
+    let selected_display = use_context::<SelectedDisplay>();
 
     let is_open = ctx.read().open;
     let listbox_id = ctx.read().listbox_id.clone();
+
+    // Show selected display text when not actively filtering
+    let display_value = if filter_text().is_empty() {
+        selected_display.0.read().clone()
+    } else {
+        filter_text()
+    };
 
     rsx! {
         input {
@@ -190,7 +204,7 @@ pub fn ComboboxInput(props: ComboboxInputProps) -> Element {
             aria_controls: listbox_id,
             aria_autocomplete: "list",
             placeholder: props.placeholder,
-            value: filter_text(),
+            value: display_value,
             class: props.class,
             oninput: move |e: FormEvent| {
                 let val = e.value();
@@ -200,6 +214,7 @@ pub fn ComboboxInput(props: ComboboxInputProps) -> Element {
                 }
             },
             onfocus: move |_| {
+                filter_text.set(String::new());
                 open.set(true);
             },
             onkeydown: move |e: KeyboardEvent| {
@@ -341,6 +356,7 @@ pub fn ComboboxItem(props: ComboboxItemProps) -> Element {
     let mut open = use_context::<Signal<bool>>();
     let mut filter_text = use_context::<Signal<String>>();
     let on_value_change = use_context::<Callback<String>>();
+    let mut selected_display = use_context::<SelectedDisplay>();
 
     let is_selected = ctx.read().value == props.value;
     let filter = ctx.read().filter_text.clone();
@@ -367,9 +383,11 @@ pub fn ComboboxItem(props: ComboboxItemProps) -> Element {
             class: props.class,
             onclick: {
                 let value = props.value.clone();
+                let display = match_text.clone();
                 move |_| {
                     if !props.disabled {
                         on_value_change.call(value.clone());
+                        selected_display.0.set(display.clone());
                         filter_text.set(String::new());
                         open.set(false);
                     }
