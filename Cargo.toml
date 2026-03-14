@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["primitives", "components", "preview", "test-harness", "dioxus-attributes"]
+members = ["primitives", "components", "preview", "test-harness", "dioxus-attributes", "floating-ui"]
 
 [workspace.dependencies]
 dioxus-primitives = { path = "primitives" }
