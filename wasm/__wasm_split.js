@@ -61,4 +61,4 @@ export function makeLoad(url, deps, fusedImports, initIt) {
 }
 
 let fusedImports = {};
-export const __wasm_split_load_chunk_0 = makeLoad("/dx-components/assets/chunk_0_split-dxhd223f893e32c23.wasm", [], fusedImports);
+export const __wasm_split_load_chunk_0 = makeLoad("/dx-components/assets/chunk_0_split-dxh216ae4dc682b9c0.wasm", [], fusedImports);
