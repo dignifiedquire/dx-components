@@ -72,10 +72,11 @@ fn all_closed() {
 
     // All three items are closed — data-state="closed" on collapsible wrappers
     let closed_count = html.matches(r#"data-state="closed""#).count();
-    // Each item has: collapsible root + header + trigger + content = 4 per item = 12 total
+    // Each item has: collapsible root + header + trigger = 3 per item = 9 total
+    // (content is unmounted by Presence when closed, matching upstream behavior)
     assert!(
-        closed_count >= 12,
-        "expected at least 12 data-state=closed, got {closed_count}"
+        closed_count >= 9,
+        "expected at least 9 data-state=closed, got {closed_count}"
     );
 
     // No open state anywhere
@@ -88,20 +89,12 @@ fn all_closed() {
         "all 3 triggers should have aria-expanded=false"
     );
 
-    // Content text not in DOM (inner wrapper only renders when is_open)
+    // Content not in DOM when closed (Presence unmounts, matching upstream)
     assert!(!html.contains("Content One"));
     assert!(!html.contains("Content Two"));
     assert!(!html.contains("Content Three"));
-
-    // Content outer divs are always in DOM (matching Radix's always-mounted pattern),
-    // but hidden via the `hidden` attribute.
     let content_count = html.matches(r#"data-slot="collapsible-content""#).count();
-    assert_eq!(content_count, 3, "all 3 content divs should be in DOM");
-    let hidden_count = html.matches("hidden=true").count();
-    assert!(
-        hidden_count >= 3,
-        "all 3 content divs should be hidden, got {hidden_count}"
-    );
+    assert_eq!(content_count, 0, "closed content divs should be unmounted");
 
     // All triggers are buttons
     let button_count = html.matches(r#"type="button""#).count();

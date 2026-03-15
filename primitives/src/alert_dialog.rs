@@ -10,9 +10,10 @@ use crate::aria_hidden::use_aria_hidden;
 use crate::dialog::{DialogCtx, DialogRoot};
 use crate::focus_scope::FocusScope;
 use crate::portal::Portal;
+use crate::presence::Presence;
 use crate::scroll_lock::use_scroll_lock;
 use crate::use_global_escape_listener;
-use crate::{use_id_or, use_presence, use_unique_id};
+use crate::{use_id_or, use_unique_id};
 
 // ---------------------------------------------------------------------------
 // AlertDialogRoot
@@ -185,25 +186,23 @@ pub fn AlertDialogOverlay(props: AlertDialogOverlayProps) -> Element {
 
     let unique_id = use_unique_id();
     let id = use_id_or(unique_id, props.id);
-    let mut presence = use_presence(open, id);
-
-    if !presence.is_present() && !props.force_mount {
-        return rsx! {};
-    }
 
     // No onclick handler — alert dialog overlay does NOT close on click
     // Radix deviation: Radix uses ReactDOM.createPortal to render the overlay
     // at document.body. We use our Portal component which teleports content to
     // the nearest PortalHost via context-based signal system.
     rsx! {
-        Portal {
-            div {
-                id,
-                "data-slot": "alert-dialog-overlay",
-                "data-state": presence.data_state(),
-                class: props.class,
-                onanimationend: move |_| presence.on_animation_end(),
-                ..props.attributes,
+        Presence {
+            present: props.force_mount || open(),
+            id: id,
+            Portal {
+                div {
+                    id,
+                    "data-slot": "alert-dialog-overlay",
+                    "data-state": if open() { "open" } else { "closed" },
+                    class: props.class,
+                    ..props.attributes,
+                }
             }
         }
     }
@@ -281,34 +280,31 @@ pub fn AlertDialogContent(props: AlertDialogContentProps) -> Element {
     // Matches Radix's aria-hidden integration.
     use_aria_hidden(id, scroll_lock_active);
 
-    let mut presence = use_presence(open, id);
-
-    if !presence.is_present() && !props.force_mount {
-        return rsx! {};
-    }
-
     let trapped = open();
 
     // Radix deviation: Radix uses ReactDOM.createPortal to render the content
     // at document.body. We use our Portal component which teleports content to
     // the nearest PortalHost via context-based signal system.
     rsx! {
-        Portal {
-            FocusScope {
-                trapped: trapped,
-                r#loop: trapped,
-                div {
-                    id,
-                    "data-slot": "alert-dialog-content",
-                    "data-state": presence.data_state(),
-                    role: "alertdialog",
-                    aria_modal: "true",
-                    aria_labelledby: ctx.title_id,
-                    aria_describedby: ctx.description_id,
-                    class: props.class,
-                    onanimationend: move |_| presence.on_animation_end(),
-                    ..props.attributes,
-                    {props.children}
+        Presence {
+            present: props.force_mount || open(),
+            id: id,
+            Portal {
+                FocusScope {
+                    trapped: trapped,
+                    r#loop: trapped,
+                    div {
+                        id,
+                        "data-slot": "alert-dialog-content",
+                        "data-state": if open() { "open" } else { "closed" },
+                        role: "alertdialog",
+                        aria_modal: "true",
+                        aria_labelledby: ctx.title_id,
+                        aria_describedby: ctx.description_id,
+                        class: props.class,
+                        ..props.attributes,
+                        {props.children}
+                    }
                 }
             }
         }

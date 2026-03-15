@@ -9,9 +9,10 @@ use crate::direction::Orientation;
 use crate::merge_attributes;
 use crate::popper::{Popper, PopperContent, PopperCtx, Side};
 use crate::portal::Portal;
+use crate::presence::Presence;
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
 use crate::typeahead::{use_typeahead, TypeaheadItem};
-use crate::{use_controlled, use_id_or, use_presence, use_unique_id};
+use crate::{use_controlled, use_id_or, use_unique_id};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 
@@ -976,14 +977,9 @@ pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
     let ctx: MenuCtx = use_context();
     let sub_ctx: MenuSubCtx = use_context();
     let id = use_id_or(sub_ctx.content_id, props.id);
-    let mut presence = use_presence(sub_ctx.open, id);
-
-    if !presence.is_present() && !props.force_mount {
-        return rsx! {};
-    }
 
     let slot = format!("{}-sub-content", ctx.slot_prefix);
-    let data_state = presence.data_state();
+    let data_state = if (sub_ctx.open)() { "open" } else { "closed" };
     let children = props.children;
 
     let content_attrs = attributes!(div {
@@ -994,15 +990,17 @@ pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
     rsx! {
-        Portal {
-            PopperContent {
-                side: Side::Right,
-                css_var_prefix: "menu",
-                class: props.class,
-                content_attributes: merged,
-                on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
+        Presence {
+            present: props.force_mount || (sub_ctx.open)(),
+            id: id,
+            Portal {
+                PopperContent {
+                    side: Side::Right,
+                    css_var_prefix: "menu",
+                    class: props.class,
+                    content_attributes: merged,
 
-                RovingFocusGroup {
+                    RovingFocusGroup {
                     orientation: Signal::new(Some(Orientation::Vertical)),
                     r#loop: Signal::new(true),
                     r#as: {
@@ -1035,6 +1033,7 @@ pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
                     },
                 }
             }
+        }
         }
     }
 }

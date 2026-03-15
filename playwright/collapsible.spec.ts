@@ -35,8 +35,12 @@ test.describe("collapsible rendering", () => {
     await expect(trigger.first()).toHaveAttribute("type", "button");
   });
 
-  test("renders content container", async ({ page }) => {
+  test("renders content container when opened", async ({ page }) => {
     await gotoAndWait(page);
+    // Content is unmounted by Presence when closed (matching upstream).
+    // Open the collapsible first to verify content renders.
+    const trigger = page.locator('[data-slot="preview"] [data-slot="collapsible-trigger"]').first();
+    await trigger.click();
     const content = page.locator('[data-slot="preview"] [data-slot="collapsible-content"]');
     const count = await content.count();
     expect(count).toBeGreaterThanOrEqual(1);
@@ -60,10 +64,11 @@ test.describe("collapsible data attributes", () => {
     await expect(trigger).toHaveAttribute("data-state", "closed");
   });
 
-  test("content has data-state=closed initially", async ({ page }) => {
+  test("content is not in DOM when closed (Presence unmounts)", async ({ page }) => {
     await gotoAndWait(page);
-    const content = page.locator('[data-slot="preview"] [data-slot="collapsible-content"]').first();
-    await expect(content).toHaveAttribute("data-state", "closed");
+    const content = page.locator('[data-slot="preview"] [data-slot="collapsible-content"]');
+    // Presence unmounts content when closed, matching upstream behavior
+    await expect(content).toHaveCount(0);
   });
 });
 
@@ -91,7 +96,8 @@ test.describe("collapsible ARIA", () => {
     const ariaControls = await trigger.getAttribute("aria-controls");
     expect(ariaControls).toBeTruthy();
 
-    // The aria-controls value should match the content's ID
+    // Open to make content visible, then verify aria-controls matches content ID
+    await trigger.click();
     const content = page.locator('[data-slot="preview"] [data-slot="collapsible-content"]').first();
     const contentId = await content.getAttribute("id");
     expect(ariaControls).toBe(contentId);

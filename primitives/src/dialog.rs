@@ -10,9 +10,10 @@ use dioxus::prelude::*;
 use crate::aria_hidden::use_aria_hidden;
 use crate::focus_scope::FocusScope;
 use crate::portal::Portal;
+use crate::presence::Presence;
 use crate::scroll_lock::use_scroll_lock;
 use crate::use_global_escape_listener;
-use crate::{use_controlled, use_id_or, use_presence, use_unique_id};
+use crate::{use_controlled, use_id_or, use_unique_id};
 
 // ---------------------------------------------------------------------------
 // Context
@@ -233,30 +234,28 @@ pub fn DialogOverlay(props: DialogOverlayProps) -> Element {
 
     let unique_id = use_unique_id();
     let id = use_id_or(unique_id, props.id);
-    let mut presence = use_presence(open, id);
-
-    if !presence.is_present() && !props.force_mount {
-        return rsx! {};
-    }
 
     // Radix deviation: Radix uses ReactDOM.createPortal to render the overlay
     // at document.body. We use our Portal component which teleports content to
     // the nearest PortalHost via context-based signal system.
     rsx! {
-        Portal {
-            div {
-                id,
-                "data-slot": "dialog-overlay",
-                "data-state": presence.data_state(),
-                class: props.class,
-                // Only close on primary (left) click — matches Radix
-                onpointerdown: move |e: PointerEvent| {
-                    if e.trigger_button() == Some(dioxus_elements::input_data::MouseButton::Primary) {
-                        set_open.call(false);
-                    }
-                },
-                onanimationend: move |_| presence.on_animation_end(),
-                ..props.attributes,
+        Presence {
+            present: props.force_mount || open(),
+            id: id,
+            Portal {
+                div {
+                    id,
+                    "data-slot": "dialog-overlay",
+                    "data-state": if open() { "open" } else { "closed" },
+                    class: props.class,
+                    // Only close on primary (left) click — matches Radix
+                    onpointerdown: move |e: PointerEvent| {
+                        if e.trigger_button() == Some(dioxus_elements::input_data::MouseButton::Primary) {
+                            set_open.call(false);
+                        }
+                    },
+                    ..props.attributes,
+                }
             }
         }
     }
@@ -332,7 +331,6 @@ pub fn DialogContent(props: DialogContentProps) -> Element {
     // Hide sibling elements from assistive technology when modal
     // (matching Radix's aria-hidden integration).
     use_aria_hidden(id, scroll_lock_active);
-    let mut presence = use_presence(open, id);
 
     // Restore focus to trigger when dialog closes
     let mut was_open = use_signal(|| false);
@@ -351,33 +349,32 @@ pub fn DialogContent(props: DialogContentProps) -> Element {
         was_open.set(is_open);
     });
 
-    if !presence.is_present() && !props.force_mount {
-        return rsx! {};
-    }
-
     let trapped = is_modal && open();
 
     // Radix deviation: Radix uses ReactDOM.createPortal to render the content
     // at document.body. We use our Portal component which teleports content to
     // the nearest PortalHost via context-based signal system.
     rsx! {
-        Portal {
-            FocusScope {
-                trapped: trapped,
-                r#loop: trapped,
-                div {
-                    id,
-                    "data-slot": "dialog-content",
-                    "data-state": presence.data_state(),
-                    role: "dialog",
-                    aria_modal: if is_modal { "true" },
-                    aria_labelledby: ctx.title_id,
-                    aria_describedby: ctx.description_id,
-                    class: props.class,
-                    onclick: move |e| e.stop_propagation(),
-                    onanimationend: move |_| presence.on_animation_end(),
-                    ..props.attributes,
-                    {props.children}
+        Presence {
+            present: props.force_mount || open(),
+            id: id,
+            Portal {
+                FocusScope {
+                    trapped: trapped,
+                    r#loop: trapped,
+                    div {
+                        id,
+                        "data-slot": "dialog-content",
+                        "data-state": if open() { "open" } else { "closed" },
+                        role: "dialog",
+                        aria_modal: if is_modal { "true" },
+                        aria_labelledby: ctx.title_id,
+                        aria_describedby: ctx.description_id,
+                        class: props.class,
+                        onclick: move |e| e.stop_propagation(),
+                        ..props.attributes,
+                        {props.children}
+                    }
                 }
             }
         }

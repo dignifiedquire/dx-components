@@ -41,6 +41,7 @@ web-sys = { version = "0.3", features = [
     "MutationObserverInit",
     "MutationRecord",
     "AddEventListenerOptions",
+    "AnimationEvent",
     "CustomEvent",
     "EventListenerOptions",
     "KeyboardEvent",

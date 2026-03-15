@@ -9,8 +9,9 @@ use dioxus::prelude::*;
 use crate::focus_scope::FocusScope;
 use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
 use crate::portal::Portal;
+use crate::presence::Presence;
 use crate::use_global_escape_listener;
-use crate::{merge_attributes, use_controlled, use_id_or, use_presence, use_unique_id};
+use crate::{merge_attributes, use_controlled, use_id_or, use_unique_id};
 use dioxus_attributes::attributes;
 
 // ---------------------------------------------------------------------------
@@ -201,7 +202,6 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
     let is_modal = ctx.is_modal;
 
     let id = use_id_or(ctx.content_id, props.id);
-    let mut presence = use_presence(open, id);
 
     // Escape key listener
     use_global_escape_listener(move || set_open.call(false));
@@ -221,12 +221,8 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
         was_open.set(is_open);
     });
 
-    if !presence.is_present() && !props.force_mount {
-        return rsx! {};
-    }
-
     let trapped = is_modal && open();
-    let data_state = presence.data_state();
+    let data_state = if open() { "open" } else { "closed" };
 
     let content_attrs = attributes!(div {
         id: id,
@@ -238,23 +234,26 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
     rsx! {
-        Portal {
-            PopperContent {
-                side: props.side,
-                side_offset: props.side_offset,
-                align: props.align,
-                align_offset: props.align_offset,
-                avoid_collisions: props.avoid_collisions,
-                collision_padding: props.collision_padding,
-                css_var_prefix: "popover",
-                class: props.class,
-                content_attributes: merged,
-                on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
+        Presence {
+            present: props.force_mount || open(),
+            id: id,
+            Portal {
+                PopperContent {
+                    side: props.side,
+                    side_offset: props.side_offset,
+                    align: props.align,
+                    align_offset: props.align_offset,
+                    avoid_collisions: props.avoid_collisions,
+                    collision_padding: props.collision_padding,
+                    css_var_prefix: "popover",
+                    class: props.class,
+                    content_attributes: merged,
 
-                FocusScope {
-                    trapped: trapped,
-                    r#loop: trapped,
-                    {props.children}
+                    FocusScope {
+                        trapped: trapped,
+                        r#loop: trapped,
+                        {props.children}
+                    }
                 }
             }
         }

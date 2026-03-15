@@ -2,9 +2,8 @@
 //!
 //! A container that can be expanded or collapsed to show or hide its content.
 
-use crate::{
-    use_collapsible_content_dimensions, use_controlled, use_id_or, use_presence, use_unique_id,
-};
+use crate::presence::{Presence, PresenceContext};
+use crate::{use_collapsible_content_dimensions, use_controlled, use_id_or, use_unique_id};
 use dioxus::prelude::*;
 
 // ---------------------------------------------------------------------------
@@ -201,9 +200,11 @@ pub struct CollapsibleContentProps {
 
 /// The collapsible content that shows/hides.
 ///
-/// Matches Radix's `CollapsibleContent`. Sets `--radix-collapsible-content-height`
-/// and `--radix-collapsible-content-width` CSS custom properties for animations.
-/// The element is always in the DOM; visibility is controlled via the `hidden` attribute.
+/// Matches Radix's `CollapsibleContent`. Wraps with [`Presence`] for
+/// animation-aware mount/unmount, then delegates to [`CollapsibleContentImpl`]
+/// which reads [`PresenceContext`] for the animation-aware `present` boolean.
+///
+/// Upstream: `CollapsibleContent` → `Presence` → `CollapsibleContentImpl`.
 ///
 /// ## Data attributes
 ///
@@ -216,31 +217,61 @@ pub fn CollapsibleContent(props: CollapsibleContentProps) -> Element {
     let id = use_id_or(ctx.content_id, user_id);
     let open = ctx.open;
 
-    let mut presence = use_presence(open, id);
-    let dims = use_collapsible_content_dimensions(id, open);
-    let style = dims.style(props.style.as_deref());
+    // Upstream: <Presence present={forceMount || context.open}>
+    rsx! {
+        Presence {
+            present: props.force_mount || open(),
+            id: id,
+            CollapsibleContentImpl {
+                id: id,
+                force_mount: props.force_mount,
+                style: props.style,
+                class: props.class,
+                attributes: props.attributes,
+                children: props.children,
+            }
+        }
+    }
+}
 
-    // Radix: isOpen = context.open || isPresent
-    let is_open = open() || presence.is_present();
+/// Inner content implementation — reads [`PresenceContext`] for animation-aware
+/// present state.
+///
+/// Upstream: `CollapsibleContentImpl` receives `present` as a prop from
+/// `Presence`'s render function. In Dioxus, we read it from context instead.
+#[component]
+fn CollapsibleContentImpl(
+    id: Memo<String>,
+    #[props(default)] force_mount: bool,
+    #[props(default)] style: Option<String>,
+    #[props(default)] class: Option<String>,
+    #[props(extends = GlobalAttributes)] attributes: Vec<Attribute>,
+    children: Element,
+) -> Element {
+    let ctx: CollapsibleCtx = use_context();
+    let presence_ctx: PresenceContext = use_context();
+    let open = ctx.open;
+
+    let dims = use_collapsible_content_dimensions(id, open);
+    let style = dims.style(style.as_deref());
+
+    // Upstream: const isOpen = context.open || isPresent;
+    let is_open = open() || (presence_ctx.present)();
 
     rsx! {
         div {
             id: id,
             "data-slot": "collapsible-content",
-            "data-state": presence.data_state(),
+            "data-state": if open() { "open" } else { "closed" },
             "data-disabled": if ctx.disabled { "" },
-            class: props.class,
+            class: class,
             style: "{style}",
             hidden: !is_open,
 
-            onanimationend: move |_| {
-                presence.on_animation_end();
-            },
+            ..attributes,
 
-            ..props.attributes,
-
-            if is_open || props.force_mount {
-                {props.children}
+            if is_open || force_mount {
+                {children}
             }
         }
     }

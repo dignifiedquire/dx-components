@@ -1,0 +1,13 @@
+{
+  "name": "presence",
+  "description": "Animation-aware mount/unmount lifecycle hook matching Radix's usePresence.",
+  "authors": ["Dioxus Labs"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}

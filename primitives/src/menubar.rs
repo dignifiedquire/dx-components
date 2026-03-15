@@ -28,10 +28,11 @@ use std::rc::Rc;
 use crate::direction::Orientation;
 use crate::menu::MenuCtx;
 use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
+use crate::presence::Presence;
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
 use crate::{
     merge_attributes, use_global_escape_listener, use_id_or, use_outside_click_with_exclude,
-    use_presence, use_refocus_on_close, use_unique_id,
+    use_refocus_on_close, use_unique_id,
 };
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
@@ -497,7 +498,6 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
     let mut bar_ctx: MenubarInternalCtx = use_context();
 
     let id = use_id_or(ctx.content_id, props.id);
-    let mut presence = use_presence(ctx.open, id);
 
     // Refocus trigger when menu closes (upstream onCloseAutoFocus)
     use_refocus_on_close(ctx.open, ctx.trigger_id);
@@ -519,10 +519,6 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
         });
     }
 
-    if !presence.is_present() && !props.force_mount {
-        return rsx! {};
-    }
-
     let on_escape = Callback::new(move |()| {
         bar_ctx.open_menu_id.set(None);
     });
@@ -533,33 +529,38 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
         bar_ctx.navigate(1);
     });
 
+    let data_state = if (ctx.open)() { "open" } else { "closed" };
+
     let content_attrs = attributes!(div {
         id: id,
         "data-slot": "menubar-content",
-        "data-state": presence.data_state(),
+        "data-state": data_state,
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
     rsx! {
-        PopperContent {
-            side: props.side,
-            side_offset: props.side_offset,
-            align: props.align,
-            align_offset: props.align_offset,
-            avoid_collisions: props.avoid_collisions,
-            collision_padding: props.collision_padding,
-            css_var_prefix: "menubar",
-            class: props.class,
-            content_attributes: merged,
-            on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
+        Presence {
+            present: props.force_mount || (ctx.open)(),
+            id: id,
+            PopperContent {
+                side: props.side,
+                side_offset: props.side_offset,
+                align: props.align,
+                align_offset: props.align_offset,
+                avoid_collisions: props.avoid_collisions,
+                collision_padding: props.collision_padding,
+                css_var_prefix: "menubar",
+                class: props.class,
+                content_attributes: merged,
 
-            crate::menu::MenuContent {
-                content_id: id,
-                on_escape_override: on_escape,
-                on_arrow_left: on_arrow_left,
-                on_arrow_right: on_arrow_right,
-                focus_exclude_selector: "[data-slot=\"menubar-trigger\"]",
-                {props.children}
+                crate::menu::MenuContent {
+                    content_id: id,
+                    on_escape_override: on_escape,
+                    on_arrow_left: on_arrow_left,
+                    on_arrow_right: on_arrow_right,
+                    focus_exclude_selector: "[data-slot=\"menubar-trigger\"]",
+                    {props.children}
+                }
             }
         }
     }

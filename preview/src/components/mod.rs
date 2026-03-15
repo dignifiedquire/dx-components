@@ -147,6 +147,7 @@ examples!(
     navigation_menu,
     pagination,
     popover,
+    presence,
     progress,
     radio_group[disabled],
     resizable[vertical, with_handle],

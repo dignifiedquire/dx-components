@@ -1,0 +1,53 @@
+/* Animations matching upstream presence.stories.module.css */
+
+@keyframes presence-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes presence-fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes presence-slideUp {
+  from { transform: translateY(30px); }
+  to { transform: translateY(0); }
+}
+
+@keyframes presence-slideDown {
+  from { transform: translateY(0); }
+  to { transform: translateY(30px); }
+}
+
+/* Test 1: No animation — instant mount/unmount */
+
+/* Test 2: Mount animation only */
+.mount-animation {
+  animation: presence-fadeIn 0.3s ease-out;
+}
+
+/* Test 3: Unmount animation only */
+.unmount-animation[data-state="closed"] {
+  animation: presence-fadeOut 0.3s ease-in;
+}
+
+/* Test 4: Open and close animation */
+.open-close-animation[data-state="open"] {
+  animation: presence-fadeIn 0.3s ease-out;
+}
+.open-close-animation[data-state="closed"] {
+  animation: presence-fadeOut 0.3s ease-in;
+}
+
+/* Test 5: Multiple open and close animations */
+.multiple-animations[data-state="open"] {
+  animation:
+    presence-fadeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    presence-slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.multiple-animations[data-state="closed"] {
+  animation:
+    presence-fadeOut 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    presence-slideDown 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}

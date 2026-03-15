@@ -49,11 +49,8 @@ fn default_closed() {
     assert!(html.contains("aria-controls"));
     assert!(html.contains("Toggle"));
 
-    // Content outer div is in DOM but hidden
-    assert!(html.contains(r#"data-slot="collapsible-content""#));
-    assert!(html.contains("hidden=true"));
-
-    // Content children NOT rendered when closed
+    // Content unmounted by Presence when closed (matching upstream)
+    assert!(!html.contains(r#"data-slot="collapsible-content""#));
     assert!(!html.contains("Hidden content"));
 }
 
@@ -150,15 +147,12 @@ fn trigger_controls_content() {
 
     let html = render(App);
 
-    // Both trigger (aria-controls) and content (id) should reference the same ID.
-    // The ID format may vary (dxc-ID after normalization, or quoted).
+    // Trigger has aria-controls referencing the content ID.
+    // Content is unmounted by Presence when closed, but trigger still
+    // declares the relationship.
     assert!(
         html.contains("aria-controls"),
         "trigger should have aria-controls"
-    );
-    assert!(
-        html.contains(r#"data-slot="collapsible-content""#),
-        "content div should exist"
     );
 }
 
@@ -187,8 +181,11 @@ fn force_mount() {
         "force_mount should keep children in DOM when closed"
     );
 
-    // But the content div should still be hidden
-    assert!(html.contains("hidden=true"));
+    // Content is visible (is_open = open || present = false || true = true)
+    assert!(
+        !html.contains("hidden=true"),
+        "force_mount content should not be hidden"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -199,7 +196,7 @@ fn force_mount() {
 fn custom_class() {
     fn App() -> Element {
         rsx! {
-            Collapsible { class: "my-collapsible",
+            Collapsible { class: "my-collapsible", default_open: true,
                 CollapsibleTrigger { class: "my-trigger", "Toggle" }
                 CollapsibleContent { class: "my-content", "Content" }
             }

@@ -25,10 +25,11 @@
 use crate::focus_scope::FocusScope;
 use crate::menu::MenuCtx;
 use crate::popper::{Align, PopperAnchorKind, PopperContent, PopperCtx, Side};
+use crate::presence::Presence;
 use crate::scroll_lock::use_scroll_lock;
 use crate::{
     merge_attributes, use_controlled, use_global_escape_listener, use_id_or, use_outside_click,
-    use_presence, use_refocus_on_close, use_unique_id,
+    use_refocus_on_close, use_unique_id,
 };
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
@@ -322,7 +323,6 @@ pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
     let ctx: MenuCtx = use_context();
     let internal: ContextMenuInternalCtx = use_context();
     let id = use_id_or(ctx.content_id, props.id);
-    let mut presence = use_presence(ctx.open, id);
     let is_modal = internal.modal;
 
     // Modal: lock scroll when open
@@ -354,36 +354,37 @@ pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
         });
     }
 
-    if !presence.is_present() && !props.force_mount {
-        return rsx! {};
-    }
+    let data_state = if (ctx.open)() { "open" } else { "closed" };
 
     let content_attrs = attributes!(div {
         id: id,
         "data-slot": "context-menu-content",
-        "data-state": presence.data_state(),
+        "data-state": data_state,
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
     rsx! {
-        PopperContent {
-            side: props.side,
-            side_offset: props.side_offset,
-            align: props.align,
-            align_offset: props.align_offset,
-            avoid_collisions: props.avoid_collisions,
-            collision_padding: props.collision_padding,
-            css_var_prefix: "context-menu",
-            class: props.class,
-            content_attributes: merged,
-            on_animation_end: move |_: Event<AnimationData>| presence.on_animation_end(),
+        Presence {
+            present: props.force_mount || (ctx.open)(),
+            id: id,
+            PopperContent {
+                side: props.side,
+                side_offset: props.side_offset,
+                align: props.align,
+                align_offset: props.align_offset,
+                avoid_collisions: props.avoid_collisions,
+                collision_padding: props.collision_padding,
+                css_var_prefix: "context-menu",
+                class: props.class,
+                content_attributes: merged,
 
-            FocusScope {
-                trapped: is_modal && (ctx.open)(),
-                r#loop: is_modal && (ctx.open)(),
-                crate::menu::MenuContent {
-                    content_id: id,
-                    {props.children}
+                FocusScope {
+                    trapped: is_modal && (ctx.open)(),
+                    r#loop: is_modal && (ctx.open)(),
+                    crate::menu::MenuContent {
+                        content_id: id,
+                        {props.children}
+                    }
                 }
             }
         }
