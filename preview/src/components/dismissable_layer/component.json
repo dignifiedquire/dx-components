@@ -1,0 +1,13 @@
+{
+  "name": "dismissable_layer",
+  "description": "A layer that can be dismissed via Escape key or outside interactions.",
+  "authors": ["Dioxus Labs"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}

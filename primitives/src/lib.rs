@@ -74,6 +74,7 @@ pub mod toggle_group;
 pub mod toolbar;
 pub mod tooltip;
 pub(crate) mod typeahead;
+pub mod use_escape_keydown;
 pub mod visually_hidden;
 
 /// Generate a runtime-unique id.

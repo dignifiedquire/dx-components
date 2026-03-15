@@ -144,7 +144,7 @@ pub fn FocusScope(props: FocusScopeProps) -> Element {
 
             #[cfg(target_arch = "wasm32")]
             {
-                let cleanup = wasm_impl::setup_trap(container_id, scope);
+                let cleanup = wasm_impl::setup_trap(container_id, scope.clone());
                 Box::new(cleanup) as Box<dyn FnOnce()>
             }
 
@@ -195,12 +195,10 @@ pub fn FocusScope(props: FocusScopeProps) -> Element {
             return;
         }
         let modifiers = event.modifiers();
-        if modifiers.alt() || modifiers.ctrl() || modifiers.meta() {
-            return;
+        if !(modifiers.alt() || modifiers.ctrl() || modifiers.meta()) {
+            #[cfg(target_arch = "wasm32")]
+            wasm_impl::handle_tab(container_id, looping, modifiers.shift(), &event);
         }
-
-        #[cfg(target_arch = "wasm32")]
-        wasm_impl::handle_tab(container_id, looping, modifiers.shift(), &event);
     };
 
     rsx! {
