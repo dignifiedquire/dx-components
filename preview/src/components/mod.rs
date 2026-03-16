@@ -126,6 +126,7 @@ examples!(
     carousel[sizes, orientation],
     checkbox[disabled, with_text],
     collapsible,
+    collection,
     combobox[groups],
     command,
     context_menu,

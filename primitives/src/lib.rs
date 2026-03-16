@@ -26,7 +26,7 @@ pub mod calendar;
 pub mod carousel;
 pub mod checkbox;
 pub mod collapsible;
-mod collection;
+pub mod collection;
 pub mod combobox;
 pub mod command;
 pub mod context_menu;

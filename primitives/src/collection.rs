@@ -13,10 +13,13 @@ use crate::use_effect_cleanup;
 
 static NEXT_ITEM_ID: AtomicUsize = AtomicUsize::new(0);
 
+/// A single item in a collection. Holds mounting data and user-defined item data.
 #[derive(Clone)]
 pub struct CollectionItem<D: Clone + 'static> {
     id: usize,
+    /// Signal tracking the element's mounted state for programmatic focus.
     pub mounted: Signal<Option<Rc<MountedData>>>,
+    /// User-defined data associated with this item (e.g. disabled state).
     pub data: D,
 }
 
@@ -35,7 +38,14 @@ impl<D: Clone + 'static> Clone for CollectionContext<D> {
 
 impl<D: Clone + 'static> Copy for CollectionContext<D> {}
 
+impl<D: Clone + 'static> Default for CollectionContext<D> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<D: Clone + 'static> CollectionContext<D> {
+    /// Creates a new empty collection context.
     pub fn new() -> Self {
         Self {
             items: Signal::new(Vec::new()),
