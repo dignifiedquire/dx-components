@@ -7,6 +7,9 @@
 //! Replaces the legacy `FocusState` with a Radix-aligned API that supports
 //! orientation, direction, looping, and integrates with the collection system.
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use crate::collection::{use_collection_item, CollectionContext, CollectionItem};
 use crate::direction::{Direction, Orientation};
 use crate::slot::render_slot;
@@ -15,9 +18,19 @@ use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 
 // ---------------------------------------------------------------------------
+// Constants — matches upstream
+// ---------------------------------------------------------------------------
+
+// Upstream: `const ENTRY_FOCUS = 'rovingFocusGroup.onEntryFocus';`
+// Upstream: `const EVENT_OPTIONS = { bubbles: false, cancelable: true };`
+// These constants exist in upstream for CustomEvent dispatch on the DOM node.
+// In Dioxus we use `RovingFocusEntryEvent` with `Rc<Cell<bool>>` instead.
+
+// ---------------------------------------------------------------------------
 // Collection item data
 // ---------------------------------------------------------------------------
 
+// Upstream: `type ItemData = { id: string; focusable: boolean; active: boolean };`
 #[derive(Clone, PartialEq)]
 struct RovingItemData {
     id: String,
@@ -29,9 +42,43 @@ type RovingCollection = CollectionContext<RovingItemData>;
 type RovingCollectionItem = CollectionItem<RovingItemData>;
 
 // ---------------------------------------------------------------------------
-// Context
+// Cancelable entry focus event
 // ---------------------------------------------------------------------------
 
+/// Cancelable event passed to `on_entry_focus`.
+///
+/// Matches upstream's pattern where `onEntryFocus` receives a DOM `Event`
+/// and can call `preventDefault()` to skip the default entry focus behavior.
+/// Uses `Rc<Cell<bool>>` so the caller retains access to the prevented flag
+/// after passing a clone to the callback.
+#[derive(Clone)]
+pub struct RovingFocusEntryEvent {
+    prevented: Rc<Cell<bool>>,
+}
+
+impl RovingFocusEntryEvent {
+    fn new() -> Self {
+        Self {
+            prevented: Rc::new(Cell::new(false)),
+        }
+    }
+
+    /// Prevent the default entry focus behavior (focusing the first candidate).
+    pub fn prevent_default(&self) {
+        self.prevented.set(true);
+    }
+
+    /// Check if `prevent_default()` was called.
+    pub fn is_default_prevented(&self) -> bool {
+        self.prevented.get()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Context — matches upstream RovingContextValue
+// ---------------------------------------------------------------------------
+
+/// Upstream: `type RovingContextValue = RovingFocusGroupOptions & { ... }`
 #[derive(Clone, Copy)]
 struct RovingCtx {
     orientation: ReadSignal<Option<Orientation>>,
@@ -40,6 +87,8 @@ struct RovingCtx {
     current_tab_stop_id: Memo<Option<String>>,
     on_item_focus: Callback<String>,
     on_item_shift_tab: Callback<()>,
+    on_focusable_item_add: Callback<()>,
+    on_focusable_item_remove: Callback<()>,
     collection: RovingCollection,
 }
 
@@ -48,6 +97,9 @@ struct RovingCtx {
 // ---------------------------------------------------------------------------
 
 /// Props for [`RovingFocusGroup`].
+///
+/// Upstream: `RovingFocusGroupImplProps` (the real impl props).
+/// `RovingFocusGroupProps` is just a re-export alias in upstream.
 #[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
 pub struct RovingFocusGroupProps {
@@ -76,6 +128,17 @@ pub struct RovingFocusGroupProps {
     #[props(default)]
     pub on_current_tab_stop_id_change: Callback<Option<String>>,
 
+    /// Callback fired when focus enters the group via keyboard.
+    /// Upstream: `onEntryFocus?: (event: Event) => void`.
+    /// Call `event.prevent_default()` to skip the default entry focus behavior.
+    #[props(default)]
+    pub on_entry_focus: Callback<RovingFocusEntryEvent>,
+
+    /// Whether to prevent scroll when focusing on entry.
+    /// Upstream: `preventScrollOnEntryFocus` (default false).
+    #[props(default)]
+    pub prevent_scroll_on_entry_focus: bool,
+
     /// Render as a custom element (Radix `asChild` equivalent).
     #[props(default)]
     pub r#as: Option<Callback<Vec<Attribute>, Element>>,
@@ -92,8 +155,10 @@ pub struct RovingFocusGroupProps {
 
 /// Manages roving tabindex focus within a group of items.
 ///
-/// Matches Radix's `RovingFocusGroup`. Only the active item has `tabindex="0"`;
-/// arrow keys move focus between items based on orientation and direction.
+/// Matches Radix's `RovingFocusGroup`. Upstream splits this into
+/// `RovingFocusGroup` (Collection wrapper) and `RovingFocusGroupImpl`
+/// (the actual logic). In Dioxus we combine them since our collection
+/// system doesn't need a separate wrapper layer.
 ///
 /// ```rust,no_run
 /// # use dioxus::prelude::*;
@@ -108,40 +173,57 @@ pub struct RovingFocusGroupProps {
 /// ```
 #[component]
 pub fn RovingFocusGroup(props: RovingFocusGroupProps) -> Element {
+    // Upstream: useControllableState for currentTabStopId
     let (current_tab_stop_id, set_current_tab_stop_id) = use_controlled(
         props.current_tab_stop_id,
         props.default_current_tab_stop_id,
         props.on_current_tab_stop_id_change,
     );
 
+    // Upstream: const [isTabbingBackOut, setIsTabbingBackOut] = React.useState(false);
     let mut is_tabbing_back_out = use_signal(|| false);
-    let focusable_items_count = use_signal(|| 0usize);
 
+    // Upstream: const isClickFocusRef = React.useRef(false);
+    let mut is_click_focus = use_signal(|| false);
+
+    // Upstream: const [focusableItemsCount, setFocusableItemsCount] = React.useState(0);
+    let mut focusable_items_count = use_signal(|| 0i32);
+
+    // Upstream: const getItems = useCollection(__scopeRovingFocusGroup);
     let collection = use_context_provider(RovingCollection::new);
 
+    // Upstream: onItemFocus callback in RovingFocusProvider
     let on_item_focus = use_callback(move |id: String| {
         set_current_tab_stop_id.call(Some(id));
     });
 
+    // Upstream: onItemShiftTab callback in RovingFocusProvider
     let on_item_shift_tab = use_callback(move |_: ()| {
         is_tabbing_back_out.set(true);
     });
 
-    let ctx = use_context_provider(|| RovingCtx {
+    // Upstream: onFocusableItemAdd / onFocusableItemRemove callbacks in RovingFocusProvider
+    let on_focusable_item_add = use_callback(move |_: ()| {
+        *focusable_items_count.write() += 1;
+    });
+    let on_focusable_item_remove = use_callback(move |_: ()| {
+        *focusable_items_count.write() -= 1;
+    });
+
+    // Upstream: RovingFocusProvider with all context values
+    use_context_provider(|| RovingCtx {
         orientation: props.orientation,
         dir: props.dir,
         r#loop: props.r#loop,
         current_tab_stop_id,
         on_item_focus,
         on_item_shift_tab,
+        on_focusable_item_add,
+        on_focusable_item_remove,
         collection,
     });
 
-    // Provide focusable item count tracking via context
-    use_context_provider(|| RovingFocusableCount {
-        count: focusable_items_count,
-    });
-
+    // Upstream: tabIndex={isTabbingBackOut || focusableItemsCount === 0 ? -1 : 0}
     let tab_index = if is_tabbing_back_out() || focusable_items_count() == 0 {
         "-1"
     } else {
@@ -149,37 +231,68 @@ pub fn RovingFocusGroup(props: RovingFocusGroupProps) -> Element {
     };
 
     let orientation = (props.orientation)();
+    let prevent_scroll = props.prevent_scroll_on_entry_focus;
+    let on_entry_focus = props.on_entry_focus;
 
-    let handle_focus = move |_event: FocusEvent| {
-        // When keyboard-focused (not tabbing back out), focus the active item
-        if !is_tabbing_back_out() {
-            let items = ctx.collection.get_items();
-            let focusable: Vec<&RovingCollectionItem> =
-                items.iter().filter(|i| i.data.focusable).collect();
-
-            // Priority: active item > current tab stop > first
-            let target = focusable
-                .iter()
-                .find(|i| i.data.active)
-                .or_else(|| {
-                    let current_id = current_tab_stop_id.read();
-                    current_id
-                        .as_ref()
-                        .and_then(|id| focusable.iter().find(|i| i.data.id == *id))
-                })
-                .or_else(|| focusable.first())
-                .copied();
-
-            if let Some(item) = target {
-                if let Some(md) = (item.mounted)() {
-                    spawn(async move {
-                        let _ = md.set_focus(true).await;
-                    });
-                }
-            }
-        }
+    // Upstream: onMouseDown={composeEventHandlers(props.onMouseDown, () => {
+    //   isClickFocusRef.current = true;
+    // })}
+    let handle_mousedown = move |_: MouseEvent| {
+        is_click_focus.set(true);
     };
 
+    // Upstream: onFocus={composeEventHandlers(props.onFocus, (event) => { ... })}
+    //
+    // Note on target check: Upstream checks `event.target === event.currentTarget`
+    // because React's `onFocus` is implemented as `focusin` (which bubbles).
+    // Dioxus's `onfocus` maps to native `focus` (non-bubbling), so the handler
+    // only fires when the group div itself receives focus — no guard needed.
+    let handle_focus = move |_event: FocusEvent| {
+        // Upstream: const isKeyboardFocus = !isClickFocusRef.current;
+        let is_keyboard_focus = !*is_click_focus.peek();
+
+        if is_keyboard_focus && !is_tabbing_back_out() {
+            // Upstream: dispatches cancelable CustomEvent(ENTRY_FOCUS) on the DOM node,
+            // then checks defaultPrevented. We use RovingFocusEntryEvent + Rc<Cell<bool>>.
+            let entry_event = RovingFocusEntryEvent::new();
+            on_entry_focus.call(entry_event.clone());
+
+            if !entry_event.is_default_prevented() {
+                // Upstream: const items = getItems().filter((item) => item.focusable);
+                let items = collection.get_items();
+                let focusable: Vec<RovingCollectionItem> =
+                    items.into_iter().filter(|i| i.data.focusable).collect();
+
+                // Upstream: const activeItem = items.find((item) => item.active);
+                let active_item = focusable.iter().find(|i| i.data.active).cloned();
+                // Upstream: const currentItem = items.find((item) => item.id === currentTabStopId);
+                let current_item = current_tab_stop_id
+                    .read()
+                    .as_ref()
+                    .and_then(|cid| focusable.iter().find(|i| i.data.id == *cid).cloned());
+
+                // Upstream: [activeItem, currentItem, ...items].filter(Boolean)
+                let mut candidates: Vec<RovingCollectionItem> = Vec::new();
+                if let Some(item) = active_item {
+                    candidates.push(item);
+                }
+                if let Some(item) = current_item {
+                    candidates.push(item);
+                }
+                candidates.extend(focusable);
+
+                // Upstream: focusFirst(candidateNodes, preventScrollOnEntryFocus);
+                spawn(async move {
+                    focus_first(&candidates, prevent_scroll).await;
+                });
+            }
+        }
+
+        // Upstream: isClickFocusRef.current = false;
+        is_click_focus.set(false);
+    };
+
+    // Upstream: onBlur={composeEventHandlers(props.onBlur, () => setIsTabbingBackOut(false))}
     let handle_blur = move |_: FocusEvent| {
         is_tabbing_back_out.set(false);
     };
@@ -190,6 +303,7 @@ pub fn RovingFocusGroup(props: RovingFocusGroupProps) -> Element {
         tabindex: tab_index,
         style: "outline: none;",
         class: props.class,
+        onmousedown: handle_mousedown,
         onfocus: handle_focus,
         onblur: handle_blur,
     });
@@ -200,12 +314,6 @@ pub fn RovingFocusGroup(props: RovingFocusGroupProps) -> Element {
             div { ..attrs, {children} }
         }
     })
-}
-
-// Tracking focusable item count
-#[derive(Clone, Copy)]
-struct RovingFocusableCount {
-    count: Signal<usize>,
 }
 
 // ---------------------------------------------------------------------------
@@ -232,18 +340,23 @@ pub struct RovingFocusSlotProps {
 }
 
 /// Props for [`RovingFocusGroupItem`].
+///
+/// Upstream: `RovingFocusItemProps`
 #[allow(missing_docs)]
 #[derive(Props, Clone, PartialEq)]
 pub struct RovingFocusGroupItemProps {
     /// Custom tab stop ID. Auto-generated if not provided.
+    /// Upstream: `tabStopId?: string`
     #[props(default)]
     pub tab_stop_id: Option<String>,
 
     /// Whether this item is focusable. Defaults to `true`.
+    /// Upstream: `focusable?: boolean` (default true)
     #[props(default = true)]
     pub focusable: bool,
 
     /// Whether this item is the "active" item (e.g., selected).
+    /// Upstream: `active?: boolean` (default false)
     #[props(default)]
     pub active: bool,
 
@@ -261,6 +374,12 @@ pub struct RovingFocusGroupItemProps {
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
+    /// Render function receiving `(is_current_tab_stop, has_tab_stop)`.
+    /// Matches upstream's `children: (props) => ReactNode` pattern.
+    /// When provided, replaces `children`.
+    #[props(default)]
+    pub children_fn: Option<Callback<(bool, bool), Element>>,
+
     #[props(default)]
     pub children: Element,
 }
@@ -274,13 +393,18 @@ pub struct RovingFocusGroupItemProps {
 /// instead of rendering a default `<span>`, matching Radix's `asChild` pattern.
 #[component]
 pub fn RovingFocusGroupItem(props: RovingFocusGroupItemProps) -> Element {
+    // Upstream: const autoId = useId();
     let auto_id = use_unique_id();
+    // Upstream: const id = tabStopId || autoId;
     let id = props
         .tab_stop_id
         .clone()
         .unwrap_or_else(|| auto_id.cloned());
 
+    // Upstream: const context = useRovingFocusContext(ITEM_NAME, __scopeRovingFocusGroup);
     let ctx: RovingCtx = use_context();
+
+    // Upstream: const isCurrentTabStop = context.currentTabStopId === id;
     let is_current_tab_stop = use_memo({
         let id = id.clone();
         move || {
@@ -292,37 +416,46 @@ pub fn RovingFocusGroupItem(props: RovingFocusGroupItemProps) -> Element {
         }
     });
 
-    // Register with collection
+    // Upstream: Collection.ItemSlot with scope/id/focusable/active
     let mut mounted_ref = use_collection_item(RovingItemData {
         id: id.clone(),
         focusable: props.focusable,
         active: props.active,
     });
 
-    // Track focusable items count
-    let mut focusable_count: RovingFocusableCount = use_context();
+    // Upstream: useEffect for focusable item tracking
+    // React.useEffect(() => {
+    //   if (focusable) { onFocusableItemAdd(); return () => onFocusableItemRemove(); }
+    // }, [focusable, onFocusableItemAdd, onFocusableItemRemove]);
     let focusable = props.focusable;
+    let on_add = ctx.on_focusable_item_add;
+    let on_remove = ctx.on_focusable_item_remove;
     use_effect(move || {
         if focusable {
-            *focusable_count.count.write() += 1;
+            on_add.call(());
         }
     });
     use_drop(move || {
         if focusable {
-            let mut count = focusable_count.count.write();
-            *count = count.saturating_sub(1);
+            on_remove.call(());
         }
     });
 
+    // Upstream: tabIndex={isCurrentTabStop ? 0 : -1}
     let tab_index = if is_current_tab_stop() { "0" } else { "-1" };
+    // Upstream: data-orientation={context.orientation}
     let orientation = (ctx.orientation)();
 
-    // --- Event handlers (accept Event<T> for direct use in RSX and r#as) ---
+    // --- Event handlers ---
 
     let handle_mounted = use_callback(move |event: Event<MountedData>| {
         mounted_ref.set(Some(event.data()));
     });
 
+    // Upstream: onMouseDown={composeEventHandlers(props.onMouseDown, (event) => {
+    //   if (!focusable) event.preventDefault();
+    //   else context.onItemFocus(id);
+    // })}
     let handle_mousedown = {
         let item_id = id.clone();
         use_callback(move |event: Event<MouseData>| {
@@ -334,6 +467,7 @@ pub fn RovingFocusGroupItem(props: RovingFocusGroupItemProps) -> Element {
         })
     };
 
+    // Upstream: onFocus={composeEventHandlers(props.onFocus, () => context.onItemFocus(id))}
     let handle_focus = {
         let focus_id = id.clone();
         use_callback(move |_: Event<FocusData>| {
@@ -341,17 +475,30 @@ pub fn RovingFocusGroupItem(props: RovingFocusGroupItemProps) -> Element {
         })
     };
 
+    // Upstream: onKeyDown={composeEventHandlers(props.onKeyDown, (event) => { ... })}
     let handle_keydown = {
         let item_id = id.clone();
         use_callback(move |event: Event<KeyboardData>| {
+            // Upstream: if (event.key === 'Tab' && event.shiftKey) { ... }
+            // Note: Shift+Tab check is BEFORE the target check (upstream line 260-263)
             if event.key() == Key::Tab && event.modifiers().shift() {
                 ctx.on_item_shift_tab.call(());
                 return;
             }
 
+            // Upstream: if (event.target !== event.currentTarget) return;
+            //
+            // This prevents handling arrow keys from child elements (e.g., input).
+            // Dioxus doesn't expose event.target vs event.currentTarget directly.
+            // In typical roving focus usage, items don't contain focusable children,
+            // so this guard rarely triggers. For the `r#as` path, consumers handle
+            // their own event composition.
+
+            // Upstream: const focusIntent = getFocusIntent(event, context.orientation, context.dir);
             let focus_intent = get_focus_intent(&event, (ctx.orientation)(), (ctx.dir)());
 
             if let Some(intent) = focus_intent {
+                // Upstream: if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
                 if event.modifiers().meta()
                     || event.modifiers().ctrl()
                     || event.modifiers().alt()
@@ -359,60 +506,58 @@ pub fn RovingFocusGroupItem(props: RovingFocusGroupItemProps) -> Element {
                 {
                     return;
                 }
+                // Upstream: event.preventDefault();
                 event.prevent_default();
 
+                // Upstream: const items = getItems().filter((item) => item.focusable);
                 let items = ctx.collection.get_items();
-                let focusable_items: Vec<&RovingCollectionItem> =
-                    items.iter().filter(|i| i.data.focusable).collect();
+                let focusable_items: Vec<RovingCollectionItem> =
+                    items.into_iter().filter(|i| i.data.focusable).collect();
 
+                // Upstream: let candidateNodes = items.map((item) => item.ref.current!);
                 let candidates = match intent {
+                    // Upstream: (focusIntent === 'first') — candidateNodes stays as-is
                     FocusIntent::First => focusable_items,
+
+                    // Upstream: (focusIntent === 'last') candidateNodes.reverse();
                     FocusIntent::Last => {
                         let mut v = focusable_items;
                         v.reverse();
                         v
                     }
-                    FocusIntent::Next | FocusIntent::Prev => {
-                        let current_idx = focusable_items.iter().position(|i| i.data.id == item_id);
 
-                        let is_prev = matches!(intent, FocusIntent::Prev);
-                        let do_loop = (ctx.r#loop)();
+                    // Upstream: (focusIntent === 'prev' || focusIntent === 'next')
+                    FocusIntent::Prev | FocusIntent::Next => {
+                        // Upstream: if (focusIntent === 'prev') candidateNodes.reverse();
+                        let mut candidate_nodes = focusable_items;
+                        if matches!(intent, FocusIntent::Prev) {
+                            candidate_nodes.reverse();
+                        }
 
-                        if let Some(idx) = current_idx {
-                            if is_prev {
-                                if idx == 0 {
-                                    if do_loop {
-                                        vec![*focusable_items.last().unwrap()]
-                                    } else {
-                                        vec![]
-                                    }
+                        // Upstream: const currentIndex = candidateNodes.indexOf(event.currentTarget);
+                        let current_index =
+                            candidate_nodes.iter().position(|i| i.data.id == item_id);
+
+                        match current_index {
+                            Some(idx) => {
+                                if (ctx.r#loop)() {
+                                    // Upstream: wrapArray(candidateNodes, currentIndex + 1)
+                                    wrap_array(candidate_nodes, idx + 1)
                                 } else {
-                                    vec![focusable_items[idx - 1]]
+                                    // Upstream: candidateNodes.slice(currentIndex + 1)
+                                    candidate_nodes.split_off(idx + 1)
                                 }
-                            } else if idx + 1 >= focusable_items.len() {
-                                if do_loop {
-                                    vec![focusable_items[0]]
-                                } else {
-                                    vec![]
-                                }
-                            } else {
-                                vec![focusable_items[idx + 1]]
                             }
-                        } else {
-                            focusable_items
+                            // If not found, indexOf returns -1, so startIndex=0 → full array
+                            None => candidate_nodes,
                         }
                     }
                 };
 
-                // Focus the first candidate
-                for candidate in candidates {
-                    if let Some(md) = (candidate.mounted)() {
-                        spawn(async move {
-                            let _ = md.set_focus(true).await;
-                        });
-                        break;
-                    }
-                }
+                // Upstream: setTimeout(() => focusFirst(candidateNodes));
+                spawn(async move {
+                    focus_first(&candidates, false).await;
+                });
             }
         })
     };
@@ -435,6 +580,15 @@ pub fn RovingFocusGroupItem(props: RovingFocusGroupItemProps) -> Element {
             on_mounted: handle_mounted,
         })
     } else {
+        // Upstream: typeof children === 'function'
+        //   ? children({ isCurrentTabStop, hasTabStop: currentTabStopId != null })
+        //   : children
+        let has_tab_stop = ctx.current_tab_stop_id.read().is_some();
+        let rendered_children = match props.children_fn {
+            Some(f) => f.call((is_current_tab_stop(), has_tab_stop)),
+            None => props.children,
+        };
+
         rsx! {
             span {
                 onmounted: move |event| handle_mounted.call(event),
@@ -442,16 +596,17 @@ pub fn RovingFocusGroupItem(props: RovingFocusGroupItemProps) -> Element {
                 onfocus: move |event| handle_focus.call(event),
                 onkeydown: move |event| handle_keydown.call(event),
                 ..merged,
-                {props.children}
+                {rendered_children}
             }
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// Focus intent helpers
+// Focus intent helpers — matches upstream utility functions
 // ---------------------------------------------------------------------------
 
+/// Upstream: `type FocusIntent = 'first' | 'last' | 'prev' | 'next';`
 #[derive(Debug, Clone, Copy)]
 enum FocusIntent {
     First,
@@ -460,13 +615,18 @@ enum FocusIntent {
     Next,
 }
 
+/// Upstream: `getFocusIntent(event, orientation, dir)`
+///
+/// Maps keyboard events to focus intents, respecting orientation and direction.
 fn get_focus_intent(
     event: &KeyboardEvent,
     orientation: Option<Orientation>,
     dir: Direction,
 ) -> Option<FocusIntent> {
+    // Upstream: const key = getDirectionAwareKey(event.key, dir);
     let key = direction_aware_key(event.key(), dir);
 
+    // Upstream: filter by orientation
     match orientation {
         Some(Orientation::Vertical) if matches!(key, Key::ArrowLeft | Key::ArrowRight) => {
             return None;
@@ -477,15 +637,19 @@ fn get_focus_intent(
         _ => {}
     }
 
+    // Upstream: MAP_KEY_TO_FOCUS_INTENT
     match key {
         Key::ArrowLeft | Key::ArrowUp => Some(FocusIntent::Prev),
         Key::ArrowRight | Key::ArrowDown => Some(FocusIntent::Next),
-        Key::Home => Some(FocusIntent::First),
-        Key::End => Some(FocusIntent::Last),
+        Key::PageUp | Key::Home => Some(FocusIntent::First),
+        Key::PageDown | Key::End => Some(FocusIntent::Last),
         _ => None,
     }
 }
 
+/// Upstream: `getDirectionAwareKey(key, dir)`
+///
+/// Flips ArrowLeft/ArrowRight for RTL direction.
 fn direction_aware_key(key: Key, dir: Direction) -> Key {
     if dir != Direction::Rtl {
         return key;
@@ -496,3 +660,49 @@ fn direction_aware_key(key: Key, dir: Direction) -> Key {
         _ => key,
     }
 }
+
+/// Upstream: `focusFirst(candidates, preventScroll = false)`
+///
+/// Iterates candidate elements and focuses the first one that accepts focus.
+/// Uses `MountedData::set_focus` which maps to `element.focus()` on web.
+///
+/// Note: `preventScroll` is not currently supported via Dioxus's
+/// `MountedData::set_focus` API. On wasm, `focus()` is called without
+/// `FocusOptions`. Callers pass the flag for API compatibility.
+async fn focus_first(candidates: &[RovingCollectionItem], _prevent_scroll: bool) {
+    // Upstream implementation:
+    // const PREVIOUSLY_FOCUSED_ELEMENT = document.activeElement;
+    // for (const candidate of candidates) {
+    //   if (candidate === PREVIOUSLY_FOCUSED_ELEMENT) return;
+    //   candidate.focus({ preventScroll });
+    //   if (document.activeElement !== PREVIOUSLY_FOCUSED_ELEMENT) return;
+    // }
+    for candidate in candidates {
+        if let Some(md) = candidate.mounted.peek().clone() {
+            let _ = md.set_focus(true).await;
+            return;
+        }
+    }
+}
+
+/// Upstream: `wrapArray(array, startIndex)`
+///
+/// Wraps an array around itself at a given start index.
+/// Example: `wrap_array(vec!['a', 'b', 'c', 'd'], 2) == vec!['c', 'd', 'a', 'b']`
+fn wrap_array<T>(mut array: Vec<T>, start_index: usize) -> Vec<T> {
+    let len = array.len();
+    if len == 0 {
+        return array;
+    }
+    array.rotate_left(start_index % len);
+    array
+}
+
+// ---------------------------------------------------------------------------
+// Aliases — matches upstream exports
+// ---------------------------------------------------------------------------
+
+/// Upstream: `const Root = RovingFocusGroup;`
+pub use RovingFocusGroup as Root;
+/// Upstream: `const Item = RovingFocusGroupItem;`
+pub use RovingFocusGroupItem as Item;
