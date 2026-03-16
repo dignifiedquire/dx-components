@@ -24,7 +24,7 @@
 
 use crate::focus_scope::FocusScope;
 use crate::menu::MenuCtx;
-use crate::popper::{Align, PopperAnchorKind, PopperContent, PopperCtx, Side};
+use crate::popper::{Align, CollisionPadding, PopperAnchorKind, PopperContent, PopperCtx, Side};
 use crate::presence::Presence;
 use crate::scroll_lock::use_scroll_lock;
 use crate::{
@@ -300,7 +300,7 @@ pub struct ContextMenuContentProps {
 
     /// Collision padding in pixels. Defaults to 0.
     #[props(default)]
-    pub collision_padding: f64,
+    pub collision_padding: CollisionPadding,
 
     /// Additional CSS classes.
     #[props(default)]

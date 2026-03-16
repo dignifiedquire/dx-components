@@ -4,7 +4,7 @@
 //! - [`HoverCardTrigger`]: Anchor element that shows/hides card on hover/focus
 //! - [`HoverCardContent`]: The card content, visible on hover
 
-use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
+use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
 use crate::portal::Portal;
 use crate::presence::Presence;
 use crate::{merge_attributes, use_delayed_open, use_id_or, use_unique_id};
@@ -210,7 +210,7 @@ pub struct HoverCardContentProps {
 
     /// Collision padding in pixels. Defaults to 0.
     #[props(default)]
-    pub collision_padding: f64,
+    pub collision_padding: CollisionPadding,
 
     /// Additional classes.
     #[props(default)]

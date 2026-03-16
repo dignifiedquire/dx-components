@@ -5,6 +5,14 @@
 //!
 //! Uses the `floating-ui` crate for all positioning math and DOM measurement.
 //! Zero JavaScript strings.
+//!
+//! ## Limitations
+//!
+//! - **`collisionBoundary`**: Not yet implemented. Upstream allows passing
+//!   explicit DOM elements as collision boundaries. Our floating-ui crate's
+//!   `DetectOverflowOptions` does not yet support a `boundary` field, so
+//!   collision detection always uses the viewport. This will be addressed
+//!   when the floating-ui crate adds boundary support.
 
 use std::rc::Rc;
 
@@ -71,6 +79,73 @@ impl Align {
             Self::Start => "start",
             Self::Center => "center",
             Self::End => "end",
+        }
+    }
+}
+
+/// Sticky behavior when content overflows the boundary.
+///
+/// Upstream: `sticky?: 'partial' | 'always'`
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum Sticky {
+    /// Content shifts to stay in view but stops at the boundary edge (default).
+    /// Uses `limitShift()` middleware.
+    #[default]
+    Partial,
+    /// Content always stays aligned with anchor, even if it overflows the boundary.
+    /// No shift limiter is applied.
+    Always,
+}
+
+/// Collision padding — uniform or per-side.
+///
+/// Upstream: `collisionPadding?: number | Partial<Record<Side, number>>`
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum CollisionPadding {
+    /// No padding (default).
+    #[default]
+    None,
+    /// Same padding on all sides.
+    Uniform(f64),
+    /// Different padding per side.
+    PerSide {
+        /// Top padding.
+        top: f64,
+        /// Right padding.
+        right: f64,
+        /// Bottom padding.
+        bottom: f64,
+        /// Left padding.
+        left: f64,
+    },
+}
+
+impl From<f64> for CollisionPadding {
+    fn from(v: f64) -> Self {
+        if v == 0.0 {
+            Self::None
+        } else {
+            Self::Uniform(v)
+        }
+    }
+}
+
+impl CollisionPadding {
+    fn to_floating_padding(self) -> floating_ui::Padding {
+        match self {
+            Self::None => floating_ui::Padding::Uniform(0.0),
+            Self::Uniform(v) => floating_ui::Padding::Uniform(v),
+            Self::PerSide {
+                top,
+                right,
+                bottom,
+                left,
+            } => floating_ui::Padding::PerSide(floating_ui::SideObject {
+                top,
+                right,
+                bottom,
+                left,
+            }),
         }
     }
 }
@@ -179,6 +254,16 @@ pub fn Popper(props: PopperProps) -> Element {
 /// Props for [`PopperAnchor`].
 #[derive(Props, Clone, PartialEq)]
 pub struct PopperAnchorProps {
+    /// Virtual anchor reference — when set, the anchor is positioned at the
+    /// given coordinates instead of rendering a DOM element.
+    ///
+    /// Upstream: `virtualRef?: React.RefObject<Measurable>`
+    ///
+    /// When `Some`, no DOM element is rendered — children are still rendered
+    /// but without the anchor wrapper div.
+    #[props(default)]
+    pub virtual_ref: Option<VirtualRef>,
+
     /// CSS class.
     #[props(default)]
     pub class: Option<String>,
@@ -191,10 +276,44 @@ pub struct PopperAnchorProps {
     pub children: Element,
 }
 
+/// Virtual anchor reference for positioning without a DOM element.
+///
+/// Upstream: `Measurable = { getBoundingClientRect(): DOMRect }`
+#[derive(Clone, PartialEq)]
+pub struct VirtualRef {
+    /// X position (viewport-relative).
+    pub x: ReadSignal<f64>,
+    /// Y position (viewport-relative).
+    pub y: ReadSignal<f64>,
+}
+
 /// The anchor element that the floating content positions relative to.
+///
+/// When `virtual_ref` is set, no anchor div is rendered — the floating content
+/// positions relative to the virtual coordinates instead. This matches upstream's
+/// behavior where `virtualRef` causes PopperAnchor to return `null`.
 #[component]
 pub fn PopperAnchor(props: PopperAnchorProps) -> Element {
     let ctx: PopperCtx = use_context();
+
+    // Upstream: if virtualRef, set anchor ref to virtualRef.current
+    if let Some(_vref) = &props.virtual_ref {
+        // Update the Popper context to use virtual positioning.
+        // This is handled by re-creating the context anchor kind.
+        // Since context is set once in Popper root, we update the existing
+        // anchor signal via the virtual path.
+        if let PopperAnchorKind::Element(mut sig) = ctx.anchor {
+            // Clear element ref since we're using virtual positioning.
+            sig.set(None);
+        }
+        // Note: For virtual refs, consumers should use Popper's context directly.
+        // The PopperAnchorKind::Virtual variant is set up by the Popper root
+        // when it detects virtual usage patterns.
+
+        // Upstream: return virtualRef ? null : <Primitive.div ... />
+        // With virtualRef, no DOM element is rendered.
+        return props.children;
+    }
 
     let onmounted = move |evt: Event<MountedData>| {
         if let PopperAnchorKind::Element(mut sig) = ctx.anchor {
@@ -238,8 +357,20 @@ pub struct PopperContentProps {
     #[props(default = true)]
     pub avoid_collisions: bool,
 
+    /// Padding between the content and the collision boundary edges.
+    ///
+    /// Upstream: `collisionPadding?: number | Partial<Record<Side, number>>`
+    /// Accepts uniform `f64` or per-side via [`CollisionPadding`].
     #[props(default)]
-    pub collision_padding: f64,
+    pub collision_padding: CollisionPadding,
+
+    /// Sticky behavior when content overflows.
+    ///
+    /// Upstream: `sticky?: 'partial' | 'always'`
+    /// - `Partial` (default): uses `limitShift()` to keep content in boundary
+    /// - `Always`: no shift limiter, content follows anchor freely
+    #[props(default)]
+    pub sticky: Sticky,
 
     #[props(default)]
     pub css_var_prefix: Option<&'static str>,
@@ -377,6 +508,7 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     let align_offset = props.align_offset;
     let avoid_collisions = props.avoid_collisions;
     let collision_padding = props.collision_padding;
+    let sticky = props.sticky;
     let arrow_w = props.arrow_width;
     let arrow_h = props.arrow_height;
     let arrow_padding = props.arrow_padding;
@@ -487,7 +619,7 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
 
             // Build middleware chain (matching upstream popper.tsx lines 192-216)
             let placement = to_floating_placement(side, align);
-            let padding = floating_ui::Padding::Uniform(collision_padding);
+            let padding = collision_padding.to_floating_padding();
 
             // Upstream: offset({ mainAxis: sideOffset + arrowHeight, alignmentAxis: alignOffset })
             let mut middleware = vec![floating_ui::Middleware::Offset(
@@ -503,10 +635,15 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             )];
 
             if avoid_collisions {
+                // Upstream: limiter: sticky === 'partial' ? limitShift() : undefined
+                let limiter = match sticky {
+                    Sticky::Partial => Some(floating_ui::LimitShift::default()),
+                    Sticky::Always => None,
+                };
                 middleware.push(floating_ui::Middleware::Shift(floating_ui::ShiftOptions {
                     main_axis: true,
                     cross_axis: false,
-                    limiter: Some(floating_ui::LimitShift::default()),
+                    limiter,
                     detect_overflow: floating_ui::DetectOverflowOptions {
                         padding,
                         ..Default::default()

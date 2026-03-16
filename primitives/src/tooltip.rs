@@ -5,7 +5,7 @@
 //! - [`TooltipTrigger`]: Button element that shows/hides tooltip on hover/focus
 //! - [`TooltipContent`]: The tooltip content, rendered with `role="tooltip"`
 
-use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
+use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
 use crate::portal::Portal;
 use crate::presence::Presence;
 use crate::use_unique_id;
@@ -364,7 +364,7 @@ pub struct TooltipContentProps {
 
     /// Collision padding in pixels. Defaults to 0.
     #[props(default)]
-    pub collision_padding: f64,
+    pub collision_padding: CollisionPadding,
 
     /// Additional classes.
     #[props(default)]

@@ -1,7 +1,7 @@
 //! SelectContent (formerly SelectList) component implementation.
 
 use crate::merge_attributes;
-use crate::popper::{Align, PopperContent, Side};
+use crate::popper::{Align, CollisionPadding, PopperContent, Side};
 use crate::portal::Portal;
 use crate::{
     select::context::SelectListContext, use_animated_open, use_effect, use_id_or, use_unique_id,
@@ -40,7 +40,7 @@ pub struct SelectContentProps {
 
     /// Collision padding in pixels. Defaults to 0.
     #[props(default)]
-    pub collision_padding: f64,
+    pub collision_padding: CollisionPadding,
 
     /// Additional CSS classes.
     #[props(default)]
