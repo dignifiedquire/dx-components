@@ -78,6 +78,7 @@ pub(crate) mod typeahead;
 pub mod use_effect_event;
 pub mod use_escape_keydown;
 pub mod use_layout_effect;
+pub mod use_size;
 pub mod visually_hidden;
 
 /// Generate a runtime-unique id.
@@ -196,43 +197,9 @@ pub fn use_is_hydrated() -> ReadSignal<bool> {
     hydrated.into()
 }
 
-/// Element size returned by [`use_size`].
-///
-/// Matches Radix's `useSize(element)`.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ElementSize {
-    /// Width in pixels.
-    pub width: f64,
-    /// Height in pixels.
-    pub height: f64,
-}
-
-/// Reads an element's size from its [`MountedData`].
-///
-/// Matches Radix's `useSize(element)`. Returns `None` until the element is
-/// mounted, then queries `get_client_rect()` reactively.
-///
-/// Pass a `Signal<Option<Rc<MountedData>>>` obtained via `onmounted`.
-pub fn use_size(mounted: ReadSignal<Option<Rc<MountedData>>>) -> ReadSignal<Option<ElementSize>> {
-    let mut size: Signal<Option<ElementSize>> = use_signal(|| None);
-
-    use_effect(move || {
-        if let Some(md) = mounted.cloned() {
-            spawn(async move {
-                if let Ok(rect) = md.get_client_rect().await {
-                    size.set(Some(ElementSize {
-                        width: rect.size.width,
-                        height: rect.size.height,
-                    }));
-                }
-            });
-        } else {
-            size.set(None);
-        }
-    });
-
-    size.into()
-}
+// `ElementSize` and `use_size` are now in the `use_size` module.
+// Re-export for backward compatibility.
+pub use use_size::{use_size, ElementSize};
 
 /// Reads an element's bounding client rect from its [`MountedData`].
 ///
