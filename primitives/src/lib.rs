@@ -9,7 +9,6 @@ use dioxus::core::{current_scope_id, use_drop};
 use dioxus::prelude::*;
 
 use dioxus_core::AttributeValue::Text;
-use dioxus_elements::geometry::PixelsRect;
 use time::OffsetDateTime;
 
 pub use dioxus_attributes;
@@ -78,6 +77,7 @@ pub(crate) mod typeahead;
 pub mod use_effect_event;
 pub mod use_escape_keydown;
 pub mod use_layout_effect;
+pub mod use_rect;
 pub mod use_size;
 pub mod visually_hidden;
 
@@ -201,30 +201,9 @@ pub fn use_is_hydrated() -> ReadSignal<bool> {
 // Re-export for backward compatibility.
 pub use use_size::{use_size, ElementSize};
 
-/// Reads an element's bounding client rect from its [`MountedData`].
-///
-/// Matches Radix's `useRect(measurable)` which uses `observeElementRect`.
-/// Returns `None` until the element is mounted, then queries
-/// `get_client_rect()` reactively.
-///
-/// Pass a `Signal<Option<Rc<MountedData>>>` obtained via `onmounted`.
-pub fn use_rect(mounted: ReadSignal<Option<Rc<MountedData>>>) -> ReadSignal<Option<PixelsRect>> {
-    let mut rect: Signal<Option<PixelsRect>> = use_signal(|| None);
-
-    use_effect(move || {
-        if let Some(md) = mounted.cloned() {
-            spawn(async move {
-                if let Ok(r) = md.get_client_rect().await {
-                    rect.set(Some(r));
-                }
-            });
-        } else {
-            rect.set(None);
-        }
-    });
-
-    rect.into()
-}
+// `Rect` and `use_rect` are now in the `use_rect` module.
+// Re-export for backward compatibility.
+pub use use_rect::{use_rect, Rect};
 
 /// Run some cleanup code when the component is unmounted if the effect was run.
 fn use_effect_cleanup<F: FnOnce() + 'static>(#[allow(unused)] cleanup: F) {
