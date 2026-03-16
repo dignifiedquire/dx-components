@@ -1,0 +1,13 @@
+{
+  "name": "portal",
+  "description": "Teleports children to a PortalHost at the app root, escaping parent stacking contexts.",
+  "authors": ["Dioxus Labs"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}

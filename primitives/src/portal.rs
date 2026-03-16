@@ -10,6 +10,24 @@
 //!
 //! Users must place `<PortalHost />` at the top level of their application for
 //! overlay components (Dialog, Popover, Tooltip, etc.) to render correctly.
+//!
+//! ## Differences from upstream
+//!
+//! - **No `container` prop**: Upstream accepts `container?: Element | DocumentFragment | null`
+//!   to portal into an arbitrary DOM node via `ReactDOM.createPortal`. Dioxus cannot render
+//!   into arbitrary DOM nodes, so content always renders inside the nearest [`PortalHost`].
+//! - **PortalHost required**: Instead of automatically appending to `document.body`, users
+//!   must place a [`PortalHost`] component at the app root.
+//! - **Inline fallback**: When no [`PortalHost`] is mounted (e.g. in tests), [`Portal`]
+//!   renders children inline as a graceful degradation.
+//!
+//! ## Upstream API
+//!
+//! ```ts
+//! interface PortalProps extends PrimitiveDivProps {
+//!   container?: Element | DocumentFragment | null;
+//! }
+//! ```
 
 use crate::dioxus_core::provide_root_context;
 use dioxus::prelude::*;
@@ -218,3 +236,8 @@ pub fn Portal(props: PortalProps) -> Element {
         }
     }
 }
+
+/// Upstream alias.
+///
+/// `const Root = Portal;`
+pub use Portal as Root;
