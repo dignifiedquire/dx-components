@@ -66,8 +66,6 @@ pub fn use_rect(mounted: ReadSignal<Option<Rc<MountedData>>>) -> ReadSignal<Opti
 
     #[cfg(target_arch = "wasm32")]
     {
-        use wasm_bindgen::JsCast;
-
         crate::use_effect_with_cleanup(move || {
             if let Some(md) = mounted.cloned() {
                 // Get the raw DOM element.
@@ -110,7 +108,6 @@ mod observe {
     use super::Rect;
     use std::cell::RefCell;
     use std::collections::HashMap;
-    use std::rc::Rc;
     use wasm_bindgen::prelude::*;
     use wasm_bindgen::JsCast;
 

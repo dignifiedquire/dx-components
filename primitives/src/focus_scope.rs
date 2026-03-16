@@ -341,8 +341,8 @@ mod wasm_impl {
         if let Some(ref obs) = observer {
             if let Some(container) = doc.get_element_by_id(&id) {
                 let mut init = web_sys::MutationObserverInit::new();
-                init.child_list(true);
-                init.subtree(true);
+                init.set_child_list(true);
+                init.set_subtree(true);
                 let _ = obs.observe_with_options(container.as_ref(), &init);
             }
         }

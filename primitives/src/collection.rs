@@ -70,6 +70,10 @@ impl<D: Clone + 'static> CollectionContext<D> {
 ///
 /// Returns a `Signal<Option<Rc<MountedData>>>` that must be wired to the
 /// element's `onmounted` handler for programmatic focus support.
+///
+/// Upstream re-runs `useEffect` when `itemData` values change
+/// (`[...Object.values(itemData)]`). We store data in a signal so the effect
+/// re-runs when data changes, keeping the collection in sync.
 pub fn use_collection_item<D: Clone + 'static>(data: D) -> Signal<Option<Rc<MountedData>>> {
     let mut ctx: CollectionContext<D> = use_context();
     // Create at ROOT scope — the parent collection iterates all items and
@@ -77,12 +81,22 @@ pub fn use_collection_item<D: Clone + 'static>(data: D) -> Signal<Option<Rc<Moun
     // if created in the item's own scope.
     let mounted = use_hook(|| Signal::new_in_scope(None, ScopeId::ROOT));
     let item_id = use_hook(|| NEXT_ITEM_ID.fetch_add(1, Ordering::Relaxed));
+    let mut data_sig: Signal<D> = use_signal(|| data.clone());
+
+    // Always update the data signal so the effect below re-runs when
+    // item data changes (e.g. disabled toggling).
+    data_sig.set(data);
 
     use_effect(move || {
+        let data = data_sig.read().clone();
+        // Unregister any previous entry (no-op on first run) then re-register
+        // with the latest data. Matches upstream's effect re-running on
+        // itemData changes.
+        ctx.unregister(item_id);
         ctx.register(CollectionItem {
             id: item_id,
             mounted,
-            data: data.clone(),
+            data,
         });
     });
 

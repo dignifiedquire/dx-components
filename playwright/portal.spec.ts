@@ -13,22 +13,28 @@ async function gotoAndWait(page: import("@playwright/test").Page) {
 
 // ---------------------------------------------------------------------------
 // Upstream: portal.stories.tsx — "Base"
-// Content renders through Portal into PortalHost
+// Content renders through Portal into PortalHost.
+// Dioxus portals may briefly render inline before settling into PortalHost,
+// so we scope content queries to the host.
 // ---------------------------------------------------------------------------
 
 test.describe("Portal: base", () => {
-  test("portal content is not visible until toggled", async ({ page }) => {
+  test("portal content is not visible in host until toggled", async ({
+    page,
+  }) => {
     await gotoAndWait(page);
+    const host = page.locator('[data-slot="portal-host"]');
     await expect(
-      page.locator('[data-testid="base-portal-content"]')
+      host.locator('[data-testid="base-portal-content"]')
     ).not.toBeVisible();
   });
 
-  test("portal content appears when toggled on", async ({ page }) => {
+  test("portal content appears in host when toggled on", async ({ page }) => {
     await gotoAndWait(page);
     await page.locator('[data-testid="base-toggle"]').click();
+    const host = page.locator('[data-slot="portal-host"]');
     await expect(
-      page.locator('[data-testid="base-portal-content"]')
+      host.locator('[data-testid="base-portal-content"]')
     ).toBeVisible();
   });
 
@@ -37,9 +43,6 @@ test.describe("Portal: base", () => {
   }) => {
     await gotoAndWait(page);
     await page.locator('[data-testid="base-toggle"]').click();
-    await expect(
-      page.locator('[data-testid="base-portal-content"]')
-    ).toBeVisible();
 
     // The portal content should be inside [data-slot="portal-host"],
     // NOT inside the overflow container.
@@ -49,16 +52,20 @@ test.describe("Portal: base", () => {
     await expect(inHost).toBeVisible();
   });
 
-  test("portal content disappears when toggled off", async ({ page }) => {
+  test("portal content disappears from host when toggled off", async ({
+    page,
+  }) => {
     await gotoAndWait(page);
+    const host = page.locator('[data-slot="portal-host"]');
+
     await page.locator('[data-testid="base-toggle"]').click();
     await expect(
-      page.locator('[data-testid="base-portal-content"]')
+      host.locator('[data-testid="base-portal-content"]')
     ).toBeVisible();
 
     await page.locator('[data-testid="base-toggle"]').click();
     await expect(
-      page.locator('[data-testid="base-portal-content"]')
+      host.locator('[data-testid="base-portal-content"]')
     ).not.toBeVisible();
   });
 });
@@ -69,18 +76,19 @@ test.describe("Portal: base", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("Portal: multiple portals", () => {
-  test("all three portals render when toggled", async ({ page }) => {
+  test("all three portals render in host when toggled", async ({ page }) => {
     await gotoAndWait(page);
     await page.locator('[data-testid="multi-toggle"]').click();
 
+    const host = page.locator('[data-slot="portal-host"]');
     await expect(
-      page.locator('[data-testid="multi-portal-1"]')
+      host.locator('[data-testid="multi-portal-1"]')
     ).toBeVisible();
     await expect(
-      page.locator('[data-testid="multi-portal-2"]')
+      host.locator('[data-testid="multi-portal-2"]')
     ).toBeVisible();
     await expect(
-      page.locator('[data-testid="multi-portal-3"]')
+      host.locator('[data-testid="multi-portal-3"]')
     ).toBeVisible();
   });
 
@@ -100,22 +108,26 @@ test.describe("Portal: multiple portals", () => {
     ).toBeVisible();
   });
 
-  test("all portals disappear when toggled off", async ({ page }) => {
+  test("all portals disappear from host when toggled off", async ({
+    page,
+  }) => {
     await gotoAndWait(page);
+    const host = page.locator('[data-slot="portal-host"]');
+
     await page.locator('[data-testid="multi-toggle"]').click();
     await expect(
-      page.locator('[data-testid="multi-portal-1"]')
+      host.locator('[data-testid="multi-portal-1"]')
     ).toBeVisible();
 
     await page.locator('[data-testid="multi-toggle"]').click();
     await expect(
-      page.locator('[data-testid="multi-portal-1"]')
+      host.locator('[data-testid="multi-portal-1"]')
     ).not.toBeVisible();
     await expect(
-      page.locator('[data-testid="multi-portal-2"]')
+      host.locator('[data-testid="multi-portal-2"]')
     ).not.toBeVisible();
     await expect(
-      page.locator('[data-testid="multi-portal-3"]')
+      host.locator('[data-testid="multi-portal-3"]')
     ).not.toBeVisible();
   });
 });
@@ -130,12 +142,7 @@ test.describe("Portal: location", () => {
   }) => {
     await gotoAndWait(page);
 
-    // Content should exist on the page
-    await expect(
-      page.locator('[data-testid="location-portal-content"]')
-    ).toBeVisible();
-
-    // It should be inside the PortalHost
+    // Content should exist inside the PortalHost
     const inHost = page.locator(
       '[data-slot="portal-host"] [data-testid="location-portal-content"]'
     );
