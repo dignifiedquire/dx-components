@@ -153,6 +153,7 @@ examples!(
     progress,
     radio_group[disabled],
     resizable[vertical, with_handle],
+    roving_focus,
     scroll_area,
     select[scrollable],
     separator,

@@ -1,0 +1,13 @@
+{
+  "name": "roving_focus",
+  "description": "Manages keyboard focus within a group using the roving tabindex technique.",
+  "authors": ["Dioxus Labs"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}
