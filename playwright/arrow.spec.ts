@@ -43,19 +43,12 @@ test.describe("Arrow: styled", () => {
     await expect(arrow).toHaveAttribute("preserveAspectRatio", "none");
   });
 
-  test("contains a polygon child", async ({ page }) => {
+  test("contains a path child with triangle points", async ({ page }) => {
     await gotoAndWait(page);
     const arrow = page.locator('[data-testid="styled-arrow"]');
-    // SVG polygon elements may not report as "visible" in all browsers,
-    // so check DOM presence and attributes via evaluate.
-    const polygonInfo = await arrow.evaluate((el) => {
-      const poly = el.querySelector("polygon");
-      return poly
-        ? { exists: true, points: poly.getAttribute("points") }
-        : { exists: false, points: null };
-    });
-    expect(polygonInfo.exists).toBe(true);
-    expect(polygonInfo.points).toBe("0,0 30,0 15,10");
+    // Dioxus renders SVG path (not polygon) for the default triangle shape
+    const pathEl = arrow.locator("path");
+    await expect(pathEl).toHaveAttribute("d", "M0,0 L30,0 L15,10 Z");
   });
 });
 

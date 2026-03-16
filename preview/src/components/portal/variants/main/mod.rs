@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use dioxus_primitives::portal::{Portal, PortalHost};
+use dioxus_primitives::portal::Portal;
 
 #[component]
 pub fn Demo() -> Element {
@@ -99,8 +99,6 @@ pub fn Demo() -> Element {
                 }
             }
         }
-
-        // The PortalHost renders all portal content here, at the app root level
-        PortalHost {}
+        // PortalHost is provided by the app layout — no need to add one here.
     }
 }

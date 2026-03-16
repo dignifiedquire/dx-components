@@ -58,7 +58,7 @@ pub fn Arrow(props: ArrowProps) -> Element {
             if has_children {
                 {props.children}
             } else {
-                polygon { points: "0,0 30,0 15,10" }
+                path { d: "M0,0 L30,0 L15,10 Z" }
             }
         }
     }
