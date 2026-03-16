@@ -53,6 +53,8 @@ pub fn use_size(mounted: ReadSignal<Option<Rc<MountedData>>>) -> ReadSignal<Opti
         use wasm_bindgen::prelude::*;
         use wasm_bindgen::JsCast;
 
+        let mut size = size;
+
         // Upstream: useLayoutEffect(() => { ... }, [element])
         // Dioxus's use_effect_with_cleanup re-runs when reactive signals
         // (mounted) change, and calls the returned cleanup before re-running.
@@ -61,7 +63,7 @@ pub fn use_size(mounted: ReadSignal<Option<Rc<MountedData>>>) -> ReadSignal<Opti
                 // Get the raw DOM element from MountedData.
                 let element: web_sys::HtmlElement = match md
                     .downcast::<web_sys::Element>()
-                    .map(|e| e.dyn_into::<web_sys::HtmlElement>())
+                    .map(|e| e.clone().dyn_into::<web_sys::HtmlElement>())
                 {
                     Some(Ok(el)) => el,
                     _ => {
@@ -147,7 +149,7 @@ pub fn use_size(mounted: ReadSignal<Option<Rc<MountedData>>>) -> ReadSignal<Opti
 
                 // Upstream: resizeObserver.observe(element, { box: 'border-box' })
                 let mut options = web_sys::ResizeObserverOptions::new();
-                options.box_(web_sys::ResizeObserverBoxOptions::BorderBox);
+                options.set_box(web_sys::ResizeObserverBoxOptions::BorderBox);
                 observer.observe_with_options(&element, &options);
 
                 // Upstream: return () => resizeObserver.unobserve(element)

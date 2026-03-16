@@ -1,7 +1,7 @@
 //! Line-by-line port of `@radix-ui/react-use-escape-keydown`.
 //!
 //! Listens for when the escape key is pressed on the document in the capture
-//! phase. Calls the provided callback with a [`web_sys::KeyboardEvent`] when
+//! phase. Calls the provided callback with a `web_sys::KeyboardEvent` when
 //! the Escape key is detected.
 //!
 //! ## Differences from upstream

@@ -1,9 +1,9 @@
 /* Combobox group heading */
 [data-slot="combobox-group-heading"] {
   padding: 0.375rem 0.5rem;
+  color: var(--muted-foreground);
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--muted-foreground);
 }
 
 /* Hide "empty" message when items are visible in the list */

@@ -317,7 +317,7 @@ pub struct DropdownMenuContentProps {
 ///
 /// Owns presence tracking. Passes `class`, `data-state`, `data-slot` to
 /// PopperContent's inner div. Delegates keyboard/focus behavior to
-/// [`MenuContent`](crate::menu::MenuContent).
+/// `MenuContent`.
 #[component]
 pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
     let ctx: MenuCtx = use_context();

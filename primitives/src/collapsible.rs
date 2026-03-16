@@ -200,9 +200,9 @@ pub struct CollapsibleContentProps {
 
 /// The collapsible content that shows/hides.
 ///
-/// Matches Radix's `CollapsibleContent`. Wraps with [`Presence`] for
-/// animation-aware mount/unmount, then delegates to [`CollapsibleContentImpl`]
-/// which reads [`PresenceContext`] for the animation-aware `present` boolean.
+/// Matches Radix's `CollapsibleContent`. Wraps with `Presence` for
+/// animation-aware mount/unmount, then delegates to the internal content impl
+/// which reads `PresenceContext` for the animation-aware `present` boolean.
 ///
 /// Upstream: `CollapsibleContent` → `Presence` → `CollapsibleContentImpl`.
 ///

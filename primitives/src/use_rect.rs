@@ -72,7 +72,7 @@ pub fn use_rect(mounted: ReadSignal<Option<Rc<MountedData>>>) -> ReadSignal<Opti
             if let Some(md) = mounted.cloned() {
                 // Get the raw DOM element.
                 let element: web_sys::Element = match md.downcast::<web_sys::Element>() {
-                    Some(el) => el,
+                    Some(el) => el.clone(),
                     _ => return Box::new(|| {}) as Box<dyn FnOnce()>,
                 };
 

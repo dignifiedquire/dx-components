@@ -40,7 +40,7 @@ pub(super) struct SelectContext {
     pub initial_focus: Signal<Option<usize>>,
     /// Auto-incrementing counter for assigning item indices
     pub next_index: Signal<usize>,
-    /// Persistent text overrides registered by [`SelectItemText`] components.
+    /// Persistent text overrides registered by `SelectItemText` components.
     /// Keyed by item value. Survives item unmount/remount across list open/close.
     pub item_text_overrides: Signal<Vec<(String, String)>>,
 }
@@ -131,7 +131,7 @@ pub(super) struct SelectOptionContext {
     pub selected: ReadSignal<bool>,
 }
 
-/// Context provided by [`SelectItem`] for [`SelectItemText`] to know
+/// Context provided by `SelectItem` for `SelectItemText` to know
 /// the parent item's value string (used to key overrides).
 #[derive(Clone, Copy)]
 pub(super) struct SelectItemTextRegistration {

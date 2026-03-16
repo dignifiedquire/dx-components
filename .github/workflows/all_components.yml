@@ -109,6 +109,11 @@ jobs:
             else
               continue
             fi
+            # Skip directories that are not registered components (e.g. primitives demos)
+            if ! grep -q "\"$file\"" ../../../component.json; then
+              echo "Skipping $file (not in component registry)"
+              continue
+            fi
             # Go to test harness
             cd ../../../test-harness
             # Add dependencies manually; TODO: remove this once dx components supports local dependencies

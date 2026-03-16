@@ -3,7 +3,7 @@
 //! Provides [`DismissableLayer`], a container that can be dismissed via Escape
 //! key or interactions outside its bounds (pointer down or focus changes).
 //!
-//! A shared [`DismissableLayerContext`] tracks all active layers, branches,
+//! A shared `DismissableLayerContext` tracks all active layers, branches,
 //! and layers with outside pointer events disabled. This supports nested
 //! dismissable layers where only the topmost layer responds to interactions.
 //!
