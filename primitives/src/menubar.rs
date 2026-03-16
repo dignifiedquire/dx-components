@@ -533,6 +533,8 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
 
     let content_attrs = attributes!(div {
         id: id,
+        role: "menu",
+        aria_orientation: "vertical",
         "data-slot": "menubar-content",
         "data-state": data_state,
     });

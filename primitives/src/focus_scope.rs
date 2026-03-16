@@ -424,8 +424,13 @@ mod wasm_impl {
         }
     }
 
-    /// Handle Tab/Shift+Tab key to loop focus at edges.
-    /// Matches upstream's handleKeyDown.
+    /// Handle Tab/Shift+Tab by always managing focus programmatically.
+    ///
+    /// Upstream only handles edge cases (first/last), relying on the browser's
+    /// native Tab order for intermediate elements. However, WebKit/Safari on
+    /// macOS does not include `<button>` in the native Tab order by default,
+    /// causing focus to skip buttons or escape the scope. We always intercept
+    /// Tab and manually move focus to ensure consistent behavior across browsers.
     pub(super) fn handle_tab(
         container_id: Signal<String>,
         looping: bool,
@@ -445,38 +450,49 @@ mod wasm_impl {
             .and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok());
         let Some(focused) = focused else { return };
 
-        let (first, last) = get_tabbable_edges(&container);
+        let candidates = get_visible_tabbable_candidates(&container);
+        if candidates.is_empty() {
+            event.prevent_default();
+            return;
+        }
 
-        match (first, last) {
-            (Some(first), Some(last)) => {
-                let focused_el: &web_sys::Element = focused.as_ref();
-                let first_el: &web_sys::Element = first.as_ref();
-                let last_el: &web_sys::Element = last.as_ref();
+        let focused_el: &web_sys::Element = focused.as_ref();
+        let current_idx = candidates
+            .iter()
+            .position(|el| el.as_ref() as &web_sys::Element == focused_el);
 
-                if !shift && focused_el == last_el {
-                    event.prevent_default();
-                    if looping {
-                        focus_element(&first);
+        event.prevent_default();
+
+        match current_idx {
+            Some(idx) => {
+                if shift {
+                    if idx > 0 {
+                        focus_element(&candidates[idx - 1]);
+                    } else if looping {
+                        focus_element(candidates.last().unwrap());
                     }
-                } else if shift && focused_el == first_el {
-                    event.prevent_default();
-                    if looping {
-                        focus_element(&last);
-                    }
+                } else if idx < candidates.len() - 1 {
+                    focus_element(&candidates[idx + 1]);
+                } else if looping {
+                    focus_element(&candidates[0]);
                 }
             }
-            _ => {
-                // No tabbable elements — prevent Tab if focus is on the container
-                let container_el: &web_sys::Element = container.as_ref();
-                let focused_el: &web_sys::Element = focused.as_ref();
-                if focused_el == container_el {
-                    event.prevent_default();
+            None => {
+                // Focus is on the container or a non-tabbable element —
+                // move to the first (Tab) or last (Shift+Tab) candidate.
+                let target = if shift {
+                    candidates.last()
+                } else {
+                    candidates.first()
+                };
+                if let Some(el) = target {
+                    focus_element(el);
                 }
             }
         }
     }
 
-    /// Get tabbable candidates inside a container.
+    /// Get tabbable candidates inside a container (unfiltered by visibility).
     fn get_tabbable_candidates(container: &web_sys::Element) -> Vec<web_sys::HtmlElement> {
         let Ok(nodes) = container.query_selector_all(FOCUSABLE_SELECTOR) else {
             return Vec::new();
@@ -492,22 +508,21 @@ mod wasm_impl {
         result
     }
 
+    /// Get visible tabbable candidates inside a container.
+    fn get_visible_tabbable_candidates(container: &web_sys::Element) -> Vec<web_sys::HtmlElement> {
+        get_tabbable_candidates(container)
+            .into_iter()
+            .filter(|el| !is_hidden(el, Some(container)))
+            .collect()
+    }
+
     /// Returns the first and last visible tabbable elements.
     /// Matches upstream's `getTabbableEdges`.
     fn get_tabbable_edges(
         container: &web_sys::Element,
     ) -> (Option<web_sys::HtmlElement>, Option<web_sys::HtmlElement>) {
-        let candidates = get_tabbable_candidates(container);
-        let first = candidates
-            .iter()
-            .find(|el| !is_hidden(el, Some(container)))
-            .cloned();
-        let last = candidates
-            .iter()
-            .rev()
-            .find(|el| !is_hidden(el, Some(container)))
-            .cloned();
-        (first, last)
+        let candidates = get_visible_tabbable_candidates(container);
+        (candidates.first().cloned(), candidates.last().cloned())
     }
 
     /// Checks if an element is hidden (display: none or visibility: hidden).

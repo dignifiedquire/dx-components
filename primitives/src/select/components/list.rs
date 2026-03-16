@@ -78,6 +78,14 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
         render: render.into(),
     });
 
+    // When content opens, items move from the inline else-branch to Portal
+    // rendering. This destroys and recreates their component scopes, causing
+    // use_hook to run again and consume next_index. Reset the counter before
+    // children render so the recreated items get indices starting from 0.
+    if render() {
+        ctx.next_index.set(0);
+    }
+
     use_effect(move || {
         if render() {
             ctx.focus_state.set_focus(ctx.initial_focus.cloned());
@@ -170,6 +178,10 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
     });
 
     let content_attrs = attributes!(div {
+        id: id,
+        role: "listbox",
+        tabindex: if focused() { "0" } else { "-1" },
+        aria_activedescendant: active_descendant,
         "data-slot": "select-content",
         "data-state": if open() { "open" } else { "closed" },
     });
@@ -188,23 +200,15 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
                     css_var_prefix: "select",
                     class: props.class,
                     content_attributes: merged,
+                    on_mounted: move |evt: Event<MountedData>| listbox_ref.set(Some(evt.data())),
+                    on_keydown: onkeydown,
+                    on_blur: move |_: Event<FocusData>| {
+                        if focused() {
+                            open.set(false);
+                        }
+                    },
 
-                    div {
-                        id: id,
-                        role: "listbox",
-                        tabindex: if focused() { "0" } else { "-1" },
-                        aria_activedescendant: active_descendant,
-
-                        onmounted: move |evt| listbox_ref.set(Some(evt.data())),
-                        onkeydown: onkeydown,
-                        onblur: move |_| {
-                            if focused() {
-                                open.set(false);
-                            }
-                        },
-
-                        {props.children}
-                    }
+                    {props.children}
                 }
             }
         } else {

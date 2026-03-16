@@ -279,6 +279,28 @@ pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
         None
     };
 
+    // Mouse move fallback — WebKit Playwright may not dispatch pointer
+    // events. mousemove bubbles and is reliably dispatched. The `pointer_in`
+    // guard prevents re-triggering on every move event.
+    let handle_mouse_move = move |_: Event<MouseData>| {
+        if !(ctx.disabled)() && !pointer_in() {
+            pointer_in.set(true);
+            let should_skip = provider.is_some_and(|p| !(p.is_open_delayed)());
+            if should_skip {
+                ctx.handle_immediate_open.call(());
+            } else {
+                ctx.handle_delayed_open.call(());
+            }
+        }
+    };
+
+    let handle_mouse_leave = move |_: Event<MouseData>| {
+        pointer_in.set(false);
+        if !(ctx.disabled)() {
+            ctx.handle_immediate_close.call(());
+        }
+    };
+
     let base = attributes!(button {
         id: props.id.clone(),
         "data-slot": "tooltip-trigger",
@@ -286,6 +308,8 @@ pub fn TooltipTrigger(props: TooltipTriggerProps) -> Element {
         "aria-describedby": described_by,
         onpointermove: handle_pointer_move,
         onpointerleave: handle_pointer_leave,
+        onmousemove: handle_mouse_move,
+        onmouseleave: handle_mouse_leave,
         onfocus: handle_focus,
         onblur: handle_blur,
         onkeydown: handle_keydown,

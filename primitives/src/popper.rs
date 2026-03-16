@@ -273,6 +273,18 @@ pub struct PopperContentProps {
     #[props(default)]
     pub on_pointer_leave: Option<EventHandler<Event<PointerData>>>,
 
+    /// Called when a key is pressed on the inner content div.
+    #[props(default)]
+    pub on_keydown: Option<EventHandler<Event<KeyboardData>>>,
+
+    /// Called when the inner content div loses focus.
+    #[props(default)]
+    pub on_blur: Option<EventHandler<Event<FocusData>>>,
+
+    /// Called when the inner content div is mounted.
+    #[props(default)]
+    pub on_mounted: Option<EventHandler<Event<MountedData>>>,
+
     /// Width of the arrow element (along alignment axis).
     /// Pass the same value as `PopperArrow::width` when using an arrow.
     #[props(default)]
@@ -775,6 +787,21 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
                     },
                     onpointerleave: move |e| {
                         if let Some(ref h) = props.on_pointer_leave {
+                            h.call(e);
+                        }
+                    },
+                    onkeydown: move |e| {
+                        if let Some(ref h) = props.on_keydown {
+                            h.call(e);
+                        }
+                    },
+                    onblur: move |e| {
+                        if let Some(ref h) = props.on_blur {
+                            h.call(e);
+                        }
+                    },
+                    onmounted: move |e| {
+                        if let Some(ref h) = props.on_mounted {
                             h.call(e);
                         }
                     },

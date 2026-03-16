@@ -212,7 +212,7 @@ pub fn ContextMenuTrigger(props: ContextMenuTriggerProps) -> Element {
             "data-state": if is_open { "open" } else { "closed" },
             "data-disabled": if internal.disabled { "true" } else { "" },
             // Disable iOS callout on long press
-            "-webkit-touch-callout": "none",
+            style: "-webkit-touch-callout: none;",
             oncontextmenu: move |event: Event<MouseData>| {
                 if internal.disabled {
                     return;
@@ -358,6 +358,8 @@ pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
 
     let content_attrs = attributes!(div {
         id: id,
+        role: "menu",
+        aria_orientation: "vertical",
         "data-slot": "context-menu-content",
         "data-state": data_state,
     });

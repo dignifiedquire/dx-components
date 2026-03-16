@@ -3,12 +3,21 @@ import { test, expect } from "@playwright/test";
 const URL = "http://127.0.0.1:8080/docs/components/focus_scope";
 const TIMEOUT = { timeout: 20 * 60 * 1000 };
 
-/** Navigate and wait for WASM hydration. */
+/** Navigate and wait for WASM hydration + CSS reflow. */
 async function gotoAndWait(page: import("@playwright/test").Page) {
   await page.goto(URL, TIMEOUT);
   await page
     .locator('[data-testid="focus-scope-demos"]')
     .waitFor({ state: "visible", timeout: 60_000 });
+  // Wait for Tailwind CSS reflow to complete. WebKit defers layout reflow
+  // for off-screen elements, so clicks can miss buttons that haven't moved
+  // to their final grid positions yet. After reflow, the demos container
+  // moves into the grid's right column (x > 350).
+  await page.waitForFunction(() => {
+    const el = document.querySelector('[data-testid="focus-scope-demos"]');
+    if (!el) return false;
+    return el.getBoundingClientRect().x > 350;
+  });
 }
 
 // ---------------------------------------------------------------------------

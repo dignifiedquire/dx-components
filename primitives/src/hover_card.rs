@@ -122,6 +122,7 @@ pub struct HoverCardTriggerProps {
 pub fn HoverCardTrigger(props: HoverCardTriggerProps) -> Element {
     let ctx: HoverCardCtx = use_context();
     let popper_ctx: PopperCtx = use_context();
+    let mut mouse_in = use_signal(|| false);
 
     let is_open = (ctx.open)();
 
@@ -134,12 +135,28 @@ pub fn HoverCardTrigger(props: HoverCardTriggerProps) -> Element {
                 if e.data().pointer_type() == "touch" {
                     return;
                 }
+                mouse_in.set(true);
                 ctx.handle_delayed_open.call(());
             },
             onpointerleave: move |e: Event<PointerData>| {
                 if e.data().pointer_type() == "touch" {
                     return;
                 }
+                mouse_in.set(false);
+                ctx.handle_delayed_close.call(());
+            },
+            // Mouse move fallback — WebKit Playwright may not dispatch
+            // non-bubbling pointer events. mousemove bubbles and is reliably
+            // dispatched. The `mouse_in` guard avoids re-triggering on every
+            // move event.
+            onmousemove: move |_: Event<MouseData>| {
+                if !mouse_in() {
+                    mouse_in.set(true);
+                    ctx.handle_delayed_open.call(());
+                }
+            },
+            onmouseleave: move |_: Event<MouseData>| {
+                mouse_in.set(false);
                 ctx.handle_delayed_close.call(());
             },
             onfocus: move |_: Event<FocusData>| {

@@ -8,6 +8,18 @@ test("test", async ({ page }) => {
   await expect(trigger).toBeVisible();
   await expect(trigger).toHaveAttribute("data-state", "closed");
 
+  // Wait for Tailwind CSS reflow to move the trigger into the grid's right
+  // column. WebKit defers layout reflow for off-screen elements, so just
+  // checking getComputedStyle isn't enough — we need the actual box position.
+  await page.waitForFunction(
+    (sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return false;
+      return el.getBoundingClientRect().x > 400;
+    },
+    '[data-slot="tooltip-trigger"]',
+  );
+
   const tooltip = page.getByRole("tooltip");
 
   // Hovering shows tooltip

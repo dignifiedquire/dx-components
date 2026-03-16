@@ -30,8 +30,8 @@ use crate::popper::{Align, Popper, PopperContent, PopperCtx, Side};
 use crate::presence::Presence;
 use crate::scroll_lock::use_scroll_lock;
 use crate::{
-    merge_attributes, use_controlled, use_global_escape_listener, use_id_or, use_outside_click,
-    use_refocus_on_close, use_unique_id,
+    merge_attributes, use_controlled, use_global_escape_listener, use_id_or,
+    use_outside_click_with_exclude, use_refocus_on_close, use_unique_id,
 };
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
@@ -343,11 +343,12 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
         });
     }
 
-    // Dismiss on click outside content
+    // Dismiss on click outside content — exclude clicks on the trigger to
+    // avoid racing with the trigger's own toggle handler.
     {
         let on_close = ctx.on_close;
         let open = ctx.open;
-        use_outside_click(id, move || {
+        use_outside_click_with_exclude(id, "[data-slot=\"dropdown-menu-trigger\"]", move || {
             if *open.peek() {
                 on_close.call(());
             }
@@ -358,6 +359,8 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
 
     let content_attrs = attributes!(div {
         id: id,
+        role: "menu",
+        aria_orientation: "vertical",
         "data-slot": "dropdown-menu-content",
         "data-state": data_state,
         aria_labelledby: (ctx.trigger_id)(),
