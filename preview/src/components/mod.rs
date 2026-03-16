@@ -118,6 +118,7 @@ macro_rules! examples {
 examples!(
     accordion[multiple, disabled],
     alert_dialog,
+    arrow,
     aspect_ratio,
     avatar,
     badge,

@@ -63,3 +63,8 @@ pub fn Arrow(props: ArrowProps) -> Element {
         }
     }
 }
+
+/// Upstream alias.
+///
+/// `const Root = Arrow;`
+pub use Arrow as Root;

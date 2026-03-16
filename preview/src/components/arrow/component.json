@@ -1,0 +1,13 @@
+{
+  "name": "arrow",
+  "description": "SVG arrow triangle for floating elements like popovers and tooltips.",
+  "authors": ["Dioxus Labs"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}
