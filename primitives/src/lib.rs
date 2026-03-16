@@ -75,6 +75,7 @@ pub mod toggle_group;
 pub mod toolbar;
 pub mod tooltip;
 pub(crate) mod typeahead;
+pub mod use_effect_event;
 pub mod use_escape_keydown;
 pub mod use_layout_effect;
 pub mod visually_hidden;
