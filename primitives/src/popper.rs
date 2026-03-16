@@ -296,22 +296,11 @@ pub struct VirtualRef {
 pub fn PopperAnchor(props: PopperAnchorProps) -> Element {
     let ctx: PopperCtx = use_context();
 
-    // Upstream: if virtualRef, set anchor ref to virtualRef.current
-    if let Some(_vref) = &props.virtual_ref {
-        // Update the Popper context to use virtual positioning.
-        // This is handled by re-creating the context anchor kind.
-        // Since context is set once in Popper root, we update the existing
-        // anchor signal via the virtual path.
-        if let PopperAnchorKind::Element(mut sig) = ctx.anchor {
-            // Clear element ref since we're using virtual positioning.
-            sig.set(None);
-        }
-        // Note: For virtual refs, consumers should use Popper's context directly.
-        // The PopperAnchorKind::Virtual variant is set up by the Popper root
-        // when it detects virtual usage patterns.
-
+    // Upstream: if virtualRef, set anchor ref to virtualRef.current and return null.
+    if props.virtual_ref.is_some() {
         // Upstream: return virtualRef ? null : <Primitive.div ... />
-        // With virtualRef, no DOM element is rendered.
+        // With virtualRef, no DOM element is rendered. The virtual coordinates
+        // are set up by the Popper root via PopperAnchorKind::Virtual.
         return props.children;
     }
 
