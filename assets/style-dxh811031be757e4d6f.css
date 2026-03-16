@@ -1,1 +1,0 @@
-[data-slot=combobox-group-heading]{color:var(--muted-foreground);padding:.375rem .5rem;font-size:.75rem;font-weight:500}[data-slot=combobox-list]:has([data-slot=combobox-item]) [data-slot=combobox-empty]{display:none}
