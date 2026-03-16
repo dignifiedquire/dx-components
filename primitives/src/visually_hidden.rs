@@ -67,3 +67,8 @@ pub fn VisuallyHidden(props: VisuallyHiddenProps) -> Element {
         }
     }
 }
+
+/// Upstream alias.
+///
+/// `const Root = VisuallyHidden;`
+pub use VisuallyHidden as Root;

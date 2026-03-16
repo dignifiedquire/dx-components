@@ -171,4 +171,5 @@ examples!(
     toggle[outline, with_text, disabled],
     toolbar,
     tooltip,
+    visually_hidden,
 );
