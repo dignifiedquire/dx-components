@@ -65,25 +65,18 @@ pub fn Demo() -> Element {
             }
 
             // ---------------------------------------------------------
-            // Test 4: Custom children (replaces default polygon)
-            // Upstream: arrow.stories.tsx "CustomArrow"
+            // Test 4: Styled with CSS fill
+            // Custom children not supported due to Dioxus SVG conditional
+            // rendering limitation — use CSS to style the arrow instead.
             // ---------------------------------------------------------
             section {
-                "data-testid": "custom-arrow",
-                h3 { "Custom Arrow (children replace polygon)" }
+                "data-testid": "css-styled",
+                h3 { "CSS Styled Arrow" }
                 Arrow {
                     width: 20.0,
                     height: 10.0,
-                    "data-testid": "arrow-custom",
-                    rect {
-                        x: "0",
-                        y: "0",
-                        width: "30",
-                        height: "10",
-                        rx: "5",
-                        fill: "tomato",
-                        "data-testid": "custom-rect",
-                    }
+                    style: "fill: tomato;",
+                    "data-testid": "arrow-css-styled",
                 }
             }
         }

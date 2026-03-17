@@ -2,6 +2,15 @@
 //!
 //! Renders an SVG triangle for use with floating elements (popover, tooltip,
 //! dropdown, etc.). The arrow points downward by default.
+//!
+//! ## Dioxus Limitation
+//!
+//! Upstream supports custom children to replace the default triangle path.
+//! Dioxus currently has a rendering bug where SVG child elements inside
+//! conditional blocks (or interpolated from a standalone `rsx!` call) produce
+//! `<!--placeholder-->` nodes instead of actual SVG elements. As a workaround,
+//! the default triangle is rendered via `dangerous_inner_html`. Custom children
+//! are not supported; use CSS `fill`, `stroke`, etc. to style the arrow.
 
 use dioxus::prelude::*;
 
@@ -23,10 +32,6 @@ pub struct ArrowProps {
     /// Spread attributes applied to the `<svg>` element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
-
-    /// Optional children to replace the default polygon.
-    #[props(default)]
-    pub children: Element,
 }
 
 /// SVG arrow triangle for floating elements.
@@ -43,38 +48,16 @@ pub struct ArrowProps {
 /// ```
 #[component]
 pub fn Arrow(props: ArrowProps) -> Element {
-    let has_children = props.children.is_ok();
-
-    // When no custom children are provided, use dangerous_inner_html for the
-    // default triangle. Dioxus's RSX SVG elements (path, polygon) are created
-    // via document.createElement instead of document.createElementNS, so they
-    // don't render as valid SVG children. This matches how dx_icons_lucide
-    // injects SVG content.
-    if has_children {
-        rsx! {
-            svg {
-                "data-slot": "arrow",
-                width: "{props.width}",
-                height: "{props.height}",
-                view_box: "0 0 30 10",
-                "preserveAspectRatio": "none",
-                class: props.class,
-                ..props.attributes,
-                {props.children}
-            }
-        }
-    } else {
-        rsx! {
-            svg {
-                "data-slot": "arrow",
-                width: "{props.width}",
-                height: "{props.height}",
-                view_box: "0 0 30 10",
-                "preserveAspectRatio": "none",
-                dangerous_inner_html: r#"<path d="M0,0 L30,0 L15,10 Z"></path>"#,
-                class: props.class,
-                ..props.attributes,
-            }
+    rsx! {
+        svg {
+            "data-slot": "arrow",
+            width: "{props.width}",
+            height: "{props.height}",
+            view_box: "0 0 30 10",
+            "preserveAspectRatio": "none",
+            dangerous_inner_html: r#"<path d="M0,0 L30,0 L15,10 Z"></path>"#,
+            class: props.class,
+            ..props.attributes,
         }
     }
 }
