@@ -58,7 +58,16 @@ impl<D: Clone + 'static> CollectionContext<D> {
     }
 
     fn register(&mut self, item: CollectionItem<D>) {
-        self.items.write().push(item);
+        let mut items = self.items.write();
+        // Update in-place if an item with this ID already exists, preserving
+        // render order. Without this, unregister+register would move the item
+        // to the end of the Vec, breaking keyboard navigation order.
+        if let Some(existing) = items.iter_mut().find(|i| i.id == item.id) {
+            existing.data = item.data;
+            existing.mounted = item.mounted;
+        } else {
+            items.push(item);
+        }
     }
 
     fn unregister(&mut self, id: usize) {
