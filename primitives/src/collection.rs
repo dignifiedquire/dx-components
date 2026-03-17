@@ -98,10 +98,9 @@ pub fn use_collection_item<D: Clone + 'static>(data: D) -> Signal<Option<Rc<Moun
 
     use_effect(move || {
         let data = data_sig.read().clone();
-        // Unregister any previous entry (no-op on first run) then re-register
-        // with the latest data. Matches upstream's effect re-running on
-        // itemData changes.
-        ctx.unregister(item_id);
+        // Register (or update in-place) with the latest data. No unregister
+        // needed here — register handles upsert to preserve render order.
+        // Matches upstream's effect re-running on itemData changes.
         ctx.register(CollectionItem {
             id: item_id,
             mounted,
