@@ -149,6 +149,7 @@ examples!(
     navigation_menu,
     pagination,
     popover,
+    popper,
     portal,
     presence,
     progress,
