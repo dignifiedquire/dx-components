@@ -1,0 +1,13 @@
+{
+  "name": "accessible_icon",
+  "description": "Makes icons accessible by hiding them from screen readers and providing a text label.",
+  "authors": ["Dioxus Labs"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}

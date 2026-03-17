@@ -60,3 +60,8 @@ pub fn AccessibleIcon(props: AccessibleIconProps) -> Element {
         }
     }
 }
+
+/// Upstream alias.
+///
+/// `const Root = AccessibleIcon;`
+pub use AccessibleIcon as Root;

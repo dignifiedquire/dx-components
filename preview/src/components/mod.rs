@@ -116,6 +116,7 @@ macro_rules! examples {
 }
 
 examples!(
+    accessible_icon,
     accordion[multiple, disabled],
     alert_dialog,
     announce,
