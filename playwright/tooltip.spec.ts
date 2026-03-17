@@ -26,10 +26,20 @@ test("test", async ({ page }) => {
 
   const tooltip = page.getByRole("tooltip");
 
-  // Hovering shows tooltip — use dispatchEvent as fallback for Firefox
-  // headless which may not reliably dispatch pointermove from hover().
+  // Hovering shows tooltip — Playwright's hover() may not reliably dispatch
+  // pointermove events on headless Firefox CI. Use page.mouse.move() with
+  // explicit coordinates + dispatch a proper PointerEvent as fallback.
   await trigger.hover();
-  await trigger.dispatchEvent("pointermove");
+  const box = await trigger.boundingBox();
+  if (box) {
+    // Explicit mouse move to trigger center — generates real browser events
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  }
+  // Dispatch a proper PointerEvent in case browser-level events didn't fire
+  await trigger.evaluate((el) => {
+    el.dispatchEvent(new PointerEvent("pointermove", { bubbles: true }));
+    el.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+  });
   await expect(tooltip).toBeVisible(EXPECT_TIMEOUT);
   await expect(tooltip).toHaveAttribute("data-slot", "tooltip-content");
   await expect(tooltip).toHaveAttribute("data-state", "open");
