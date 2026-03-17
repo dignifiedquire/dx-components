@@ -88,8 +88,7 @@ test.describe("AccessibleIcon: inline (chromatic)", () => {
   test("inline icon renders within text", async ({ page }) => {
     await gotoAndWait(page);
     const text = page.locator('[data-testid="inline-text"]');
-    await expect(text).toContainText("Some text with an inline icon");
-    await expect(text).toContainText("and more text");
+    await expect(text).toContainText("Some text with an inline accessible icon");
   });
 
   test("inline SVG is rendered", async ({ page }) => {
@@ -102,6 +101,6 @@ test.describe("AccessibleIcon: inline (chromatic)", () => {
     await gotoAndWait(page);
     const section = page.locator('[data-testid="chromatic"]');
     const label = section.locator('[data-slot="visually-hidden"]');
-    await expect(label).toContainText("Warning");
+    await expect(label).toContainText("Close");
   });
 });

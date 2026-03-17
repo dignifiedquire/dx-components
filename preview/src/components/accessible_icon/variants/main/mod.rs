@@ -33,23 +33,22 @@ pub fn Demo() -> Element {
             // 2. Chromatic — inline icon in text (matches upstream Chromatic story)
             section {
                 "data-testid": "chromatic",
-                h3 { class: "text-lg font-semibold mb-4", "Inline" }
+                h3 { class: "text-lg font-semibold mb-4", "Chromatic" }
                 p {
                     "data-testid": "inline-text",
-                    "Some text with an inline icon "
+                    "Some text with an inline accessible icon "
                     AccessibleIcon {
-                        label: "Warning",
+                        label: "Close",
                         svg {
                             "data-testid": "inline-svg",
                             view_box: "0 0 32 32",
-                            width: "16",
-                            height: "16",
+                            width: "24",
+                            height: "24",
                             fill: "none",
                             stroke: "currentColor",
                             path { d: "M2 30 L30 2 M30 30 L2 2" }
                         }
                     }
-                    " and more text"
                 }
             }
         }
