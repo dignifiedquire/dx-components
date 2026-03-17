@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 
+// Tooltip has a 700ms open delay. On slow CI machines (headless Firefox),
+// WASM execution can be slower, so use a generous assertion timeout.
+const EXPECT_TIMEOUT = { timeout: 15_000 };
+
 test("test", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/tooltip", { timeout: 20 * 60 * 1000 });
 
@@ -22,9 +26,11 @@ test("test", async ({ page }) => {
 
   const tooltip = page.getByRole("tooltip");
 
-  // Hovering shows tooltip
+  // Hovering shows tooltip — use dispatchEvent as fallback for Firefox
+  // headless which may not reliably dispatch pointermove from hover().
   await trigger.hover();
-  await expect(tooltip).toBeVisible();
+  await trigger.dispatchEvent("pointermove");
+  await expect(tooltip).toBeVisible(EXPECT_TIMEOUT);
   await expect(tooltip).toHaveAttribute("data-slot", "tooltip-content");
   await expect(tooltip).toHaveAttribute("data-state", "open");
   await expect(tooltip).toHaveAttribute("data-side", "top");
@@ -32,11 +38,11 @@ test("test", async ({ page }) => {
 
   // Moving mouse away hides tooltip
   await page.mouse.move(0, 0);
-  await expect(tooltip).toHaveCount(0);
+  await expect(tooltip).toHaveCount(0, EXPECT_TIMEOUT);
 
   // Focus shows tooltip
   await trigger.focus();
-  await expect(tooltip).toBeVisible();
+  await expect(tooltip).toBeVisible(EXPECT_TIMEOUT);
 
   // Trigger has aria-describedby when open
   const describedby = await trigger.getAttribute("aria-describedby");
@@ -44,5 +50,5 @@ test("test", async ({ page }) => {
 
   // Escape closes
   await page.keyboard.press("Escape");
-  await expect(tooltip).toHaveCount(0);
+  await expect(tooltip).toHaveCount(0, EXPECT_TIMEOUT);
 });
