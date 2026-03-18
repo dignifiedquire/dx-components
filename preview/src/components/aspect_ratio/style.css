@@ -1,12 +1,1 @@
-.aspect-ratio-container {
-  overflow: hidden;
-  box-sizing: border-box;
-  padding: 1rem;
-  border-radius: .5rem;
-}
-
-.aspect-ratio-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+/* No custom styles needed — uses Tailwind and inline styles matching upstream stories. */

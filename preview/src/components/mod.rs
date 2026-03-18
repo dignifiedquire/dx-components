@@ -35,6 +35,7 @@ macro_rules! examples {
             description: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/description.txt")),
             r#type: ComponentType::Normal,
             docs: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/docs.html")),
+            api_docs: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/api.html")),
             component: HighlightedCode {
                 light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/component.rs.base16-ocean.light.html")),
                 dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/component.rs.base16-ocean.dark.html")),
@@ -46,6 +47,7 @@ macro_rules! examples {
             variants: &[
                 VariantMetadata {
                     name: "main",
+                    description: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/main/docs.html")),
                     rs_highlighted: HighlightedCode {
                         light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/main/mod.rs.base16-ocean.light.html")),
                         dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/main/mod.rs.base16-ocean.dark.html")),
@@ -56,6 +58,7 @@ macro_rules! examples {
                     $(
                         VariantMetadata {
                             name: stringify!($variant),
+                            description: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/", stringify!($variant), "/docs.html")),
                             rs_highlighted: HighlightedCode {
                                 light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/", stringify!($variant), "/mod.rs.base16-ocean.light.html")),
                                 dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/", stringify!($variant), "/mod.rs.base16-ocean.dark.html")),
@@ -75,6 +78,7 @@ macro_rules! examples {
             description: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/description.txt")),
             r#type: ComponentType::Block,
             docs: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/docs.html")),
+            api_docs: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/api.html")),
             component: HighlightedCode {
                 light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/component.rs.base16-ocean.light.html")),
                 dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/component.rs.base16-ocean.dark.html")),
@@ -86,6 +90,7 @@ macro_rules! examples {
             variants: &[
                 VariantMetadata {
                     name: "main",
+                    description: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/main/docs.html")),
                     rs_highlighted: HighlightedCode {
                         light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/main/mod.rs.base16-ocean.light.html")),
                         dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/main/mod.rs.base16-ocean.dark.html")),
@@ -99,6 +104,7 @@ macro_rules! examples {
                     $(
                         VariantMetadata {
                             name: stringify!($variant),
+                            description: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/", stringify!($variant), "/docs.html")),
                             rs_highlighted: HighlightedCode {
                                 light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/", stringify!($variant), "/mod.rs.base16-ocean.light.html")),
                                 dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/variants/", stringify!($variant), "/mod.rs.base16-ocean.dark.html")),
@@ -121,7 +127,7 @@ examples!(
     alert_dialog,
     announce,
     arrow,
-    aspect_ratio,
+    aspect_ratio[square, portrait],
     avatar,
     badge,
     button[outline, secondary, destructive, ghost, link, icon, with_icon, loading, disabled, sizes],

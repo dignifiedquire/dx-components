@@ -33,6 +33,7 @@ pub(crate) struct ComponentMetadata {
     pub(crate) description: &'static str,
     pub(crate) r#type: ComponentType,
     pub(crate) docs: &'static str,
+    pub(crate) api_docs: &'static str,
     pub(crate) component: HighlightedCode,
     pub(crate) style: HighlightedCode,
     pub(crate) variants: &'static [VariantMetadata],
@@ -42,6 +43,7 @@ pub(crate) struct ComponentMetadata {
 #[derive(Clone, PartialEq)]
 pub(crate) struct VariantMetadata {
     pub(crate) name: &'static str,
+    pub(crate) description: &'static str,
     pub(crate) rs_highlighted: HighlightedCode,
     pub(crate) css_highlighted: Option<HighlightedCode>,
 }

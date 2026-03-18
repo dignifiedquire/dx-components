@@ -44,10 +44,10 @@ pub fn AspectRatio(props: AspectRatioProps) -> Element {
 
     rsx! {
         div {
-            "data-slot": "aspect-ratio",
             "data-radix-aspect-ratio-wrapper": "",
             style: "position: relative; width: 100%; padding-bottom: {padding_bottom}%;",
             div {
+                "data-slot": "aspect-ratio",
                 style: "position: absolute; top: 0; right: 0; bottom: 0; left: 0;",
                 class: props.class,
                 ..props.attributes,
@@ -56,3 +56,8 @@ pub fn AspectRatio(props: AspectRatioProps) -> Element {
         }
     }
 }
+
+/// Upstream alias.
+///
+/// `const Root = AspectRatio;`
+pub use AspectRatio as Root;

@@ -5,10 +5,10 @@ use dioxus::prelude::*;
 pub fn Demo() -> Element {
     rsx! {
         div {
-            "data-testid": "aspect-ratio-demo",
-            class: "w-full max-w-sm",
+            "data-testid": "aspect-ratio-square",
+            class: "w-full max-w-[12rem]",
             AspectRatio {
-                ratio: 16.0 / 9.0,
+                ratio: 1.0,
                 class: "rounded-lg bg-muted",
                 img {
                     src: "https://avatar.vercel.sh/shadcn1",

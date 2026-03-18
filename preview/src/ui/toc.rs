@@ -59,6 +59,13 @@ pub(crate) fn TableOfContents() -> Element {
                         }
                     }
                 }
+                if !meta.api_docs.is_empty() {
+                    a {
+                        class: "text-[0.8rem] text-muted-foreground no-underline transition-colors hover:text-foreground",
+                        href: "#api-reference",
+                        "API Reference"
+                    }
+                }
             }
         }
     }

@@ -55,6 +55,16 @@ fn main() {
         let desc_out = out_dir.join(&folder_name).join("description.txt");
         std::fs::write(desc_out, description).unwrap();
 
+        // Ensure api.html exists (empty if no api.md source)
+        let api_md_path = folder_path.join("api.md");
+        let api_html = if api_md_path.exists() {
+            process_markdown_to_html(&api_md_path)
+        } else {
+            String::new()
+        };
+        let api_out = out_dir.join(&folder_name).join("api.html");
+        std::fs::write(api_out, api_html).unwrap();
+
         // Discover variant directories
         let variants_dir = folder_path.join("variants");
         let mut variants = Vec::new();
@@ -72,6 +82,19 @@ fn main() {
             variants.remove(pos);
         }
         variants.insert(0, "main".to_string());
+
+        // Ensure each variant has a docs.html (empty if no docs.md source exists)
+        for vname in &variants {
+            let variant_docs_out = out_dir
+                .join(&folder_name)
+                .join("variants")
+                .join(vname)
+                .join("docs.html");
+            if !variant_docs_out.exists() {
+                std::fs::create_dir_all(variant_docs_out.parent().unwrap()).unwrap();
+                std::fs::write(&variant_docs_out, "").unwrap();
+            }
+        }
 
         let page_name = snake_to_pascal(&folder_name) + "Page";
 

@@ -31,6 +31,7 @@ fn ComponentHighlight(meta: ComponentMetadata, demos: Vec<DemoEntry>) -> Element
         description,
         r#type,
         docs,
+        api_docs,
         variants,
         component,
         style,
@@ -103,10 +104,16 @@ fn ComponentHighlight(meta: ComponentMetadata, demos: Vec<DemoEntry>) -> Element
                     for variant in extra_variants {
                         {
                             let demo_fn = demos.iter().find(|d| d.name == variant.name).map(|d| d.component);
+                            let desc = variant.description;
                             rsx! {
                                 div { id: "{variant.name}",
                                     h3 { class: "scroll-m-24 text-lg font-medium mb-4 capitalize",
                                         {variant.name.replace("_", " ")}
+                                    }
+                                    if !desc.is_empty() {
+                                        div { class: "docs-content mb-4",
+                                            dangerous_inner_html: desc,
+                                        }
                                     }
                                     if let Some(comp) = demo_fn {
                                         ComponentPreview {
@@ -120,6 +127,16 @@ fn ComponentHighlight(meta: ComponentMetadata, demos: Vec<DemoEntry>) -> Element
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // API Reference
+        if !api_docs.is_empty() {
+            section { id: "api-reference", class: "mt-8",
+                h2 { class: "scroll-m-24 text-xl font-semibold tracking-tight mb-4", "API Reference" }
+                div { class: "docs-content",
+                    dangerous_inner_html: api_docs,
                 }
             }
         }
@@ -140,6 +157,7 @@ fn ComponentPreview(
 
     let VariantMetadata {
         name: variant_name,
+        description: _,
         rs_highlighted: highlighted,
         css_highlighted,
     } = variant;
