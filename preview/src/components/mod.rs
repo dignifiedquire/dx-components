@@ -151,7 +151,7 @@ examples!(
     hover_card,
     input[disabled, file, with_label, with_button],
     input_otp[pattern, spacing],
-    label,
+    label[label_in_field],
     menubar,
     navbar,
     navigation_menu,

@@ -1,15 +1,18 @@
-use crate::components::input::component::Input;
-use dioxus::prelude::*;
+use crate::components::checkbox::component::Checkbox;
 use crate::components::label::component::Label;
+use dioxus::prelude::*;
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        div { display: "flex", flex_direction: "column", gap: ".5rem",
-            Label { html_for: "name", "Name" }
-
-            Input { id: "name", placeholder: "Enter your name" }
+        div {
+            "data-testid": "label-demo",
+            class: "flex gap-2",
+            Checkbox {
+                id: "terms",
+                name: "terms",
+            }
+            Label { html_for: "terms", "Accept terms and conditions" }
         }
-
     }
 }
