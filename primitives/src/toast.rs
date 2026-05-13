@@ -1,7 +1,7 @@
 //! Defines the [`Toast`] component and its sub-components, which provide a notification system for displaying temporary messages to users.
 
 use crate::{
-    portal::{use_portal, PortalIn, PortalOut},
+    top_layer::{use_top_layer, TopLayerKind},
     use_global_keydown_listener, use_unique_id,
 };
 use dioxus::dioxus_core::DynamicNode;
@@ -131,7 +131,6 @@ pub struct ToastProviderProps {
 #[component]
 pub fn ToastProvider(props: ToastProviderProps) -> Element {
     let mut toasts = use_signal(VecDeque::new);
-    let portal = use_portal();
 
     // Remove toast callback
     let remove_toast = use_callback(move |id: usize| {
@@ -224,57 +223,71 @@ pub fn ToastProvider(props: ToastProviderProps) -> Element {
         focus_region,
     });
 
+    // Toast viewport renders in the browser top layer via `popover="manual"`
+    // so it sits above all page content (escaping ancestor overflow,
+    // transform, and stacking-contexts) without a portal.
+    let mut viewport_mounted = use_signal(|| None::<std::rc::Rc<MountedData>>);
+    let open = use_signal(|| true);
+    let set_open = use_callback(|_v: bool| {
+        // The viewport never closes on its own — it lives for the app
+        // lifetime. Ignore browser-initiated close attempts.
+    });
+    use_top_layer(
+        viewport_mounted.into(),
+        open.into(),
+        set_open,
+        TopLayerKind::PopoverManual,
+    );
+
     rsx! {
         // Render children
         {props.children}
 
-        // Render toast container using portal
-        PortalIn { portal,
-            div {
-                "data-slot": "toast-viewport",
-                role: "region",
-                aria_label: "{length} notifications",
-                tabindex: "-1",
-                style: "--toast-count: {length}",
-                onmounted: move |e| {
-                    region_ref.set(Some(e.data()));
-                },
-                ..props.attributes,
+        // Toast viewport — always-on popover in the top layer.
+        div {
+            "data-slot": "toast-viewport",
+            popover: "manual",
+            role: "region",
+            aria_label: "{length} notifications",
+            tabindex: "-1",
+            style: "--toast-count: {length}",
+            onmounted: move |e| {
+                let data = e.data();
+                region_ref.set(Some(data.clone()));
+                viewport_mounted.set(Some(data));
+            },
+            ..props.attributes,
 
-                ol {
-                    "data-slot": "toast-list",
-                    // Render all toasts
-                    for (index, toast) in toast_list.read().iter().rev().enumerate() {
-                        li {
-                            key: "{toast.id}",
-                            {
-                                props.render_toast.call(ToastProps::builder().id(toast.id)
-                                    .index(index)
-                                    .title(toast.title.clone())
-                                    .description(toast.description.clone())
-                                    .toast_type(toast.toast_type)
-                                    .permanent(toast.permanent)
-                                    .on_close({
-                                        let toast_id = toast.id;
-                                        let remove_toast = ctx.remove_toast;
-                                        move |_| {
-                                            remove_toast.call(toast_id);
-                                        }
-                                    })
-                                    // Only pass duration to non-permanent toasts
-                                    .duration(if toast.permanent { None } else { toast.duration })
-                                    .attributes(vec![])
-                                    .build()
-                                )
-                            }
+            ol {
+                "data-slot": "toast-list",
+                // Render all toasts
+                for (index, toast) in toast_list.read().iter().rev().enumerate() {
+                    li {
+                        key: "{toast.id}",
+                        {
+                            props.render_toast.call(ToastProps::builder().id(toast.id)
+                                .index(index)
+                                .title(toast.title.clone())
+                                .description(toast.description.clone())
+                                .toast_type(toast.toast_type)
+                                .permanent(toast.permanent)
+                                .on_close({
+                                    let toast_id = toast.id;
+                                    let remove_toast = ctx.remove_toast;
+                                    move |_| {
+                                        remove_toast.call(toast_id);
+                                    }
+                                })
+                                // Only pass duration to non-permanent toasts
+                                .duration(if toast.permanent { None } else { toast.duration })
+                                .attributes(vec![])
+                                .build()
+                            )
                         }
                     }
                 }
             }
         }
-
-        // Portal output at the end of the document
-        PortalOut { portal }
     }
 }
 
