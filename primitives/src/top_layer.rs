@@ -40,7 +40,7 @@ pub enum TopLayerKind {
     DialogModal,
 }
 
-/// Drive a top-layer element from an `open` `Signal<bool>`.
+/// Drive a top-layer element from a reactive open state.
 ///
 /// The caller must:
 /// 1. Track the element via a signal:
@@ -49,28 +49,33 @@ pub enum TopLayerKind {
 ///    the matching attribute on rsx — either `popover: "auto" | "manual"`
 ///    on a regular element, or use a `dialog { ... }` element for
 ///    [`TopLayerKind::DialogModal`].
-/// 3. Pass that signal plus the `open` signal and kind to this hook.
+/// 3. Pass that signal plus the `open` reader, a `set_open` callback,
+///    and the kind to this hook.
+///
+/// `open` can be any `ReadOnlySignal<bool>` (a plain `Signal<bool>`, a
+/// `Memo<bool>`, or anything implementing `Into<ReadOnlySignal<bool>>`).
+/// `set_open` is invoked when the browser closes the element on its own
+/// (popover light-dismiss, ESC, `<dialog>` cancel) so the caller's state
+/// stays in sync.
 ///
 /// The hook calls `show_popover()`/`show_modal()` when `open` flips to
-/// `true`, and `hide_popover()`/`close()` when it flips to `false`. It
-/// also subscribes to the element's `toggle` event (popover) or `close`
-/// event (dialog) and writes back into `open` on browser-initiated
-/// state changes (light-dismiss, ESC, cancel), keeping the signal in sync.
+/// `true`, and `hide_popover()`/`close()` when it flips to `false`.
 ///
 /// On non-wasm targets this is a no-op.
 pub fn use_top_layer(
     mounted: ReadSignal<Option<Rc<MountedData>>>,
-    open: Signal<bool>,
+    open: ReadSignal<bool>,
+    set_open: Callback<bool>,
     kind: TopLayerKind,
 ) {
     #[cfg(target_arch = "wasm32")]
     {
-        wasm::use_top_layer_impl(mounted, open, kind);
+        wasm::use_top_layer_impl(mounted, open, set_open, kind);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let _ = (mounted, open, kind);
+        let _ = (mounted, open, set_open, kind);
     }
 }
 
@@ -82,12 +87,12 @@ mod wasm {
 
     pub(super) fn use_top_layer_impl(
         mounted: ReadSignal<Option<Rc<MountedData>>>,
-        open: Signal<bool>,
+        open: ReadSignal<bool>,
+        set_open: Callback<bool>,
         kind: TopLayerKind,
     ) {
         // Effect 1 — wire the browser → signal sync listener once per
         // mounted element. Re-runs (with cleanup) when `mounted` changes.
-        let mut open_for_listener = open;
         crate::use_effect_with_cleanup(move || -> Box<dyn FnOnce()> {
             let Some(md) = mounted.cloned() else {
                 return Box::new(|| {});
@@ -110,8 +115,8 @@ mod wasm {
                         .map(|t| t.new_state() == "open")
                         .unwrap_or(false),
                 };
-                if *open_for_listener.peek() != new_open {
-                    open_for_listener.set(new_open);
+                if *open.peek() != new_open {
+                    set_open.call(new_open);
                 }
             }) as Box<dyn FnMut(web_sys::Event)>);
 

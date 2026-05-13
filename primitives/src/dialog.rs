@@ -1,18 +1,43 @@
 //! Dialog primitive — matches `@radix-ui/react-dialog`.
 //!
-//! A window overlaid on the primary content. Renders a modal dialog with
-//! focus trapping, escape-to-close, and overlay click-to-close.
+//! A window overlaid on the primary content. Renders a modal dialog using
+//! the native `<dialog>` element opened with `showModal()`, which provides
+//! a focus trap, ESC-to-close, and inert siblings as native browser
+//! behaviours. The element is rendered in the [top layer], escaping all
+//! ancestor `overflow`, `transform`, `filter`, and stacking-context
+//! constraints — no portal required.
+//!
+//! [top layer]: https://developer.mozilla.org/en-US/docs/Glossary/Top_layer
+//!
+//! ## Differences from upstream
+//!
+//! - **No portal**: Upstream uses `ReactDOM.createPortal(content, document.body)`.
+//!   We render content as a native `<dialog>` in the top layer, which solves
+//!   the same problem without DOM re-parenting.
+//! - **Native focus trap**: `<dialog>.showModal()` traps Tab/Shift+Tab inside
+//!   the dialog and restores focus to the previously focused element on close.
+//!   We do not run our own `FocusScope` wrapper inside the dialog.
+//! - **Native inert backdrop**: `<dialog>.showModal()` makes everything outside
+//!   the dialog inert (clicks, focus, ARIA). We do not run our own
+//!   `aria-hidden` outsider machinery.
+//! - **Native ESC handling**: ESC dispatches a `cancel` event on the dialog,
+//!   then closes it. The `close` event syncs back into our `open` signal via
+//!   [`use_top_layer`](crate::top_layer::use_top_layer).
+//! - **Backdrop click closes**: A click whose `event.target` is the dialog
+//!   element itself (rather than a descendant) is a backdrop click — the
+//!   browser routes `::backdrop` clicks to the dialog. We close on this.
+//! - **`DialogOverlay` is a styling marker**: it still renders a sibling div
+//!   for API compatibility and to host the visible backdrop animation, but
+//!   the actual modal/inert semantics live on `<dialog>`. Apps may
+//!   alternatively style the native `::backdrop` pseudo-element directly.
 
 use std::rc::Rc;
 
 use dioxus::prelude::*;
 
-use crate::aria_hidden::use_aria_hidden;
-use crate::focus_scope::FocusScope;
-use crate::portal::Portal;
 use crate::presence::Presence;
 use crate::scroll_lock::use_scroll_lock;
-use crate::use_global_escape_listener;
+use crate::top_layer::{use_top_layer, TopLayerKind};
 use crate::{use_controlled, use_id_or, use_unique_id};
 
 // ---------------------------------------------------------------------------
@@ -136,21 +161,6 @@ pub struct DialogTriggerProps {
 ///
 /// Matches Radix's `DialogTrigger`. Renders `<button>` with
 /// `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls`, and `data-state`.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::dialog::*;
-/// rsx! {
-///     DialogRoot {
-///         DialogTrigger { "Open Dialog" }
-///         DialogOverlay {}
-///         DialogContent {
-///             DialogTitle { "Hello" }
-///             DialogDescription { "World" }
-///         }
-///     }
-/// };
-/// ```
 #[component]
 pub fn DialogTrigger(props: DialogTriggerProps) -> Element {
     let ctx: DialogCtx = use_context();
@@ -185,7 +195,7 @@ pub struct DialogOverlayProps {
     /// The ID of the overlay element.
     pub id: ReadSignal<Option<String>>,
 
-    /// When true, the overlay is always rendered in the DOM.
+    /// Retained for API compatibility — always-in-DOM overlay is unconditional.
     #[props(default)]
     pub force_mount: bool,
 
@@ -200,62 +210,42 @@ pub struct DialogOverlayProps {
 
 /// The backdrop overlay behind the dialog content.
 ///
-/// Matches Radix's `DialogOverlay`. Only renders in modal mode.
-/// Clicking the overlay closes the dialog.
+/// Renders a sibling `<div>` with `data-state="open" | "closed"` for CSS
+/// animation. Click on this overlay closes the dialog (matching Radix).
 ///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::dialog::*;
-/// rsx! {
-///     DialogRoot {
-///         DialogTrigger { "Open" }
-///         DialogOverlay {}
-///         DialogContent {
-///             DialogTitle { "Title" }
-///             DialogDescription { "Desc" }
-///         }
-///     }
-/// };
-/// ```
+/// The native `<dialog>::backdrop` pseudo-element also exists in the top
+/// layer behind the dialog content; applications that prefer styling that
+/// pseudo instead can omit this component and target
+/// `dialog[data-slot="dialog-content"]::backdrop` in CSS.
 ///
-/// ## Data Attributes
-/// - `data-state`: `"open"` or `"closed"`.
+/// Only renders in modal mode (matches Radix).
 #[component]
 pub fn DialogOverlay(props: DialogOverlayProps) -> Element {
     let ctx: DialogCtx = use_context();
-
-    // Overlay only renders in modal mode (matching Radix)
     if !ctx.is_modal {
         return rsx! {};
     }
-
     let open = ctx.open;
     let set_open = ctx.set_open;
-
     let unique_id = use_unique_id();
     let id = use_id_or(unique_id, props.id);
 
-    // Radix deviation: Radix uses ReactDOM.createPortal to render the overlay
-    // at document.body. We use our Portal component which teleports content to
-    // the nearest PortalHost via context-based signal system.
     rsx! {
         Presence {
             present: props.force_mount || open(),
             id: id,
-            Portal {
-                div {
-                    id,
-                    "data-slot": "dialog-overlay",
-                    "data-state": if open() { "open" } else { "closed" },
-                    class: props.class,
-                    // Only close on primary (left) click — matches Radix
-                    onpointerdown: move |e: PointerEvent| {
-                        if e.trigger_button() == Some(dioxus_elements::input_data::MouseButton::Primary) {
-                            set_open.call(false);
-                        }
-                    },
-                    ..props.attributes,
-                }
+            div {
+                id,
+                "data-slot": "dialog-overlay",
+                "data-state": if open() { "open" } else { "closed" },
+                class: props.class,
+                // Only close on primary (left) click — matches Radix
+                onpointerdown: move |e: PointerEvent| {
+                    if e.trigger_button() == Some(dioxus_elements::input_data::MouseButton::Primary) {
+                        set_open.call(false);
+                    }
+                },
+                ..props.attributes,
             }
         }
     }
@@ -271,7 +261,8 @@ pub struct DialogContentProps {
     /// The ID of the content element.
     pub id: ReadSignal<Option<String>>,
 
-    /// When true, the content is always rendered in the DOM.
+    /// Retained for API compatibility — the `<dialog>` element is always
+    /// kept in the DOM and toggled via the native `open` attribute.
     #[props(default)]
     pub force_mount: bool,
 
@@ -289,25 +280,23 @@ pub struct DialogContentProps {
 
 /// The content panel of the dialog.
 ///
-/// Matches Radix's `DialogContent`. Renders with `role="dialog"`,
-/// `aria-modal`, `aria-labelledby`, `aria-describedby`. Traps focus
-/// when modal and closes on Escape.
+/// Renders as a native `<dialog>` opened with `showModal()` when in modal
+/// mode. The browser provides:
 ///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::dialog::*;
-/// rsx! {
-///     DialogRoot {
-///         DialogTrigger { "Open" }
-///         DialogOverlay {}
-///         DialogContent {
-///             DialogTitle { "Title" }
-///             DialogDescription { "Description" }
-///             DialogClose { "Close" }
-///         }
-///     }
-/// };
-/// ```
+/// - **Focus trap**: Tab/Shift+Tab cycle inside the dialog.
+/// - **Focus restoration**: focus returns to the previously focused element
+///   on close.
+/// - **Inert siblings**: outside content cannot be clicked, focused, or read
+///   by assistive tech.
+/// - **ESC dismissal**: ESC fires `cancel` then `close` events, which our
+///   [`use_top_layer`](crate::top_layer::use_top_layer) sync back into the
+///   open signal.
+/// - **Top-layer rendering**: escapes ancestor overflow, transform, filter,
+///   and stacking contexts without DOM re-parenting.
+///
+/// Backdrop click (where `event.target === <dialog>`, i.e. the user clicked
+/// the `::backdrop` area) closes the dialog, matching Radix's overlay click
+/// behaviour.
 ///
 /// ## Data Attributes
 /// - `data-state`: `"open"` or `"closed"`.
@@ -318,65 +307,57 @@ pub fn DialogContent(props: DialogContentProps) -> Element {
     let set_open = ctx.set_open;
     let is_modal = ctx.is_modal;
 
-    // Escape key listener
-    use_global_escape_listener(move || set_open.call(false));
-
-    // Prevent body scrolling when modal dialog is open (matching Radix's
-    // react-remove-scroll integration).
+    // Prevent body scroll when modal — `<dialog>` does not lock scroll natively.
     let scroll_lock_active = use_memo(move || is_modal && open());
     use_scroll_lock(scroll_lock_active);
 
     let id = use_id_or(ctx.content_id, props.id);
 
-    // Hide sibling elements from assistive technology when modal
-    // (matching Radix's aria-hidden integration).
-    use_aria_hidden(id, scroll_lock_active);
+    // Drive show_modal() / close() from the controlled open state.
+    let mut mounted = use_signal(|| None::<Rc<MountedData>>);
+    let kind = if is_modal {
+        TopLayerKind::DialogModal
+    } else {
+        // Non-modal dialogs fall back to plain `popover="manual"` semantics.
+        TopLayerKind::PopoverManual
+    };
+    use_top_layer(mounted.into(), open.into(), set_open, kind);
 
-    // Restore focus to trigger when dialog closes
-    let mut was_open = use_signal(|| false);
-    use_effect(move || {
-        let is_open = open();
-        // Use peek() to avoid subscribing to was_open — we only want to
-        // re-run when `open` changes, not when we write was_open below.
-        if *was_open.peek() && !is_open {
-            if let Some(ref trigger) = *ctx.trigger_ref.read() {
-                let trigger = trigger.clone();
-                spawn(async move {
-                    let _ = trigger.set_focus(true).await;
-                });
-            }
-        }
-        was_open.set(is_open);
-    });
-
-    let trapped = is_modal && open();
-
-    // Radix deviation: Radix uses ReactDOM.createPortal to render the content
-    // at document.body. We use our Portal component which teleports content to
-    // the nearest PortalHost via context-based signal system.
     rsx! {
-        Presence {
-            present: props.force_mount || open(),
-            id: id,
-            Portal {
-                FocusScope {
-                    trapped: trapped,
-                    r#loop: trapped,
-                    div {
-                        id,
-                        "data-slot": "dialog-content",
-                        "data-state": if open() { "open" } else { "closed" },
-                        role: "dialog",
-                        aria_modal: if is_modal { "true" },
-                        aria_labelledby: ctx.title_id,
-                        aria_describedby: ctx.description_id,
-                        class: props.class,
-                        onclick: move |e| e.stop_propagation(),
-                        ..props.attributes,
-                        {props.children}
+        dialog {
+            id,
+            "data-slot": "dialog-content",
+            "data-state": if open() { "open" } else { "closed" },
+            role: "dialog",
+            aria_modal: if is_modal { "true" },
+            aria_labelledby: ctx.title_id,
+            aria_describedby: ctx.description_id,
+            class: props.class,
+            onmounted: move |e| mounted.set(Some(e.data())),
+            // Backdrop click — when `event.target` is the dialog itself
+            // (rather than a descendant), the user clicked the ::backdrop area.
+            onclick: move |e: MouseEvent| {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    use wasm_bindgen::JsCast;
+                    if let Some(web_evt) = e.data().downcast::<web_sys::MouseEvent>() {
+                        if let Some(el) = web_evt
+                            .target()
+                            .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+                        {
+                            if el.get_attribute("data-slot").as_deref()
+                                == Some("dialog-content")
+                            {
+                                set_open.call(false);
+                            }
+                        }
                     }
                 }
-            }
+                #[cfg(not(target_arch = "wasm32"))]
+                let _ = e;
+            },
+            ..props.attributes,
+            {props.children}
         }
     }
 }
@@ -403,22 +384,6 @@ pub struct DialogCloseProps {
 /// A button that closes the dialog.
 ///
 /// Matches Radix's `DialogClose`.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::dialog::*;
-/// rsx! {
-///     DialogRoot {
-///         DialogTrigger { "Open" }
-///         DialogOverlay {}
-///         DialogContent {
-///             DialogTitle { "Title" }
-///             DialogDescription { "Desc" }
-///             DialogClose { "Close" }
-///         }
-///     }
-/// };
-/// ```
 #[component]
 pub fn DialogClose(props: DialogCloseProps) -> Element {
     let ctx: DialogCtx = use_context();
@@ -461,21 +426,6 @@ pub struct DialogTitleProps {
 /// The title of the dialog. Sets `aria-labelledby` on the content.
 ///
 /// Matches Radix's `DialogTitle`. Renders `<h2>`.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::dialog::*;
-/// rsx! {
-///     DialogRoot {
-///         DialogTrigger { "Open" }
-///         DialogOverlay {}
-///         DialogContent {
-///             DialogTitle { "My Title" }
-///             DialogDescription { "My Description" }
-///         }
-///     }
-/// };
-/// ```
 #[component]
 pub fn DialogTitle(props: DialogTitleProps) -> Element {
     let ctx: DialogCtx = use_context();
@@ -517,21 +467,6 @@ pub struct DialogDescriptionProps {
 /// The description of the dialog. Sets `aria-describedby` on the content.
 ///
 /// Matches Radix's `DialogDescription`. Renders `<p>`.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::dialog::*;
-/// rsx! {
-///     DialogRoot {
-///         DialogTrigger { "Open" }
-///         DialogOverlay {}
-///         DialogContent {
-///             DialogTitle { "Title" }
-///             DialogDescription { "Description text here." }
-///         }
-///     }
-/// };
-/// ```
 #[component]
 pub fn DialogDescription(props: DialogDescriptionProps) -> Element {
     let ctx: DialogCtx = use_context();

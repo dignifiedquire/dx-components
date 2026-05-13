@@ -124,8 +124,12 @@ pub struct DialogContentProps {
 
 #[component]
 pub fn DialogContent(props: DialogContentProps) -> Element {
+    // `data-[state=closed]:hidden` is required because the dialog is a native
+    // `<dialog>` element that stays mounted in the DOM (so we can call
+    // `showModal()` / `close()` on it). The default `dialog:not([open])`
+    // `display: none` UA style is otherwise overridden by Tailwind's `grid`.
     let class = tw_merge!(
-        "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+        "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 outline-none data-[state=closed]:hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
         props.class,
     );
 

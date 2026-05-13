@@ -46,7 +46,8 @@ pub fn Demo() -> Element {
 fn BasePopover() -> Element {
     let mut open = use_signal(|| false);
     let mut mounted = use_signal(|| None::<Rc<MountedData>>);
-    use_top_layer(mounted.into(), open, TopLayerKind::PopoverAuto);
+    let set_open = use_callback(move |v: bool| open.set(v));
+    use_top_layer(mounted.into(), open.into(), set_open, TopLayerKind::PopoverAuto);
 
     rsx! {
         section {
@@ -73,7 +74,8 @@ fn BasePopover() -> Element {
 fn OverflowEscape() -> Element {
     let mut open = use_signal(|| false);
     let mut mounted = use_signal(|| None::<Rc<MountedData>>);
-    use_top_layer(mounted.into(), open, TopLayerKind::PopoverAuto);
+    let set_open = use_callback(move |v: bool| open.set(v));
+    use_top_layer(mounted.into(), open.into(), set_open, TopLayerKind::PopoverAuto);
 
     rsx! {
         section {
@@ -104,7 +106,8 @@ fn OverflowEscape() -> Element {
 fn TransformEscape() -> Element {
     let mut open = use_signal(|| false);
     let mut mounted = use_signal(|| None::<Rc<MountedData>>);
-    use_top_layer(mounted.into(), open, TopLayerKind::PopoverAuto);
+    let set_open = use_callback(move |v: bool| open.set(v));
+    use_top_layer(mounted.into(), open.into(), set_open, TopLayerKind::PopoverAuto);
 
     rsx! {
         section {
@@ -135,7 +138,8 @@ fn TransformEscape() -> Element {
 fn StackingEscape() -> Element {
     let mut open = use_signal(|| false);
     let mut mounted = use_signal(|| None::<Rc<MountedData>>);
-    use_top_layer(mounted.into(), open, TopLayerKind::PopoverAuto);
+    let set_open = use_callback(move |v: bool| open.set(v));
+    use_top_layer(mounted.into(), open.into(), set_open, TopLayerKind::PopoverAuto);
 
     rsx! {
         section {
@@ -166,7 +170,8 @@ fn StackingEscape() -> Element {
 fn ManualPopover() -> Element {
     let mut open = use_signal(|| false);
     let mut mounted = use_signal(|| None::<Rc<MountedData>>);
-    use_top_layer(mounted.into(), open, TopLayerKind::PopoverManual);
+    let set_open = use_callback(move |v: bool| open.set(v));
+    use_top_layer(mounted.into(), open.into(), set_open, TopLayerKind::PopoverManual);
 
     rsx! {
         section {
@@ -193,7 +198,8 @@ fn ManualPopover() -> Element {
 fn DialogDemo() -> Element {
     let mut open = use_signal(|| false);
     let mut mounted = use_signal(|| None::<Rc<MountedData>>);
-    use_top_layer(mounted.into(), open, TopLayerKind::DialogModal);
+    let set_open = use_callback(move |v: bool| open.set(v));
+    use_top_layer(mounted.into(), open.into(), set_open, TopLayerKind::DialogModal);
 
     rsx! {
         section {
