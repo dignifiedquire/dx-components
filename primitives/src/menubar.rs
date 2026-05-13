@@ -30,6 +30,7 @@ use crate::menu::MenuCtx;
 use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
 use crate::presence::Presence;
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
+use crate::top_layer::{use_top_layer, TopLayerKind};
 use crate::{
     merge_attributes, use_global_escape_listener, use_id_or, use_outside_click_with_exclude,
     use_refocus_on_close, use_unique_id,
@@ -540,6 +541,26 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
+    // popover="manual" lifts the floated wrapper into the top layer. We
+    // use manual rather than auto so navigating between menubar items
+    // (which rapidly opens/closes adjacent menus) doesn't fight with the
+    // browser's single-auto-popover-at-a-time rule.
+    let wrapper_attrs = attributes!(div {
+        popover: "manual",
+    });
+    let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
+    let set_open = Callback::new(move |open: bool| {
+        if !open {
+            bar_ctx.open_menu_id.set(None);
+        }
+    });
+    use_top_layer(
+        wrapper_mounted.into(),
+        ctx.open.into(),
+        set_open,
+        TopLayerKind::PopoverManual,
+    );
+
     rsx! {
         Presence {
             present: props.force_mount || (ctx.open)(),
@@ -554,6 +575,10 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
                 css_var_prefix: "menubar",
                 class: props.class,
                 content_attributes: merged,
+                wrapper_attributes: wrapper_attrs,
+                on_wrapper_mounted: move |evt: Event<MountedData>| {
+                    wrapper_mounted.set(Some(evt.data()));
+                },
 
                 crate::menu::MenuContent {
                     content_id: id,

@@ -8,9 +8,9 @@ use std::rc::Rc;
 use crate::direction::Orientation;
 use crate::merge_attributes;
 use crate::popper::{Popper, PopperContent, PopperCtx, Side};
-use crate::portal::Portal;
 use crate::presence::Presence;
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
+use crate::top_layer::{use_top_layer, TopLayerKind};
 use crate::typeahead::{use_typeahead, TypeaheadItem};
 use crate::{use_controlled, use_id_or, use_unique_id};
 use dioxus::prelude::*;
@@ -88,16 +88,17 @@ pub struct MenuPortalProps {
     pub children: Element,
 }
 
-/// Teleports menu content to the nearest [`PortalHost`](crate::portal::PortalHost).
+/// Pass-through that matches Radix's `MenuPortal` API.
 ///
-/// Matches Radix's `MenuPortal` which uses `ReactDOM.createPortal` to render
-/// at `document.body`. We use our context-based Portal component instead.
+/// Radix uses `ReactDOM.createPortal` here to render at `document.body`.
+/// Our menu content uses the native `popover` attribute (handled inside
+/// each component's `Content`) to render in the browser top layer, so
+/// `MenuPortal` is no longer load-bearing — it is kept as a no-op for
+/// source compatibility with the upstream API.
 #[component]
 pub fn MenuPortal(props: MenuPortalProps) -> Element {
     rsx! {
-        Portal {
-            {props.children}
-        }
+        {props.children}
     }
 }
 
@@ -989,49 +990,68 @@ pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
+    // popover="manual" puts the floated wrapper in the top layer (escaping
+    // ancestor overflow/transform/stacking-contexts) while leaving keyboard
+    // dismiss (ArrowLeft/Escape) and outside-click logic to the existing
+    // handlers. `manual` is required so a sub-menu can be open alongside
+    // its parent — `auto` would close one when the other opens.
+    let wrapper_attrs = attributes!(div {
+        popover: "manual",
+    });
+    let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
+    let set_open = sub_ctx.set_open;
+    use_top_layer(
+        wrapper_mounted.into(),
+        sub_ctx.open.into(),
+        set_open,
+        TopLayerKind::PopoverManual,
+    );
+
     rsx! {
         Presence {
             present: props.force_mount || (sub_ctx.open)(),
             id: id,
-            Portal {
-                PopperContent {
-                    side: Side::Right,
-                    css_var_prefix: "menu",
-                    class: props.class,
-                    content_attributes: merged,
+            PopperContent {
+                side: Side::Right,
+                css_var_prefix: "menu",
+                class: props.class,
+                content_attributes: merged,
+                wrapper_attributes: wrapper_attrs,
+                on_wrapper_mounted: move |evt: Event<MountedData>| {
+                    wrapper_mounted.set(Some(evt.data()));
+                },
 
-                    RovingFocusGroup {
-                    orientation: Signal::new(Some(Orientation::Vertical)),
-                    r#loop: Signal::new(true),
-                    r#as: {
-                        let children = children.clone();
-                        move |roving_attrs: Vec<Attribute>| {
-                            let menu_attrs = attributes!(div {
-                                role: "menu",
-                                aria_orientation: "vertical",
-                                aria_labelledby: sub_ctx.trigger_id.cloned(),
-                            });
-                            let merged = merge_attributes(vec![roving_attrs, menu_attrs]);
+                RovingFocusGroup {
+                orientation: Signal::new(Some(Orientation::Vertical)),
+                r#loop: Signal::new(true),
+                r#as: {
+                    let children = children.clone();
+                    move |roving_attrs: Vec<Attribute>| {
+                        let menu_attrs = attributes!(div {
+                            role: "menu",
+                            aria_orientation: "vertical",
+                            aria_labelledby: sub_ctx.trigger_id.cloned(),
+                        });
+                        let merged = merge_attributes(vec![roving_attrs, menu_attrs]);
 
-                            rsx! {
-                                div {
-                                    onkeydown: move |event: Event<KeyboardData>| {
-                                        match event.key() {
-                                            Key::ArrowLeft | Key::Escape => {
-                                                sub_ctx.set_open.call(false);
-                                                event.prevent_default();
-                                                event.stop_propagation();
-                                            }
-                                            _ => {}
+                        rsx! {
+                            div {
+                                onkeydown: move |event: Event<KeyboardData>| {
+                                    match event.key() {
+                                        Key::ArrowLeft | Key::Escape => {
+                                            sub_ctx.set_open.call(false);
+                                            event.prevent_default();
+                                            event.stop_propagation();
                                         }
-                                    },
-                                    ..merged,
-                                    {children.clone()}
-                                }
+                                        _ => {}
+                                    }
+                                },
+                                ..merged,
+                                {children.clone()}
                             }
                         }
-                    },
-                }
+                    }
+                },
             }
         }
         }
