@@ -180,5 +180,6 @@ examples!(
     toggle[outline, with_text, disabled],
     toolbar,
     tooltip,
+    top_layer,
     visually_hidden,
 );

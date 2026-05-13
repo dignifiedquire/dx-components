@@ -1,0 +1,13 @@
+{
+  "name": "top_layer",
+  "description": "Foundation hook for driving popover and <dialog> elements via the browser top layer.",
+  "authors": ["Dioxus Labs"],
+  "exclude": ["variants", "docs.md", "component.json"],
+  "cargoDependencies": [
+    {
+      "name": "dioxus-primitives",
+      "git": "https://github.com/DioxusLabs/components"
+    }
+  ],
+  "globalAssets": ["../../../assets/dx-components-theme.css"]
+}
