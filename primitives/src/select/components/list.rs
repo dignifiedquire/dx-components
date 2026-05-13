@@ -2,7 +2,7 @@
 
 use crate::merge_attributes;
 use crate::popper::{Align, CollisionPadding, PopperContent, Side};
-use crate::portal::Portal;
+use crate::top_layer::{use_top_layer, TopLayerKind};
 use crate::{
     select::context::SelectListContext, use_animated_open, use_effect, use_id_or, use_unique_id,
 };
@@ -187,29 +187,52 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
+    // popover="manual" lifts the floated wrapper into the top layer
+    // (escaping ancestor overflow/transform/stacking-contexts). We use
+    // manual rather than auto because Select handles ESC, blur, and
+    // selection-based dismissal in `onkeydown` / `on_blur` above —
+    // auto's light-dismiss would race with that logic.
+    let wrapper_attrs = attributes!(div {
+        popover: "manual",
+    });
+    let mut wrapper_mounted = use_signal(|| None::<std::rc::Rc<MountedData>>);
+    let set_open = Callback::new(move |v: bool| {
+        if !v {
+            open.set(false);
+        }
+    });
+    use_top_layer(
+        wrapper_mounted.into(),
+        open.into(),
+        set_open,
+        TopLayerKind::PopoverManual,
+    );
+
     rsx! {
         if render() {
-            Portal {
-                PopperContent {
-                    side: props.side,
-                    side_offset: props.side_offset,
-                    align: props.align,
-                    align_offset: props.align_offset,
-                    avoid_collisions: props.avoid_collisions,
-                    collision_padding: props.collision_padding,
-                    css_var_prefix: "select",
-                    class: props.class,
-                    content_attributes: merged,
-                    on_mounted: move |evt: Event<MountedData>| listbox_ref.set(Some(evt.data())),
-                    on_keydown: onkeydown,
-                    on_blur: move |_: Event<FocusData>| {
-                        if focused() {
-                            open.set(false);
-                        }
-                    },
+            PopperContent {
+                side: props.side,
+                side_offset: props.side_offset,
+                align: props.align,
+                align_offset: props.align_offset,
+                avoid_collisions: props.avoid_collisions,
+                collision_padding: props.collision_padding,
+                css_var_prefix: "select",
+                class: props.class,
+                content_attributes: merged,
+                wrapper_attributes: wrapper_attrs,
+                on_wrapper_mounted: move |evt: Event<MountedData>| {
+                    wrapper_mounted.set(Some(evt.data()));
+                },
+                on_mounted: move |evt: Event<MountedData>| listbox_ref.set(Some(evt.data())),
+                on_keydown: onkeydown,
+                on_blur: move |_: Event<FocusData>| {
+                    if focused() {
+                        open.set(false);
+                    }
+                },
 
-                    {props.children}
-                }
+                {props.children}
             }
         } else {
             {props.children}
