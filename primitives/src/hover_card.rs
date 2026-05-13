@@ -5,8 +5,8 @@
 //! - [`HoverCardContent`]: The card content, visible on hover
 
 use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
-use crate::portal::Portal;
 use crate::presence::Presence;
+use crate::top_layer::{use_top_layer, TopLayerKind};
 use crate::{merge_attributes, use_delayed_open, use_id_or, use_unique_id};
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
@@ -242,30 +242,46 @@ pub fn HoverCardContent(props: HoverCardContentProps) -> Element {
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
+    // popover="manual" lifts the floated wrapper into the top layer; visibility
+    // is hover-driven via use_delayed_open, so we do not want `auto`'s
+    // light-dismiss interfering with the pointer-enter/leave handlers.
+    let wrapper_attrs = attributes!(div {
+        popover: "manual",
+    });
+    let mut wrapper_mounted = use_signal(|| None::<std::rc::Rc<MountedData>>);
+    use_top_layer(
+        wrapper_mounted.into(),
+        ctx.open.into(),
+        ctx.set_open,
+        TopLayerKind::PopoverManual,
+    );
+
     rsx! {
         Presence {
             present: props.force_mount || (ctx.open)(),
             id: id,
-            Portal {
-                PopperContent {
-                    side: props.side,
-                    side_offset: props.side_offset,
-                    align: props.align,
-                    align_offset: props.align_offset,
-                    avoid_collisions: props.avoid_collisions,
-                    collision_padding: props.collision_padding,
-                    css_var_prefix: "hover-card",
-                    class: props.class,
-                    content_attributes: merged,
-                    on_pointer_enter: move |_| {
-                        ctx.set_open.call(true);
-                    },
-                    on_pointer_leave: move |_| {
-                        ctx.handle_delayed_close.call(());
-                    },
+            PopperContent {
+                side: props.side,
+                side_offset: props.side_offset,
+                align: props.align,
+                align_offset: props.align_offset,
+                avoid_collisions: props.avoid_collisions,
+                collision_padding: props.collision_padding,
+                css_var_prefix: "hover-card",
+                class: props.class,
+                content_attributes: merged,
+                wrapper_attributes: wrapper_attrs,
+                on_wrapper_mounted: move |evt: Event<MountedData>| {
+                    wrapper_mounted.set(Some(evt.data()));
+                },
+                on_pointer_enter: move |_| {
+                    ctx.set_open.call(true);
+                },
+                on_pointer_leave: move |_| {
+                    ctx.handle_delayed_close.call(());
+                },
 
-                    {props.children}
-                }
+                {props.children}
             }
         }
     }
