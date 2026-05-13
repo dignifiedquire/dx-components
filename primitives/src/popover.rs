@@ -1,6 +1,9 @@
 //! Popover primitive — matches `@radix-ui/react-popover`.
 //!
-//! Displays rich content in a portal, triggered by a button.
+//! Displays rich content above the page in the browser top layer, triggered
+//! by a button. Content escapes ancestor `overflow`, `transform`, and
+//! stacking contexts natively via the `popover` attribute — no portal
+//! required. See [`crate::top_layer`] for the underlying mechanism.
 
 use std::rc::Rc;
 
@@ -8,9 +11,8 @@ use dioxus::prelude::*;
 
 use crate::focus_scope::FocusScope;
 use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
-use crate::portal::Portal;
 use crate::presence::Presence;
-use crate::use_global_escape_listener;
+use crate::top_layer::{use_top_layer, TopLayerKind};
 use crate::{merge_attributes, use_controlled, use_id_or, use_unique_id};
 use dioxus_attributes::attributes;
 
@@ -203,10 +205,13 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
 
     let id = use_id_or(ctx.content_id, props.id);
 
-    // Escape key listener
-    use_global_escape_listener(move || set_open.call(false));
+    // Native `popover="auto"` handles ESC and click-outside light-dismiss.
+    // The `toggle` event syncs the browser's open state back into our signal
+    // via `use_top_layer`, so no manual escape listener is needed.
 
-    // Restore focus to trigger when popover closes
+    // Restore focus to trigger when popover closes. Native focus
+    // restoration for `<dialog>` is automatic but the popover attribute
+    // does not restore focus — Radix does it explicitly.
     let mut was_open = use_signal(|| false);
     use_effect(move || {
         let is_open = open();
@@ -224,6 +229,17 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
     let trapped = is_modal && open();
     let data_state = if open() { "open" } else { "closed" };
 
+    // The popover attribute goes on the positioning wrapper inside
+    // PopperContent so that `showPopover()` lifts the floated wrapper
+    // into the top layer with its transform-based positioning intact.
+    let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
+    use_top_layer(
+        wrapper_mounted.into(),
+        open.into(),
+        set_open,
+        TopLayerKind::PopoverAuto,
+    );
+
     let content_attrs = attributes!(div {
         id: id,
         "data-slot": "popover-content",
@@ -233,27 +249,33 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
+    let wrapper_attrs = attributes!(div {
+        popover: "auto",
+    });
+
     rsx! {
         Presence {
             present: props.force_mount || open(),
             id: id,
-            Portal {
-                PopperContent {
-                    side: props.side,
-                    side_offset: props.side_offset,
-                    align: props.align,
-                    align_offset: props.align_offset,
-                    avoid_collisions: props.avoid_collisions,
-                    collision_padding: props.collision_padding,
-                    css_var_prefix: "popover",
-                    class: props.class,
-                    content_attributes: merged,
+            PopperContent {
+                side: props.side,
+                side_offset: props.side_offset,
+                align: props.align,
+                align_offset: props.align_offset,
+                avoid_collisions: props.avoid_collisions,
+                collision_padding: props.collision_padding,
+                css_var_prefix: "popover",
+                class: props.class,
+                content_attributes: merged,
+                wrapper_attributes: wrapper_attrs,
+                on_wrapper_mounted: move |evt: Event<MountedData>| {
+                    wrapper_mounted.set(Some(evt.data()));
+                },
 
-                    FocusScope {
-                        trapped: trapped,
-                        r#loop: trapped,
-                        {props.children}
-                    }
+                FocusScope {
+                    trapped: trapped,
+                    r#loop: trapped,
+                    {props.children}
                 }
             }
         }

@@ -405,6 +405,22 @@ pub struct PopperContentProps {
     #[props(default)]
     pub on_mounted: Option<EventHandler<Event<MountedData>>>,
 
+    /// Extra attributes spread onto the positioning wrapper div.
+    ///
+    /// Used by overlay primitives to set `popover="auto" | "manual"` on the
+    /// element that floating-ui positions, so that `showPopover()` lifts the
+    /// whole positioned wrapper into the browser top layer.
+    #[props(default)]
+    pub wrapper_attributes: Vec<Attribute>,
+
+    /// Called when the positioning wrapper div is mounted.
+    ///
+    /// Overlay primitives use this to capture the wrapper element so they
+    /// can drive `showPopover()` / `hidePopover()` on it via
+    /// [`use_top_layer`](crate::top_layer::use_top_layer).
+    #[props(default)]
+    pub on_wrapper_mounted: Option<EventHandler<Event<MountedData>>>,
+
     /// Width of the arrow element (along alignment axis).
     /// Pass the same value as `PopperArrow::width` when using an arrow.
     #[props(default)]
@@ -890,9 +906,15 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
 
             div {
                 id: wrapper_id(),
-                onmounted: move |evt| wrapper_ref.set(Some(evt.data())),
+                onmounted: move |evt| {
+                    wrapper_ref.set(Some(evt.data()));
+                    if let Some(ref h) = props.on_wrapper_mounted {
+                        h.call(evt);
+                    }
+                },
                 "data-radix-popper-content-wrapper": "",
                 style: "{wrapper_style}",
+                ..props.wrapper_attributes,
 
                 // Inner content div — matches upstream Primitive.div (lines 272-283).
                 // Receives consumer's class, content_attributes, data-side, data-align.
