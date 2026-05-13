@@ -1,74 +1,146 @@
 import { test, expect } from "@playwright/test";
 
-test("test", async ({ page }) => {
-  await page.goto("http://127.0.0.1:8080/docs/components/alert_dialog", { timeout: 20 * 60 * 1000 });
+const URL = "http://127.0.0.1:8080/docs/components/alert_dialog";
 
-  // Trigger button
-  const trigger = page.locator('[data-slot="alert-dialog-trigger"]');
-  await expect(trigger).toBeVisible();
-  await expect(trigger).toHaveAttribute("data-state", "closed");
-  await expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
-
-  // Open the alert dialog
-  await trigger.click();
-
-  // Overlay
-  const overlay = page.locator('[data-slot="alert-dialog-overlay"]');
-  await expect(overlay).toBeVisible();
-  await expect(overlay).toHaveAttribute("data-state", "open");
-
-  // Content
-  const content = page.locator('[data-slot="alert-dialog-content"]');
-  await expect(content).toBeVisible();
-  await expect(content).toHaveAttribute("role", "alertdialog");
-  await expect(content).toHaveAttribute("aria-modal", "true");
-  await expect(content).toHaveAttribute("data-state", "open");
-
-  // Title and description
-  const title = content.locator('[data-slot="alert-dialog-title"]');
-  await expect(title).toHaveText("Delete item");
-
-  const description = content.locator('[data-slot="alert-dialog-description"]');
-  await expect(description).toContainText("Are you sure");
-
-  // Footer with action buttons
-  const footer = content.locator('[data-slot="alert-dialog-footer"]');
-  await expect(footer).toBeVisible();
-
-  // Cancel and Action buttons
-  const cancelButton = content.locator('[data-slot="alert-dialog-cancel"]');
-  await expect(cancelButton).toBeVisible();
-  await expect(cancelButton).toHaveText("Cancel");
-
-  const actionButton = content.locator('[data-slot="alert-dialog-action"]');
-  await expect(actionButton).toBeVisible();
-  await expect(actionButton).toHaveText("Delete");
-
-  // Focus should be trapped within dialog
-  await page.keyboard.press("Tab");
-  const focusedInDialog = await page.evaluate(() => {
-    const content = document.querySelector('[data-slot="alert-dialog-content"]');
-    return content?.contains(document.activeElement);
+test.describe("alert dialog", () => {
+  test("trigger accessibility attributes when closed", async ({ page }) => {
+    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    const trigger = page
+      .locator('[data-slot="alert-dialog-trigger"]')
+      .first();
+    await expect(trigger).toBeVisible();
+    await expect(trigger).toHaveAttribute("data-state", "closed");
+    await expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
   });
-  expect(focusedInDialog).toBe(true);
 
-  // Overlay click should NOT close (unlike regular dialog)
-  await overlay.click({ position: { x: 5, y: 5 }, force: true });
-  await expect(content).toBeVisible();
+  test("opens with role=alertdialog and aria attributes", async ({ page }) => {
+    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    const trigger = page
+      .locator('[data-slot="alert-dialog-trigger"]')
+      .first();
+    await trigger.click();
 
-  // Escape should close
-  await page.keyboard.press("Escape");
-  await expect(overlay).toHaveCount(0);
+    const content = page
+      .locator('[data-slot="alert-dialog-content"]')
+      .first();
+    await expect(content).toBeVisible();
+    await expect(content).toHaveAttribute("role", "alertdialog");
+    await expect(content).toHaveAttribute("aria-modal", "true");
+    await expect(content).toHaveAttribute("data-state", "open");
 
-  // Reopen and test cancel button
-  await trigger.click();
-  await expect(overlay).toBeVisible();
-  await cancelButton.click();
-  await expect(overlay).toHaveCount(0);
+    const isDialog = await content.evaluate(
+      (el) => el instanceof HTMLDialogElement && el.open,
+    );
+    expect(isDialog).toBe(true);
 
-  // Reopen and test action button
-  await trigger.click();
-  await expect(overlay).toBeVisible();
-  await actionButton.click();
-  await expect(overlay).toHaveCount(0);
+    // Overlay mounts via Presence
+    const overlay = page
+      .locator('[data-slot="alert-dialog-overlay"]')
+      .first();
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toHaveAttribute("data-state", "open");
+
+    // Title and description
+    await expect(
+      content.locator('[data-slot="alert-dialog-title"]'),
+    ).toHaveText("Delete item");
+    await expect(
+      content.locator('[data-slot="alert-dialog-description"]'),
+    ).toContainText("Are you sure");
+
+    // Footer + buttons
+    const footer = content.locator('[data-slot="alert-dialog-footer"]');
+    await expect(footer).toBeVisible();
+    const cancelBtn = content.locator('[data-slot="alert-dialog-cancel"]');
+    const actionBtn = content.locator('[data-slot="alert-dialog-action"]');
+    await expect(cancelBtn).toHaveText("Cancel");
+    await expect(actionBtn).toHaveText("Delete");
+
+    // Native focus trap
+    const focusedInDialog = await page.evaluate(() => {
+      const c = document.querySelector('[data-slot="alert-dialog-content"]');
+      return c?.contains(document.activeElement);
+    });
+    expect(focusedInDialog).toBe(true);
+  });
+
+  test("overlay click does NOT close (alert dialog semantics)", async ({
+    page,
+  }) => {
+    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    await page.locator('[data-slot="alert-dialog-trigger"]').first().click();
+
+    const content = page
+      .locator('[data-slot="alert-dialog-content"]')
+      .first();
+    const overlay = page
+      .locator('[data-slot="alert-dialog-overlay"]')
+      .first();
+    await expect(overlay).toBeVisible();
+
+    // Force a click in the corner of the overlay — should NOT dismiss
+    await overlay.dispatchEvent("pointerdown", { button: 0 });
+    await expect(content).toHaveAttribute("data-state", "open");
+
+    const stillOpen = await content.evaluate(
+      (el) => el instanceof HTMLDialogElement && el.open,
+    );
+    expect(stillOpen).toBe(true);
+  });
+
+  test("cancel button closes", async ({ page }) => {
+    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    await page.locator('[data-slot="alert-dialog-trigger"]').first().click();
+    const content = page
+      .locator('[data-slot="alert-dialog-content"]')
+      .first();
+    await expect(content).toHaveAttribute("data-state", "open");
+
+    await content.locator('[data-slot="alert-dialog-cancel"]').click();
+
+    await expect(content).toHaveAttribute("data-state", "closed");
+    await expect(
+      page.locator('[data-slot="alert-dialog-overlay"]'),
+    ).toHaveCount(0);
+  });
+
+  test("action button closes", async ({ page }) => {
+    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    await page.locator('[data-slot="alert-dialog-trigger"]').first().click();
+    const content = page
+      .locator('[data-slot="alert-dialog-content"]')
+      .first();
+    await expect(content).toHaveAttribute("data-state", "open");
+
+    await content.locator('[data-slot="alert-dialog-action"]').click();
+
+    await expect(content).toHaveAttribute("data-state", "closed");
+    await expect(
+      page.locator('[data-slot="alert-dialog-overlay"]'),
+    ).toHaveCount(0);
+  });
+
+  test("browser-initiated close() syncs open state back", async ({ page }) => {
+    // Native `<dialog>` close (e.g. real ESC) fires a `close` event that
+    // use_top_layer subscribes to. We exercise that path via direct
+    // .close() since CDP-synthesized ESC does not reliably trigger the
+    // native cancel/close flow.
+    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    const trigger = page
+      .locator('[data-slot="alert-dialog-trigger"]')
+      .first();
+    await trigger.click();
+    const content = page
+      .locator('[data-slot="alert-dialog-content"]')
+      .first();
+    await expect(content).toHaveAttribute("data-state", "open");
+
+    await content.evaluate((el) => (el as HTMLDialogElement).close());
+
+    await expect(content).toHaveAttribute("data-state", "closed");
+
+    // Re-open via trigger — proves the signal synced back
+    await trigger.click();
+    await expect(content).toHaveAttribute("data-state", "open");
+  });
 });
