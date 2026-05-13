@@ -1,8 +1,10 @@
 //! Combobox primitive — searchable dropdown select.
 //!
 //! A composable combobox with typeahead filtering, keyboard navigation,
-//! and full ARIA combobox pattern compliance. Uses Popover internally
-//! for the dropdown.
+//! and full ARIA combobox pattern compliance. The dropdown renders in
+//! the browser top layer via the `popover` attribute, escaping ancestor
+//! overflow/transform/stacking-contexts. Positioning is handled by
+//! [`Popper`](crate::popper) with `ComboboxInput` as the anchor.
 //!
 //! ## Architecture
 //!
@@ -41,7 +43,14 @@
 //! }
 //! ```
 
+use std::rc::Rc;
+
 use dioxus::prelude::*;
+use dioxus_attributes::attributes;
+
+use crate::merge_attributes;
+use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
+use crate::top_layer::{use_top_layer, TopLayerKind};
 
 // ---------------------------------------------------------------------------
 // Context
@@ -113,6 +122,10 @@ pub struct ComboboxProps {
 }
 
 /// Root combobox component. Manages open, value, and filter state.
+///
+/// Wraps children in [`Popper`] so [`ComboboxInput`] can register itself
+/// as the anchor and [`ComboboxContent`] can be positioned and lifted into
+/// the top layer.
 #[component]
 pub fn Combobox(props: ComboboxProps) -> Element {
     let content_id = crate::use_unique_id();
@@ -142,13 +155,15 @@ pub fn Combobox(props: ComboboxProps) -> Element {
     }
 
     rsx! {
-        div {
-            "data-slot": "combobox",
-            "data-state": if open() { "open" } else { "closed" },
-            "data-disabled": props.disabled.then_some("true"),
-            class: props.class,
-            ..props.attributes,
-            {props.children}
+        Popper {
+            div {
+                "data-slot": "combobox",
+                "data-state": if open() { "open" } else { "closed" },
+                "data-disabled": props.disabled.then_some("true"),
+                class: props.class,
+                ..props.attributes,
+                {props.children}
+            }
         }
     }
 }
@@ -176,10 +191,13 @@ pub struct ComboboxInputProps {
 /// Text input with `role="combobox"` and ARIA attributes.
 ///
 /// Handles filtering, opening/closing the dropdown, and keyboard
-/// navigation (ArrowDown/ArrowUp to open, Escape to close).
+/// navigation (ArrowDown/ArrowUp to open, Escape to close). Registers
+/// itself as the [`Popper`](crate::popper::Popper) anchor so the
+/// dropdown is positioned relative to the input.
 #[component]
 pub fn ComboboxInput(props: ComboboxInputProps) -> Element {
     let ctx = use_context::<Signal<ComboboxCtx>>();
+    let popper_ctx: PopperCtx = use_context();
     let mut open = use_context::<Signal<bool>>();
     let mut filter_text = use_context::<Signal<String>>();
     let selected_display = use_context::<SelectedDisplay>();
@@ -206,6 +224,9 @@ pub fn ComboboxInput(props: ComboboxInputProps) -> Element {
             placeholder: props.placeholder,
             value: display_value,
             class: props.class,
+            onmounted: move |e| {
+                popper_ctx.set_anchor_ref(e.data());
+            },
             oninput: move |e: FormEvent| {
                 let val = e.value();
                 filter_text.set(val);
@@ -242,6 +263,30 @@ pub fn ComboboxInput(props: ComboboxInputProps) -> Element {
 /// Props for [`ComboboxContent`].
 #[derive(Props, Clone, PartialEq)]
 pub struct ComboboxContentProps {
+    /// Side of the input to place content. Defaults to `Bottom`.
+    #[props(default)]
+    pub side: Side,
+
+    /// Offset from the input edge in pixels.
+    #[props(default)]
+    pub side_offset: f64,
+
+    /// Alignment relative to the input. Defaults to `Start`.
+    #[props(default = Align::Start)]
+    pub align: Align,
+
+    /// Offset along the alignment axis.
+    #[props(default)]
+    pub align_offset: f64,
+
+    /// Avoid viewport edge collisions. Defaults to `true`.
+    #[props(default = true)]
+    pub avoid_collisions: bool,
+
+    /// Collision padding in pixels.
+    #[props(default)]
+    pub collision_padding: CollisionPadding,
+
     /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
@@ -256,24 +301,63 @@ pub struct ComboboxContentProps {
 
 /// Dropdown content panel for the combobox.
 ///
-/// Only renders when the combobox is open.
+/// Positioned relative to the input via [`PopperContent`] and rendered in
+/// the browser top layer via `popover="manual"` so the dropdown escapes
+/// ancestor overflow/transform/stacking-contexts. Only renders when the
+/// combobox is open.
 #[component]
 pub fn ComboboxContent(props: ComboboxContentProps) -> Element {
     let ctx = use_context::<Signal<ComboboxCtx>>();
+    let mut open = use_context::<Signal<bool>>();
     let is_open = ctx.read().open;
     let content_id = ctx.read().content_id.clone();
+
+    let content_attrs = attributes!(div {
+        id: content_id,
+        "data-slot": "combobox-content",
+        "data-state": if is_open { "open" } else { "closed" },
+    });
+    let merged = merge_attributes(vec![content_attrs, props.attributes]);
+
+    // popover="manual" lifts the floated wrapper into the top layer. We
+    // own dismissal via input onkeydown / onblur + item click, so manual
+    // mode prevents the browser's light-dismiss from racing our logic.
+    let wrapper_attrs = attributes!(div {
+        popover: "manual",
+    });
+    let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
+    let set_open = Callback::new(move |v: bool| {
+        if !v {
+            open.set(false);
+        }
+    });
+    use_top_layer(
+        wrapper_mounted.into(),
+        open.into(),
+        set_open,
+        TopLayerKind::PopoverManual,
+    );
 
     if !is_open {
         return rsx! {};
     }
 
     rsx! {
-        div {
-            id: content_id,
-            "data-slot": "combobox-content",
-            "data-state": if is_open { "open" } else { "closed" },
+        PopperContent {
+            side: props.side,
+            side_offset: props.side_offset,
+            align: props.align,
+            align_offset: props.align_offset,
+            avoid_collisions: props.avoid_collisions,
+            collision_padding: props.collision_padding,
+            css_var_prefix: "combobox",
             class: props.class,
-            ..props.attributes,
+            content_attributes: merged,
+            wrapper_attributes: wrapper_attrs,
+            on_wrapper_mounted: move |evt: Event<MountedData>| {
+                wrapper_mounted.set(Some(evt.data()));
+            },
+
             {props.children}
         }
     }

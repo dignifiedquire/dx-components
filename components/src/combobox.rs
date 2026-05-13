@@ -117,8 +117,12 @@ pub struct ComboboxContentProps {
 /// Styled ComboboxContent — matches shadcn.
 #[component]
 pub fn ComboboxContent(props: ComboboxContentProps) -> Element {
+    // Positioning is now handled by Popper (combobox primitive wraps children
+    // in `Popper` and the input registers as the anchor); top-layer rendering
+    // comes from `popover="manual"`. The dropdown matches the trigger width
+    // via `--radix-popper-anchor-width` set by floating-ui.
     let class = tw_merge!(
-        "absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+        "z-50 w-[var(--radix-popper-anchor-width)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
         props.class,
     );
 
