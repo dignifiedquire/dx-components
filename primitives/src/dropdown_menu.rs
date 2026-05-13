@@ -29,6 +29,7 @@ use crate::menu::MenuCtx;
 use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
 use crate::presence::Presence;
 use crate::scroll_lock::use_scroll_lock;
+use crate::top_layer::{use_top_layer, TopLayerKind};
 use crate::{
     merge_attributes, use_controlled, use_global_escape_listener, use_id_or,
     use_outside_click_with_exclude, use_refocus_on_close, use_unique_id,
@@ -367,6 +368,27 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
+    // popover="manual" puts the floated wrapper in the browser top layer
+    // (escaping ancestor overflow/transform/stacking-contexts) while leaving
+    // ESC and outside-click dismiss to our existing handlers above. Nested
+    // submenus need this — `popover="auto"` would only allow one menu open
+    // at a time globally.
+    let wrapper_attrs = attributes!(div {
+        popover: "manual",
+    });
+    let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
+    let set_open = Callback::new(move |open: bool| {
+        if !open {
+            ctx.on_close.call(());
+        }
+    });
+    use_top_layer(
+        wrapper_mounted.into(),
+        ctx.open.into(),
+        set_open,
+        TopLayerKind::PopoverManual,
+    );
+
     rsx! {
         Presence {
             present: props.force_mount || (ctx.open)(),
@@ -381,6 +403,10 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
                 css_var_prefix: "dropdown-menu",
                 class: props.class,
                 content_attributes: merged,
+                wrapper_attributes: wrapper_attrs,
+                on_wrapper_mounted: move |evt: Event<MountedData>| {
+                    wrapper_mounted.set(Some(evt.data()));
+                },
 
                 FocusScope {
                     trapped: is_modal && (ctx.open)(),
