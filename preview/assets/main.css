@@ -154,8 +154,8 @@ section#features .docs-content li::before {
   left: 0;
   width: 1rem;
   height: 1rem;
-  content: "";
   background-color: oklch(72.3% 0.219 149.579deg); /* tailwind green-600 */
+  content: "";
   mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill-rule='evenodd' fill='black' d='M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.97 5.53a.75.75 0 0 0-1.06-1.06L6.75 8.63 5.09 6.97a.75.75 0 1 0-1.06 1.06l2.19 2.19a.75.75 0 0 0 1.06 0z'/></svg>") center / contain no-repeat;
 }
 
