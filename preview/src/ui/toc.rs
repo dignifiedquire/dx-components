@@ -40,6 +40,13 @@ pub(crate) fn TableOfContents() -> Element {
                     href: "#installation",
                     "Installation"
                 }
+                if !meta.anatomy.is_empty() {
+                    a {
+                        class: "text-[0.8rem] text-muted-foreground no-underline transition-colors hover:text-foreground",
+                        href: "#anatomy",
+                        "Anatomy"
+                    }
+                }
                 a {
                     class: "text-[0.8rem] text-muted-foreground no-underline transition-colors hover:text-foreground",
                     href: "#usage",
@@ -64,6 +71,13 @@ pub(crate) fn TableOfContents() -> Element {
                         class: "text-[0.8rem] text-muted-foreground no-underline transition-colors hover:text-foreground",
                         href: "#api-reference",
                         "API Reference"
+                    }
+                }
+                if !meta.accessibility.is_empty() {
+                    a {
+                        class: "text-[0.8rem] text-muted-foreground no-underline transition-colors hover:text-foreground",
+                        href: "#accessibility",
+                        "Accessibility"
                     }
                 }
             }

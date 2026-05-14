@@ -34,6 +34,12 @@ pub(crate) struct ComponentMetadata {
     pub(crate) r#type: ComponentType,
     pub(crate) docs: &'static str,
     pub(crate) api_docs: &'static str,
+    /// Bullet list of feature highlights, mirroring Radix's `<Highlights>`. Empty when no `features.md` exists.
+    pub(crate) features: &'static str,
+    /// Component-tree code snippet, mirroring Radix's `## Anatomy`. Empty when no `anatomy.md` exists.
+    pub(crate) anatomy: &'static str,
+    /// Accessibility notes (ARIA pattern, keyboard table), mirroring Radix's `## Accessibility`. Empty when no `accessibility.md` exists.
+    pub(crate) accessibility: &'static str,
     pub(crate) component: HighlightedCode,
     pub(crate) style: HighlightedCode,
     pub(crate) variants: &'static [VariantMetadata],

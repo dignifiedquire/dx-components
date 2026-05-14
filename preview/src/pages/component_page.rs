@@ -32,6 +32,9 @@ fn ComponentHighlight(meta: ComponentMetadata, demos: Vec<DemoEntry>) -> Element
         r#type,
         docs,
         api_docs,
+        features,
+        anatomy,
+        accessibility,
         variants,
         component,
         style,
@@ -49,6 +52,16 @@ fn ComponentHighlight(meta: ComponentMetadata, demos: Vec<DemoEntry>) -> Element
             h1 { class: "scroll-m-24 text-3xl font-semibold tracking-tight capitalize", "{name}" }
             if !description.is_empty() {
                 p { class: "text-muted-foreground text-base md:max-w-[80%]", "{description}" }
+            }
+        }
+
+        // Features (Radix `<Highlights>`)
+        if !features.is_empty() {
+            section { id: "features", class: "mt-4",
+                div {
+                    class: "docs-content",
+                    dangerous_inner_html: features,
+                }
             }
         }
 
@@ -82,6 +95,16 @@ fn ComponentHighlight(meta: ComponentMetadata, demos: Vec<DemoEntry>) -> Element
                     value: "Manual",
                     class: "p-4",
                     ManualComponentInstallation { component, style }
+                }
+            }
+        }
+
+        // Anatomy (Radix `## Anatomy`)
+        if !anatomy.is_empty() {
+            section { id: "anatomy", class: "mt-8",
+                h2 { class: "scroll-m-24 text-xl font-semibold tracking-tight mb-4", "Anatomy" }
+                div { class: "docs-content",
+                    dangerous_inner_html: anatomy,
                 }
             }
         }
@@ -137,6 +160,16 @@ fn ComponentHighlight(meta: ComponentMetadata, demos: Vec<DemoEntry>) -> Element
                 h2 { class: "scroll-m-24 text-xl font-semibold tracking-tight mb-4", "API Reference" }
                 div { class: "docs-content",
                     dangerous_inner_html: api_docs,
+                }
+            }
+        }
+
+        // Accessibility (Radix `## Accessibility`)
+        if !accessibility.is_empty() {
+            section { id: "accessibility", class: "mt-8",
+                h2 { class: "scroll-m-24 text-xl font-semibold tracking-tight mb-4", "Accessibility" }
+                div { class: "docs-content",
+                    dangerous_inner_html: accessibility,
                 }
             }
         }

@@ -36,6 +36,9 @@ macro_rules! examples {
             r#type: ComponentType::Normal,
             docs: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/docs.html")),
             api_docs: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/api.html")),
+            features: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/features.html")),
+            anatomy: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/anatomy.html")),
+            accessibility: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/accessibility.html")),
             component: HighlightedCode {
                 light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/component.rs.base16-ocean.light.html")),
                 dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/component.rs.base16-ocean.dark.html")),
@@ -79,6 +82,9 @@ macro_rules! examples {
             r#type: ComponentType::Block,
             docs: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/docs.html")),
             api_docs: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/api.html")),
+            features: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/features.html")),
+            anatomy: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/anatomy.html")),
+            accessibility: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/accessibility.html")),
             component: HighlightedCode {
                 light: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/component.rs.base16-ocean.light.html")),
                 dark: include_str!(concat!(env!("OUT_DIR"), "/", stringify!($name), "/component.rs.base16-ocean.dark.html")),

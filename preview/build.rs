@@ -65,6 +65,21 @@ fn main() {
         let api_out = out_dir.join(&folder_name).join("api.html");
         std::fs::write(api_out, api_html).unwrap();
 
+        // Process optional Radix-style sections: features.md, anatomy.md,
+        // accessibility.md. Each is rendered into the corresponding html
+        // file, or an empty file when the source is absent — so component
+        // pages can opt in by simply creating the markdown file.
+        for section in ["features", "anatomy", "accessibility"] {
+            let md_path = folder_path.join(format!("{section}.md"));
+            let html = if md_path.exists() {
+                process_markdown_to_html(&md_path)
+            } else {
+                String::new()
+            };
+            let html_out = out_dir.join(&folder_name).join(format!("{section}.html"));
+            std::fs::write(html_out, html).unwrap();
+        }
+
         // Discover variant directories
         let variants_dir = folder_path.join("variants");
         let mut variants = Vec::new();
