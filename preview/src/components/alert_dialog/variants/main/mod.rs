@@ -7,15 +7,19 @@ pub fn Demo() -> Element {
     rsx! {
         AlertDialog {
             AlertDialogTrigger {
-                Button { variant: ButtonVariant::Outline, "Show Alert Dialog" }
+                Button { variant: ButtonVariant::Outline, "Show Dialog" }
             }
             AlertDialogOverlay {}
             AlertDialogContent {
-                AlertDialogTitle { "Delete item" }
-                AlertDialogDescription { "Are you sure you want to delete this item? This action cannot be undone." }
+                AlertDialogHeader {
+                    AlertDialogTitle { "Are you absolutely sure?" }
+                    AlertDialogDescription {
+                        "This action cannot be undone. This will permanently delete your account and remove your data from our servers."
+                    }
+                }
                 AlertDialogFooter {
                     AlertDialogCancel { "Cancel" }
-                    AlertDialogAction { "Delete" }
+                    AlertDialogAction { "Continue" }
                 }
             }
         }
