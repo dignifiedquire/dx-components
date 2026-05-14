@@ -58,7 +58,11 @@ pub fn AccessibleIcon(props: AccessibleIconProps) -> Element {
     rsx! {
         span {
             aria_hidden: "true",
-            style: "display: inline-flex;",
+            // `inline-flex` keeps the icon laid out inline with surrounding
+            // text. `vertical-align: middle` aligns the icon's center with
+            // the text's x-height — without this, inline-flex sits on its
+            // own baseline and the icon visibly drops below the text.
+            style: "display: inline-flex; vertical-align: middle;",
             {props.children}
         }
         VisuallyHidden { {props.label} }
