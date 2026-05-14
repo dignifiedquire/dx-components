@@ -1,0 +1,4 @@
+- Focus is automatically trapped.
+- Can be controlled or uncontrolled.
+- Manages screen reader announcements with `AlertDialogTitle` and `AlertDialogDescription` components.
+- Esc closes the component automatically.
