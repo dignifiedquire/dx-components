@@ -1,14 +1,45 @@
-//! Styled card matching shadcn/ui.
+//! Styled card matching shadcn/ui (radix-flavor).
 //!
-//! Pure HTML + Tailwind component with 7 sub-components.
-//! No primitive dependency — renders native HTML elements.
+//! Pure HTML + Tailwind component with 7 sub-components. No primitive
+//! dependency — renders native HTML elements with `data-slot` attributes.
 
 use dioxus::prelude::*;
 use tailwind_fuse::*;
 
+// ---------------------------------------------------------------------------
+// CardSize
+// ---------------------------------------------------------------------------
+
+/// Size variants for the styled [`Card`].
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub enum CardSize {
+    /// Standard padding and gap.
+    #[default]
+    Default,
+    /// Tighter padding and gap — useful inside dense layouts.
+    Sm,
+}
+
+impl CardSize {
+    fn as_data_attr(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Sm => "sm",
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Card (root)
+// ---------------------------------------------------------------------------
+
 /// The props for the styled [`Card`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct CardProps {
+    /// Size variant.
+    #[props(default)]
+    pub size: CardSize,
+
     /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
@@ -25,13 +56,14 @@ pub struct CardProps {
 #[component]
 pub fn Card(props: CardProps) -> Element {
     let class = tw_merge!(
-        "flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm",
+        "group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
         props.class,
     );
 
     rsx! {
         div {
             "data-slot": "card",
+            "data-size": props.size.as_data_attr(),
             class: class,
             ..props.attributes,
             {props.children}
@@ -39,26 +71,25 @@ pub fn Card(props: CardProps) -> Element {
     }
 }
 
-/// The props for the styled [`CardHeader`] component.
+// ---------------------------------------------------------------------------
+// CardHeader
+// ---------------------------------------------------------------------------
+
 #[derive(Props, Clone, PartialEq)]
 pub struct CardHeaderProps {
-    /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Attributes to extend the element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the card header.
     pub children: Element,
 }
 
-/// Styled CardHeader — matches shadcn exactly.
 #[component]
 pub fn CardHeader(props: CardHeaderProps) -> Element {
     let class = tw_merge!(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-4 group-data-[size=sm]/card:px-3 has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-4 group-data-[size=sm]/card:[.border-b]:pb-3",
         props.class,
     );
 
@@ -72,25 +103,27 @@ pub fn CardHeader(props: CardHeaderProps) -> Element {
     }
 }
 
-/// The props for the styled [`CardTitle`] component.
+// ---------------------------------------------------------------------------
+// CardTitle
+// ---------------------------------------------------------------------------
+
 #[derive(Props, Clone, PartialEq)]
 pub struct CardTitleProps {
-    /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Attributes to extend the element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the card title.
     pub children: Element,
 }
 
-/// Styled CardTitle — matches shadcn exactly.
 #[component]
 pub fn CardTitle(props: CardTitleProps) -> Element {
-    let class = tw_merge!("leading-none font-semibold", props.class);
+    let class = tw_merge!(
+        "text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+        props.class
+    );
 
     rsx! {
         div {
@@ -102,22 +135,21 @@ pub fn CardTitle(props: CardTitleProps) -> Element {
     }
 }
 
-/// The props for the styled [`CardDescription`] component.
+// ---------------------------------------------------------------------------
+// CardDescription
+// ---------------------------------------------------------------------------
+
 #[derive(Props, Clone, PartialEq)]
 pub struct CardDescriptionProps {
-    /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Attributes to extend the element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the card description.
     pub children: Element,
 }
 
-/// Styled CardDescription — matches shadcn exactly.
 #[component]
 pub fn CardDescription(props: CardDescriptionProps) -> Element {
     let class = tw_merge!("text-sm text-muted-foreground", props.class);
@@ -132,22 +164,21 @@ pub fn CardDescription(props: CardDescriptionProps) -> Element {
     }
 }
 
-/// The props for the styled [`CardAction`] component.
+// ---------------------------------------------------------------------------
+// CardAction
+// ---------------------------------------------------------------------------
+
 #[derive(Props, Clone, PartialEq)]
 pub struct CardActionProps {
-    /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Attributes to extend the element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the card action.
     pub children: Element,
 }
 
-/// Styled CardAction — matches shadcn exactly.
 #[component]
 pub fn CardAction(props: CardActionProps) -> Element {
     let class = tw_merge!(
@@ -165,25 +196,24 @@ pub fn CardAction(props: CardActionProps) -> Element {
     }
 }
 
-/// The props for the styled [`CardContent`] component.
+// ---------------------------------------------------------------------------
+// CardContent
+// ---------------------------------------------------------------------------
+
 #[derive(Props, Clone, PartialEq)]
 pub struct CardContentProps {
-    /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Attributes to extend the element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the card content.
     pub children: Element,
 }
 
-/// Styled CardContent — matches shadcn exactly.
 #[component]
 pub fn CardContent(props: CardContentProps) -> Element {
-    let class = tw_merge!("px-6", props.class);
+    let class = tw_merge!("px-4 group-data-[size=sm]/card:px-3", props.class);
 
     rsx! {
         div {
@@ -195,25 +225,27 @@ pub fn CardContent(props: CardContentProps) -> Element {
     }
 }
 
-/// The props for the styled [`CardFooter`] component.
+// ---------------------------------------------------------------------------
+// CardFooter
+// ---------------------------------------------------------------------------
+
 #[derive(Props, Clone, PartialEq)]
 pub struct CardFooterProps {
-    /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
 
-    /// Attributes to extend the element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
 
-    /// The children of the card footer.
     pub children: Element,
 }
 
-/// Styled CardFooter — matches shadcn exactly.
 #[component]
 pub fn CardFooter(props: CardFooterProps) -> Element {
-    let class = tw_merge!("flex items-center px-6 [.border-t]:pt-6", props.class,);
+    let class = tw_merge!(
+        "flex items-center rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/card:p-3",
+        props.class,
+    );
 
     rsx! {
         div {

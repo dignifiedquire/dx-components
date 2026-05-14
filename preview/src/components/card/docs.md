@@ -1,32 +1,32 @@
-The card component is a flexible container for grouping related content and actions. It provides a structured layout with optional header, content, and footer sections.
+A flexible container for grouping related content and actions. Composes from seven sub-components — `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter` — that wire up the layout grid for you, including a two-column header layout when a `CardAction` is present.
 
-## Component Structure
+Pass `size: CardSize::Sm` for a denser variant — gaps and paddings shrink and the title font drops one step. The `data-size="sm"` attribute also cascades to nested parts via Tailwind's `group-data-[size=sm]/card:` selector so headers, content, and footer all adapt together.
 
 ```rust
-// The Card component must wrap all card elements.
-Card {
-    // CardHeader contains the title, description, and optional action.
-    CardHeader {
-        // CardTitle displays the main heading.
-        CardTitle { "Card Title" }
-        // CardDescription provides supporting text.
-        CardDescription { "Card description goes here." }
-        // CardAction positions action elements (e.g., buttons) in the header.
-        CardAction {
-            Button { "Action" }
+use dioxus::prelude::*;
+use dioxus_components::card::*;
+use dioxus_components::button::{Button, ButtonVariant};
+
+#[component]
+fn LoginCard() -> Element {
+    rsx! {
+        Card { class: "w-full max-w-sm",
+            CardHeader {
+                CardTitle { "Login to your account" }
+                CardDescription { "Enter your email below to login to your account" }
+                CardAction {
+                    Button { variant: ButtonVariant::Link, "Sign Up" }
+                }
+            }
+            CardContent {
+                // …form fields…
+            }
+            CardFooter { class: "flex-col gap-2",
+                Button { r#type: "submit", class: "w-full", "Login" }
+            }
         }
-    }
-    // CardContent holds the main body content.
-    CardContent {
-        p { "Main content of the card." }
-    }
-    // CardFooter contains footer actions or information.
-    CardFooter {
-        Button { "Submit" }
     }
 }
 ```
 
-## Layout Notes
-
-- When `CardAction` is present inside `CardHeader`, the header automatically switches to a two-column grid layout.
+A first-child `<img>` is treated specially — it sits flush against the card's rounded top corners because `Card` includes the `*:[img:first-child]:rounded-t-xl` and `has-[>img:first-child]:pt-0` Tailwind rules.

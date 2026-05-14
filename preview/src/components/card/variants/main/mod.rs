@@ -7,47 +7,43 @@ use dioxus::prelude::*;
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        Card { style: "width: 100%; max-width: 24rem;",
+        Card { class: "w-full max-w-sm",
             CardHeader {
                 CardTitle { "Login to your account" }
                 CardDescription { "Enter your email below to login to your account" }
                 CardAction {
-                    Button { variant: ButtonVariant::Ghost, "Sign Up" }
+                    Button { variant: ButtonVariant::Link, "Sign Up" }
                 }
             }
             CardContent {
-                form { id: "login-form",
-                    div { style: "display: flex; flex-direction: column; gap: 1.5rem;",
-                        div { style: "display: grid; gap: 0.5rem;",
+                form {
+                    div { class: "flex flex-col gap-6",
+                        div { class: "grid gap-2",
                             Label { html_for: "email", "Email" }
                             Input {
                                 id: "email",
                                 r#type: "email",
                                 placeholder: "m@example.com",
+                                required: "true",
                             }
                         }
-                        div { style: "display: grid; gap: 0.5rem;",
-                            div { style: "display: flex; align-items: center;",
+                        div { class: "grid gap-2",
+                            div { class: "flex items-center",
                                 Label { html_for: "password", "Password" }
                                 a {
                                     href: "#",
-                                    style: "margin-left: auto; font-size: 0.875rem; color: var(--secondary-color-5); text-decoration: underline; text-underline-offset: 4px;",
+                                    class: "ml-auto inline-block text-sm underline-offset-4 hover:underline",
                                     "Forgot your password?"
                                 }
                             }
-                            Input { id: "password", r#type: "password" }
+                            Input { id: "password", r#type: "password", required: "true" }
                         }
                     }
                 }
             }
-            CardFooter { style: "flex-direction: column; gap: 0.5rem;",
-                Button {
-                    r#type: "submit",
-                    form: "login-form",
-                    style: "width: 100%;",
-                    "Login"
-                }
-                Button { variant: ButtonVariant::Outline, style: "width: 100%;", "Login with Google" }
+            CardFooter { class: "flex-col gap-2",
+                Button { r#type: "submit", class: "w-full", "Login" }
+                Button { variant: ButtonVariant::Outline, class: "w-full", "Login with Google" }
             }
         }
     }

@@ -145,7 +145,7 @@ examples!(
     combobox[groups],
     command,
     context_menu,
-    card,
+    card[small, image],
     date_picker[internationalized, range, multi_month, unavailable_dates],
     dialog[scrollable],
     dismissable_layer,
