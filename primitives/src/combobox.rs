@@ -243,10 +243,8 @@ pub fn ComboboxInput(props: ComboboxInputProps) -> Element {
                     Key::Escape => {
                         open.set(false);
                     }
-                    Key::ArrowDown | Key::ArrowUp => {
-                        if !open() {
-                            open.set(true);
-                        }
+                    Key::ArrowDown | Key::ArrowUp if !open() => {
+                        open.set(true);
                     }
                     _ => {}
                 }
