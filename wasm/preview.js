@@ -1555,7 +1555,7 @@ function __wbg_get_imports() {
             return ret;
         }, arguments); },
         __wbindgen_cast_0000000000000004: function() { return logError(function (arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 920, function: Function { arguments: [NamedExternref("Array<any>"), Externref], shim_idx: 1044, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 920, function: Function { arguments: [NamedExternref("Array<any>"), Externref], shim_idx: 1040, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm._ZN12wasm_bindgen7closure7destroy17h066c9ea53231e497E, _ZN12wasm_bindgen7convert8closures1_6invoke17h0c150fdd43c620e6E);
             return ret;
         }, arguments); },
