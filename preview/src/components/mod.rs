@@ -129,7 +129,7 @@ macro_rules! examples {
 
 examples!(
     accessible_icon,
-    accordion[multiple, disabled],
+    accordion[multiple, horizontal, disabled],
     alert_dialog,
     announce,
     arrow,

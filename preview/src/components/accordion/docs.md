@@ -1,39 +1,36 @@
-A vertically stacked set of interactive headings that each reveal a section of content.
+An accordion is a vertically stacked set of interactive headings that each reveal a section of content. By default only one item can be open at a time (`AccordionType::Single`); pass `AccordionType::Multiple` to allow any combination of items to be open simultaneously.
 
-## Usage
+Trigger keyboard interaction follows the [WAI-ARIA accordion pattern](https://www.w3.org/WAI/ARIA/apg/patterns/accordion) — see the [Accessibility](#accessibility) section.
 
 ```rust
 use dioxus::prelude::*;
 use dioxus_primitives::accordion::{
-    Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+    Accordion, AccordionContent, AccordionHeader, AccordionItem, AccordionTrigger,
 };
 
-rsx! {
-    Accordion {
-        AccordionItem { index: 0,
-            AccordionTrigger { "Is it accessible?" }
-            AccordionContent { "Yes. It adheres to the WAI-ARIA design pattern." }
+#[component]
+fn FAQ() -> Element {
+    rsx! {
+        Accordion { collapsible: true, default_value: vec!["q-1".to_string()],
+            AccordionItem { value: "q-1",
+                AccordionHeader {
+                    AccordionTrigger { "Is it accessible?" }
+                }
+                AccordionContent { "Yes. It follows the WAI-ARIA accordion design pattern." }
+            }
+            AccordionItem { value: "q-2",
+                AccordionHeader {
+                    AccordionTrigger { "Is it animated?" }
+                }
+                AccordionContent {
+                    "Yes — content height is exposed via the "
+                    code { "--dxc-accordion-content-height" }
+                    " CSS custom property so you can animate "
+                    code { "height" }
+                    " on open/close."
+                }
+            }
         }
     }
-};
+}
 ```
-
-## Props
-
-### Accordion
-
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `allow_multiple_open` | `ReadSignal<bool>` | `false` | Allow multiple items open at once |
-| `disabled` | `ReadSignal<bool>` | `false` | Disable the entire accordion |
-| `collapsible` | `ReadSignal<bool>` | `true` | Allow all items to be collapsed |
-| `horizontal` | `ReadSignal<bool>` | `false` | Use horizontal layout |
-
-### AccordionItem
-
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `index` | `usize` | required | Position index within the accordion |
-| `disabled` | `ReadSignal<bool>` | `false` | Disable this specific item |
-| `default_open` | `bool` | `false` | Open this item by default |
-| `on_change` | `Callback<bool>` | - | Called when open state changes |

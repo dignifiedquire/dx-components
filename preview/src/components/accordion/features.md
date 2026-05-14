@@ -1,0 +1,5 @@
+- Full keyboard navigation.
+- Supports horizontal/vertical orientation.
+- Supports right-to-left direction.
+- Can expand one or multiple items.
+- Can be controlled or uncontrolled.
