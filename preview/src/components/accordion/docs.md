@@ -24,7 +24,7 @@ fn FAQ() -> Element {
                 }
                 AccordionContent {
                     "Yes — content height is exposed via the "
-                    code { "--dxc-accordion-content-height" }
+                    code { "--radix-accordion-content-height" }
                     " CSS custom property so you can animate "
                     code { "height" }
                     " on open/close."

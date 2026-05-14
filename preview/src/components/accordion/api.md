@@ -65,6 +65,10 @@ Toggles the collapsed state of its associated item. Should be nested inside an `
 
 Contains the collapsible content for an item.
 
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `force_mount` | `bool` | `false` | Force the content to mount even when closed. Useful when driving open/close animations from an external animation library that needs the DOM present. |
+
 #### Data attributes
 
 | Attribute | Values |
@@ -75,7 +79,9 @@ Contains the collapsible content for an item.
 
 #### CSS custom properties
 
+The content element exposes the same `--radix-*` CSS variables Radix does so existing CSS animation patterns work without changes.
+
 | Property | Description |
 | --- | --- |
-| `--dxc-accordion-content-width` | The width of the content when it opens/closes. |
-| `--dxc-accordion-content-height` | The height of the content when it opens/closes. |
+| `--radix-accordion-content-width` | The width of the content when it opens/closes. |
+| `--radix-accordion-content-height` | The height of the content when it opens/closes. |
