@@ -126,7 +126,13 @@ pub fn SheetOverlay(props: SheetOverlayProps) -> Element {
 // SheetContent
 // ---------------------------------------------------------------------------
 
-const SHEET_CONTENT_BASE: &str = "bg-background fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out outline-none data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out";
+// `data-[state=closed]:hidden` is required because Sheet renders as a
+// native `<dialog>` element via the Dialog primitive. Tailwind's `flex`
+// (display: flex) wins specificity over the user-agent rule
+// `dialog:not([open]) { display: none }`, so without an explicit
+// closed:hidden the sheet stays laid out and visible to a11y scans
+// even when closed. Mirrors the Dialog/AlertDialog precedent.
+const SHEET_CONTENT_BASE: &str = "bg-background fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out outline-none data-[state=closed]:hidden data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out";
 
 fn sheet_side_class(side: SheetSide) -> &'static str {
     match side {

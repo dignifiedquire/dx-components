@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+// Scope all locators to the component preview frame so they don't collide
+// with the navbar's mobile-nav Sheet, which is also a native `<dialog>` and
+// is always present in the DOM (Phase 2 of the top-layer port).
+const inPreview = (selector: string) =>
+  `[data-slot="preview"] ${selector}`;
+
 test('sheet basic interactions', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/sheet', { timeout: 20 * 60 * 1000 });
 
@@ -7,7 +13,7 @@ test('sheet basic interactions', async ({ page }) => {
   await page.getByRole('button', { name: 'Right' }).click();
 
   // Assert the sheet content is open
-  const sheetContent = page.locator('[data-slot="sheet-content"]');
+  const sheetContent = page.locator(inPreview('[data-slot="sheet-content"]'));
   await expect(sheetContent).toHaveAttribute('data-state', 'open');
 
   // Assert the first input is focused (focus trap)
@@ -29,7 +35,7 @@ test('sheet basic interactions', async ({ page }) => {
 
   // Hitting escape should close the sheet
   await page.keyboard.press('Escape');
-  await expect(sheetContent).toHaveCount(0);
+  await expect(sheetContent).toHaveAttribute('data-state', 'closed');
 
   // Reopen the sheet
   await page.getByRole('button', { name: 'Right' }).click();
@@ -37,32 +43,32 @@ test('sheet basic interactions', async ({ page }) => {
 
   // Click Cancel to close
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(sheetContent).toHaveCount(0);
+  await expect(sheetContent).toHaveAttribute('data-state', 'closed');
 });
 
 test('sheet opens from different sides', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/sheet', { timeout: 20 * 60 * 1000 });
 
-  const sheetContent = page.locator('[data-slot="sheet-content"]');
+  const sheetContent = page.locator(inPreview('[data-slot="sheet-content"]'));
 
   // Test Top
   await page.getByRole('button', { name: 'Top' }).click();
   await expect(sheetContent).toHaveAttribute('data-state', 'open');
   await expect(sheetContent).toHaveAttribute('data-side', 'top');
   await page.keyboard.press('Escape');
-  await expect(sheetContent).toHaveCount(0);
+  await expect(sheetContent).toHaveAttribute('data-state', 'closed');
 
   // Test Bottom
   await page.getByRole('button', { name: 'Bottom' }).click();
   await expect(sheetContent).toHaveAttribute('data-state', 'open');
   await expect(sheetContent).toHaveAttribute('data-side', 'bottom');
   await page.keyboard.press('Escape');
-  await expect(sheetContent).toHaveCount(0);
+  await expect(sheetContent).toHaveAttribute('data-state', 'closed');
 
   // Test Left
   await page.getByRole('button', { name: 'Left' }).click();
   await expect(sheetContent).toHaveAttribute('data-state', 'open');
   await expect(sheetContent).toHaveAttribute('data-side', 'left');
   await page.keyboard.press('Escape');
-  await expect(sheetContent).toHaveCount(0);
+  await expect(sheetContent).toHaveAttribute('data-state', 'closed');
 });
