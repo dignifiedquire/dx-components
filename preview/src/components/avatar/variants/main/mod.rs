@@ -1,55 +1,42 @@
-use crate::components::avatar::component::{Avatar, AvatarFallback, AvatarImage, AvatarSize};
+use crate::components::avatar::component::{
+    Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage,
+};
 use dioxus::prelude::*;
 
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        div { class: "flex flex-row items-center gap-4",
-            div { class: "flex flex-col items-center gap-2",
-                p { class: "text-sm text-muted-foreground", "Default" }
-                Avatar {
-                    aria_label: "Basic avatar",
-                    AvatarImage {
-                        src: "https://avatars.githubusercontent.com/u/66571940?s=96&v=4",
-                        alt: "User avatar",
-                    }
-                    AvatarFallback { "EA" }
+        div { class: "flex flex-row flex-wrap items-center gap-6 md:gap-12",
+            // Plain avatar with greyscaled image.
+            Avatar {
+                AvatarImage {
+                    src: "https://github.com/shadcn.png",
+                    alt: "@shadcn",
+                    class: "grayscale",
                 }
+                AvatarFallback { "CN" }
             }
-            div { class: "flex flex-col items-center gap-2",
-                p { class: "text-sm text-muted-foreground", "Small" }
-                Avatar {
-                    size: AvatarSize::Sm,
-                    aria_label: "Small avatar",
-                    AvatarImage {
-                        src: "https://avatars.githubusercontent.com/u/66571940?s=96&v=4",
-                        alt: "User avatar",
-                    }
-                    AvatarFallback { "EA" }
-                }
+            // Avatar with a status-indicator badge in the bottom-right corner.
+            Avatar {
+                AvatarImage { src: "https://github.com/evilrabbit.png", alt: "@evilrabbit" }
+                AvatarFallback { "ER" }
+                AvatarBadge { class: "bg-green-600 dark:bg-green-800" }
             }
-            div { class: "flex flex-col items-center gap-2",
-                p { class: "text-sm text-muted-foreground", "Large" }
+            // Stacked avatar group with overflow count.
+            AvatarGroup { class: "grayscale",
                 Avatar {
-                    size: AvatarSize::Lg,
-                    aria_label: "Large avatar",
-                    AvatarImage {
-                        src: "https://avatars.githubusercontent.com/u/66571940?s=96&v=4",
-                        alt: "User avatar",
-                    }
-                    AvatarFallback { "EA" }
+                    AvatarImage { src: "https://github.com/shadcn.png", alt: "@shadcn" }
+                    AvatarFallback { "CN" }
                 }
-            }
-            div { class: "flex flex-col items-center gap-2",
-                p { class: "text-sm text-muted-foreground", "Fallback" }
                 Avatar {
-                    aria_label: "Fallback avatar",
-                    AvatarImage {
-                        src: "https://invalid-url.example/image.jpg",
-                        alt: "Invalid image",
-                    }
-                    AvatarFallback { "JK" }
+                    AvatarImage { src: "https://github.com/maxleiter.png", alt: "@maxleiter" }
+                    AvatarFallback { "LR" }
                 }
+                Avatar {
+                    AvatarImage { src: "https://github.com/evilrabbit.png", alt: "@evilrabbit" }
+                    AvatarFallback { "ER" }
+                }
+                AvatarGroupCount { "+3" }
             }
         }
     }

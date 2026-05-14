@@ -134,7 +134,7 @@ examples!(
     announce,
     arrow,
     aspect_ratio[square, portrait],
-    avatar,
+    avatar[sizes],
     badge,
     button[outline, secondary, destructive, ghost, link, icon, with_icon, loading, disabled, sizes],
     calendar[simple, internationalized, range, multi_month, unavailable_dates],

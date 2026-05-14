@@ -1,0 +1,3 @@
+- Automatic and manual control over when the image renders.
+- Fallback part accepts any children.
+- Optionally delay fallback rendering to avoid content flashing.
