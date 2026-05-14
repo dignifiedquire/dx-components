@@ -14,7 +14,6 @@ pub fn Demo() -> Element {
             // ---------------------------------------------------------
             section {
                 "data-testid": "styled",
-                h3 { "Styled" }
                 Arrow {
                     width: 20.0,
                     height: 10.0,
@@ -29,7 +28,6 @@ pub fn Demo() -> Element {
             // ---------------------------------------------------------
             section {
                 "data-testid": "custom-sizes",
-                h3 { "Custom Sizes" }
                 div { style: "display: flex; gap: 16px; align-items: center;",
                     Arrow {
                         width: 40.0,
@@ -58,7 +56,6 @@ pub fn Demo() -> Element {
             // ---------------------------------------------------------
             section {
                 "data-testid": "default-arrow",
-                h3 { "Default Size" }
                 Arrow {
                     "data-testid": "arrow-default",
                 }
@@ -71,7 +68,6 @@ pub fn Demo() -> Element {
             // ---------------------------------------------------------
             section {
                 "data-testid": "css-styled",
-                h3 { "CSS Styled Arrow" }
                 Arrow {
                     width: 20.0,
                     height: 10.0,
