@@ -192,9 +192,7 @@ pub fn SelectContent(props: SelectContentProps) -> Element {
     // manual rather than auto because Select handles ESC, blur, and
     // selection-based dismissal in `onkeydown` / `on_blur` above —
     // auto's light-dismiss would race with that logic.
-    let wrapper_attrs = attributes!(div {
-        popover: "manual",
-    });
+    let wrapper_attrs = attributes!(div { popover: "manual" });
     let mut wrapper_mounted = use_signal(|| None::<std::rc::Rc<MountedData>>);
     let set_open = Callback::new(move |v: bool| {
         if !v {

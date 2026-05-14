@@ -370,9 +370,7 @@ pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
 
     // popover="manual" lifts the positioned wrapper into the top layer
     // while leaving ESC / outside-click dismiss to our existing handlers.
-    let wrapper_attrs = attributes!(div {
-        popover: "manual",
-    });
+    let wrapper_attrs = attributes!(div { popover: "manual" });
     let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
     let set_open = Callback::new(move |open: bool| {
         if !open {

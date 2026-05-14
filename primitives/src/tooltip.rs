@@ -403,9 +403,7 @@ pub fn TooltipContent(props: TooltipContentProps) -> Element {
     // `manual` rather than `auto` because tooltip visibility is hover/focus
     // driven — `auto`'s light-dismiss would close the tooltip when the user
     // clicks anywhere else, which contradicts the Radix tooltip semantics.
-    let wrapper_attrs = attributes!(div {
-        popover: "manual",
-    });
+    let wrapper_attrs = attributes!(div { popover: "manual" });
     let mut wrapper_mounted = use_signal(|| None::<std::rc::Rc<MountedData>>);
     use_top_layer(
         wrapper_mounted.into(),

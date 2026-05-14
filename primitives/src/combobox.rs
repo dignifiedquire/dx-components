@@ -192,7 +192,7 @@ pub struct ComboboxInputProps {
 ///
 /// Handles filtering, opening/closing the dropdown, and keyboard
 /// navigation (ArrowDown/ArrowUp to open, Escape to close). Registers
-/// itself as the [`Popper`](crate::popper::Popper) anchor so the
+/// itself as the [`crate::popper::Popper`] anchor so the
 /// dropdown is positioned relative to the input.
 #[component]
 pub fn ComboboxInput(props: ComboboxInputProps) -> Element {
@@ -322,9 +322,7 @@ pub fn ComboboxContent(props: ComboboxContentProps) -> Element {
     // popover="manual" lifts the floated wrapper into the top layer. We
     // own dismissal via input onkeydown / onblur + item click, so manual
     // mode prevents the browser's light-dismiss from racing our logic.
-    let wrapper_attrs = attributes!(div {
-        popover: "manual",
-    });
+    let wrapper_attrs = attributes!(div { popover: "manual" });
     let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
     let set_open = Callback::new(move |v: bool| {
         if !v {

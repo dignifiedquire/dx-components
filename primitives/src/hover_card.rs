@@ -245,9 +245,7 @@ pub fn HoverCardContent(props: HoverCardContentProps) -> Element {
     // popover="manual" lifts the floated wrapper into the top layer; visibility
     // is hover-driven via use_delayed_open, so we do not want `auto`'s
     // light-dismiss interfering with the pointer-enter/leave handlers.
-    let wrapper_attrs = attributes!(div {
-        popover: "manual",
-    });
+    let wrapper_attrs = attributes!(div { popover: "manual" });
     let mut wrapper_mounted = use_signal(|| None::<std::rc::Rc<MountedData>>);
     use_top_layer(
         wrapper_mounted.into(),

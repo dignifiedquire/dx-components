@@ -995,9 +995,7 @@ pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
     // dismiss (ArrowLeft/Escape) and outside-click logic to the existing
     // handlers. `manual` is required so a sub-menu can be open alongside
     // its parent — `auto` would close one when the other opens.
-    let wrapper_attrs = attributes!(div {
-        popover: "manual",
-    });
+    let wrapper_attrs = attributes!(div { popover: "manual" });
     let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
     let set_open = sub_ctx.set_open;
     use_top_layer(

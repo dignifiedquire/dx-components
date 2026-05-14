@@ -120,10 +120,8 @@ mod wasm {
                 }
             }) as Box<dyn FnMut(web_sys::Event)>);
 
-            let _ = element.add_event_listener_with_callback(
-                event_name,
-                listener.as_ref().unchecked_ref(),
-            );
+            let _ = element
+                .add_event_listener_with_callback(event_name, listener.as_ref().unchecked_ref());
 
             let element_for_cleanup = element.clone();
             Box::new(move || {
@@ -142,7 +140,9 @@ mod wasm {
         use_effect(move || {
             let want_open = open();
             let Some(md) = mounted.cloned() else { return };
-            let Some(element) = element_from_mounted(&md) else { return };
+            let Some(element) = element_from_mounted(&md) else {
+                return;
+            };
             apply_open_state(&element, want_open, kind);
         });
     }

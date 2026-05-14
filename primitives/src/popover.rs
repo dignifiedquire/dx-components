@@ -249,9 +249,7 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 
-    let wrapper_attrs = attributes!(div {
-        popover: "auto",
-    });
+    let wrapper_attrs = attributes!(div { popover: "auto" });
 
     rsx! {
         Presence {

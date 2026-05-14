@@ -373,9 +373,7 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
     // ESC and outside-click dismiss to our existing handlers above. Nested
     // submenus need this — `popover="auto"` would only allow one menu open
     // at a time globally.
-    let wrapper_attrs = attributes!(div {
-        popover: "manual",
-    });
+    let wrapper_attrs = attributes!(div { popover: "manual" });
     let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
     let set_open = Callback::new(move |open: bool| {
         if !open {

@@ -22,7 +22,7 @@
 //!   `aria-hidden` outsider machinery.
 //! - **Native ESC handling**: ESC dispatches a `cancel` event on the dialog,
 //!   then closes it. The `close` event syncs back into our `open` signal via
-//!   [`use_top_layer`](crate::top_layer::use_top_layer).
+//!   [`crate::top_layer::use_top_layer`].
 //! - **Backdrop click closes**: A click whose `event.target` is the dialog
 //!   element itself (rather than a descendant) is a backdrop click — the
 //!   browser routes `::backdrop` clicks to the dialog. We close on this.
@@ -289,7 +289,7 @@ pub struct DialogContentProps {
 /// - **Inert siblings**: outside content cannot be clicked, focused, or read
 ///   by assistive tech.
 /// - **ESC dismissal**: ESC fires `cancel` then `close` events, which our
-///   [`use_top_layer`](crate::top_layer::use_top_layer) sync back into the
+///   [`crate::top_layer::use_top_layer`] sync back into the
 ///   open signal.
 /// - **Top-layer rendering**: escapes ancestor overflow, transform, filter,
 ///   and stacking contexts without DOM re-parenting.

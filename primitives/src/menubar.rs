@@ -545,9 +545,7 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
     // use manual rather than auto so navigating between menubar items
     // (which rapidly opens/closes adjacent menus) doesn't fight with the
     // browser's single-auto-popover-at-a-time rule.
-    let wrapper_attrs = attributes!(div {
-        popover: "manual",
-    });
+    let wrapper_attrs = attributes!(div { popover: "manual" });
     let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
     let set_open = Callback::new(move |open: bool| {
         if !open {
