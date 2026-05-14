@@ -7,7 +7,7 @@ pub fn Demo() -> Element {
     let mut selected_date = use_signal(|| None::<Date>);
     let mut view_date = use_signal(|| UtcDateTime::now().date());
     rsx! {
-        div { class: "calendar-example rounded-lg border p-3",
+        div { class: "calendar-example",
             Calendar {
                 selected_date: selected_date(),
                 on_date_change: move |date| {
