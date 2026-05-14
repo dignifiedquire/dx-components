@@ -364,11 +364,6 @@ pub struct PopperContentProps {
     #[props(default)]
     pub css_var_prefix: Option<&'static str>,
 
-    /// Whether to render through a Portal (escapes parent overflow).
-    /// Default: false. Set to true for components like DropdownMenu, ContextMenu.
-    #[props(default)]
-    pub portal: bool,
-
     /// CSS class forwarded to the inner content div (matching upstream Primitive.div).
     /// This is where consumers set their styling (e.g. `bg-popover z-50 ...`).
     #[props(default)]
@@ -960,13 +955,7 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
         }
     };
 
-    if props.portal {
-        rsx! {
-            crate::portal::Portal { {wrapper} }
-        }
-    } else {
-        wrapper
-    }
+    wrapper
 }
 
 /// Re-provides PopperContentCtx for children that may be inside a Portal.
