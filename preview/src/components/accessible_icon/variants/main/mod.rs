@@ -11,7 +11,6 @@ pub fn Demo() -> Element {
             // 1. Styled — button with accessible icon (matches upstream Styled story)
             section {
                 "data-testid": "styled",
-                h3 { class: "text-lg font-semibold mb-4", "Styled" }
                 button {
                     "data-testid": "icon-button",
                     class: "inline-flex items-center justify-center w-10 h-10 border rounded hover:bg-gray-100",
@@ -33,7 +32,6 @@ pub fn Demo() -> Element {
             // 2. Chromatic — inline icon in text (matches upstream Chromatic story)
             section {
                 "data-testid": "chromatic",
-                h3 { class: "text-lg font-semibold mb-4", "Chromatic" }
                 p {
                     "data-testid": "inline-text",
                     "Some text with an inline accessible icon "

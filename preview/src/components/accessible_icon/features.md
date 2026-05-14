@@ -1,0 +1,2 @@
+- Quickly make any icon accessible by wrapping it and providing a meaningful label.
+- No visual difference, but announced correctly by screen readers.

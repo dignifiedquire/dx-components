@@ -1,6 +1,6 @@
 {
   "name": "accessible_icon",
-  "description": "Makes icons accessible by hiding them from screen readers and providing a text label.",
+  "description": "Makes icons accessible by adding a label.",
   "authors": ["Dioxus Labs"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [
