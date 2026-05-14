@@ -29,7 +29,11 @@ pub fn Demo() -> Element {
                 }
             }
 
-            // 2. Chromatic — inline icon in text (matches upstream Chromatic story)
+            // 2. Chromatic — inline icon in text (matches upstream Chromatic story).
+            // Inline icon is sized to roughly match the surrounding text
+            // x-height (16px) for optical balance — diverges from the
+            // upstream 24x24 storybook prop because that story renders in a
+            // larger demo viewport.
             section {
                 "data-testid": "chromatic",
                 p {
@@ -40,8 +44,8 @@ pub fn Demo() -> Element {
                         svg {
                             "data-testid": "inline-svg",
                             view_box: "0 0 32 32",
-                            width: "24",
-                            height: "24",
+                            width: "16",
+                            height: "16",
                             fill: "none",
                             stroke: "currentColor",
                             path { d: "M2 30 L30 2 M30 30 L2 2" }
