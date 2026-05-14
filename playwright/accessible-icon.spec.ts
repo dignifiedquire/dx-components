@@ -16,17 +16,17 @@ async function gotoAndWait(page: import("@playwright/test").Page) {
 // ---------------------------------------------------------------------------
 
 test.describe("AccessibleIcon: styled", () => {
-  test("renders wrapper with data-slot", async ({ page }) => {
-    await gotoAndWait(page);
-    const wrapper = page.locator('[data-slot="accessible-icon"]').first();
-    await expect(wrapper).toBeAttached();
-  });
-
-  test("icon wrapper has aria-hidden=true", async ({ page }) => {
+  test("icon is wrapped in an aria-hidden span", async ({ page }) => {
     await gotoAndWait(page);
     const section = page.locator('[data-testid="styled"]');
+    // The icon wrapper has aria-hidden="true" so screen readers skip the
+    // graphic and announce the visually-hidden label instead. This is the
+    // Dioxus equivalent of Radix's cloneElement(aria-hidden=true) on the
+    // SVG — we wrap because VNodes are immutable.
     const ariaHidden = section.locator('[aria-hidden="true"]');
     await expect(ariaHidden).toBeAttached();
+    // The SVG lives inside that wrapper.
+    await expect(ariaHidden.locator('[data-testid="icon-svg"]')).toBeAttached();
   });
 
   test("SVG is rendered inside the icon", async ({ page }) => {

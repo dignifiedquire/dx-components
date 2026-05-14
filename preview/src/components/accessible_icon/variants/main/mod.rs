@@ -13,7 +13,7 @@ pub fn Demo() -> Element {
                 "data-testid": "styled",
                 button {
                     "data-testid": "icon-button",
-                    class: "inline-flex items-center justify-center w-10 h-10 border rounded hover:bg-gray-100",
+                    r#type: "button",
                     AccessibleIcon {
                         label: "Close",
                         svg {

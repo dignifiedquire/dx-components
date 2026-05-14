@@ -1,11 +1,19 @@
 //! Accessible icon — matches `@radix-ui/react-accessible-icon`.
 //!
-//! Wraps an icon element (e.g. SVG) and adds `aria-hidden="true"` to it,
-//! plus a [`VisuallyHidden`] label for screen readers.
+//! Wraps an icon element (e.g. an `svg`) and renders a visually-hidden
+//! label alongside it so screen readers announce a meaningful name.
 //!
-//! In Radix React this clones `aria-hidden` onto the child via `cloneElement`.
-//! In Dioxus we wrap the children in a `<span aria-hidden="true">` and add the
-//! visually-hidden label as a sibling — achieving the same accessibility result.
+//! ## Divergence from upstream
+//!
+//! Radix injects `aria-hidden="true"` and `focusable="false"` directly
+//! onto the SVG child via `React.cloneElement`. Dioxus VNodes are
+//! immutable, so we instead wrap the icon in a `<span aria-hidden="true">`.
+//! This adds one extra DOM node compared to Radix, but the screen-reader
+//! behaviour is identical: the icon graphic is hidden from assistive
+//! technology and the visually-hidden label is announced.
+//!
+//! `focusable="false"` is omitted because SVG elements are not focusable
+//! by default in modern browsers — the attribute is an IE-era workaround.
 
 use crate::visually_hidden::VisuallyHidden;
 use dioxus::prelude::*;
@@ -13,20 +21,23 @@ use dioxus::prelude::*;
 /// Props for [`AccessibleIcon`].
 #[derive(Props, Clone, PartialEq)]
 pub struct AccessibleIconProps {
-    /// The accessible label announced to screen readers.
-    /// Similar to `alt` text on `<img>` elements.
+    /// The accessible label announced to screen readers. Similar to
+    /// `alt` text on `<img>` elements.
     pub label: String,
 
-    /// The icon element (typically an SVG). It will be wrapped in a
+    /// The icon element (typically an `svg`). Wrapped in a
     /// `<span aria-hidden="true">` so sighted users see it but screen
-    /// readers skip it.
+    /// readers skip it. See module-level docs for why this wrapper is
+    /// needed.
     pub children: Element,
 }
 
-/// Makes an icon accessible by hiding it from screen readers and providing
-/// a visually-hidden text label instead.
+/// Makes an icon accessible by hiding it from screen readers and
+/// announcing a visually-hidden label instead.
 ///
-/// Matches `@radix-ui/react-accessible-icon`.
+/// Matches `@radix-ui/react-accessible-icon`. Returns a fragment of two
+/// sibling elements (icon wrapper + visually-hidden label) — no outer
+/// wrapper element.
 ///
 /// ```rust,no_run
 /// # use dioxus::prelude::*;
@@ -46,18 +57,11 @@ pub struct AccessibleIconProps {
 pub fn AccessibleIcon(props: AccessibleIconProps) -> Element {
     rsx! {
         span {
-            "data-slot": "accessible-icon",
-            // The icon itself is decorative — screen readers should skip it.
-            // Radix also sets `focusable="false"` on the SVG child, but in Dioxus
-            // we can't modify children props. `aria-hidden="true"` is sufficient.
-            span {
-                aria_hidden: "true",
-                style: "display: inline-flex;",
-                {props.children}
-            }
-            // The label is visible only to screen readers.
-            VisuallyHidden { {props.label} }
+            aria_hidden: "true",
+            style: "display: inline-flex;",
+            {props.children}
         }
+        VisuallyHidden { {props.label} }
     }
 }
 
