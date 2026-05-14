@@ -191,7 +191,17 @@ pub fn CarouselPrevious(props: CarouselPreviousProps) -> Element {
         CarouselOrientation::Vertical => "left-1/2 -top-12 -translate-x-1/2 rotate-90",
     };
 
-    let class = tw_merge!("absolute size-8 rounded-full", orient_class, props.class,);
+    // Equivalent to shadcn's `<Button variant="outline" size="icon">` — base
+    // button styling + outline variant + icon size + the carousel-specific
+    // absolute positioning. `disabled:opacity-50 disabled:pointer-events-none`
+    // is what gives the visible disabled state at the carousel boundaries.
+    let class = tw_merge!(
+        "inline-flex shrink-0 items-center justify-center gap-2 text-sm font-medium whitespace-nowrap transition-all cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        "absolute size-8 rounded-full",
+        orient_class,
+        props.class,
+    );
 
     let has_children = props.children != Ok(VNode::placeholder());
 
@@ -237,7 +247,17 @@ pub fn CarouselNext(props: CarouselNextProps) -> Element {
         CarouselOrientation::Vertical => "left-1/2 -bottom-12 -translate-x-1/2 rotate-90",
     };
 
-    let class = tw_merge!("absolute size-8 rounded-full", orient_class, props.class,);
+    // Equivalent to shadcn's `<Button variant="outline" size="icon">` — base
+    // button styling + outline variant + icon size + the carousel-specific
+    // absolute positioning. `disabled:opacity-50 disabled:pointer-events-none`
+    // is what gives the visible disabled state at the carousel boundaries.
+    let class = tw_merge!(
+        "inline-flex shrink-0 items-center justify-center gap-2 text-sm font-medium whitespace-nowrap transition-all cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        "absolute size-8 rounded-full",
+        orient_class,
+        props.class,
+    );
 
     let has_children = props.children != Ok(VNode::placeholder());
 

@@ -138,7 +138,7 @@ examples!(
     badge[variants, icon, colors],
     button[outline, secondary, destructive, ghost, link, icon, with_icon, rounded, loading, disabled, sizes],
     calendar[simple, internationalized, range, multi_month, unavailable_dates],
-    carousel[sizes, multiple, spacing, orientation],
+    carousel[orientation],
     checkbox[disabled, with_text],
     collapsible,
     collection,
