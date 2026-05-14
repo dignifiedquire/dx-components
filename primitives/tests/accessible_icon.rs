@@ -7,14 +7,21 @@ fn render(element: Element) -> String {
 }
 
 #[test]
-fn accessible_icon_renders_wrapper_span() {
+fn accessible_icon_renders_icon_wrapper_and_label() {
+    // Matches the Fragment-style render: an inline-flex span carrying
+    // aria-hidden around the icon, followed by a visually-hidden span
+    // with the label. The outer `data-slot="accessible-icon"` wrapper
+    // was removed when we tightened parity with upstream Radix in
+    // commit 948b5c3.
     let html = render(rsx! {
         dioxus_primitives::accessible_icon::AccessibleIcon { label: "Close",
             svg { view_box: "0 0 24 24" }
         }
     });
 
-    assert!(html.contains("data-slot=\"accessible-icon\""));
+    assert!(html.contains("aria-hidden=\"true\""));
+    assert!(html.contains("data-slot=\"visually-hidden\""));
+    assert!(html.contains("Close"));
 }
 
 #[test]
