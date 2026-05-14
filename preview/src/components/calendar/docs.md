@@ -1,37 +1,38 @@
-The Calendar component is used to display a calendar interface, allowing users to select dates. It provides a grid layout of days for a specific month and year.
+A calendar lets the user pick a date (or a range of dates) from a familiar month grid. The component is keyboard-accessible — Arrow keys move the focus cell, Home / End jump to row edges, PageUp / PageDown change months. Selection is driven through the `selected_date` + `on_date_change` props for single-date pickers, or `selected_range` + `on_range_change` for ranges.
 
-## Component Structure
+Sub-components compose a calendar's chrome: `CalendarPreviousMonthButton` / `CalendarNextMonthButton` paginate, `CalendarSelectMonth` / `CalendarSelectYear` are dropdown jumps, and `CalendarGrid` is the day grid itself. See [Anatomy](#anatomy) for the full tree.
 
 ```rust
-Calendar {
-    // The currently selected date in the calendar (if any).
-    selected_date,
-    on_date_change: |date: Option<CalendarDate>| {
-        // This callback is triggered when a date is selected in the calendar.
-        // The date parameter contains the selected date.
-    },
-    // The current view date of the calendar, which determines the month and year displayed.
-    view_date,
-    on_view_change: |date: CalendarDate| {
-        // This callback is triggered when the view date changes.
-        // The date parameter contains the new view date.
-    },
-    // The calendar view will get rendered once for each month in the multi-month view.
-    CalendarView {
-        // The calendar header should contain the navigation controls and the title for the calendar.
-        CalendarHeader {
-            // The calendar navigation handles switching between months and years within the calendar view.
-            CalendarNavigation {
-                // The previous month button allows users to navigate to the previous month.
-                PreviousMonthButton {}
-                // The title displays the current month and year of the calendar view.
-                CalendarTitle {}
-                // The next month button allows users to navigate to the next month.
-                NextMonthButton {}
+use dioxus::prelude::*;
+use dioxus_components::calendar::*;
+use time::{Date, UtcDateTime};
+
+#[component]
+fn DatePicker() -> Element {
+    let mut selected = use_signal(|| None::<Date>);
+    let mut view = use_signal(|| UtcDateTime::now().date());
+    rsx! {
+        Calendar {
+            selected_date: selected(),
+            on_date_change: move |d| selected.set(d),
+            view_date: view(),
+            on_view_change: move |d| view.set(d),
+            CalendarView {
+                CalendarHeader {
+                    CalendarNavigation {
+                        CalendarPreviousMonthButton {}
+                        CalendarSelectMonth {}
+                        CalendarSelectYear {}
+                        CalendarNextMonthButton {}
+                    }
+                }
+                CalendarGrid {}
             }
         }
-        // The calendar grid displays the days of the month in a grid layout.
-        CalendarGrid {}
     }
 }
 ```
+
+For range selection, swap `Calendar` for `RangeCalendar`, `selected_date` for `selected_range`, and `on_date_change` for `on_range_change`. Everything else stays the same.
+
+The component does not own its own popover — pair it with [`Popover`](/docs/components/popover) to build a click-to-open date picker, or use the higher-level [`DatePicker`](/docs/components/date_picker) which packages the two together.
