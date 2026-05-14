@@ -9,149 +9,91 @@ async function gotoAndWait(page: import("@playwright/test").Page) {
   await page
     .locator('[data-testid="portal-demos"]')
     .waitFor({ state: "visible", timeout: 60_000 });
+  // Wait until the WASM bundle finishes loading so click handlers
+  // are wired before we interact. Firefox / WebKit are slower than
+  // Chromium here, and without this the toggle click can fire into
+  // a not-yet-hydrated button on those engines.
+  await page.waitForLoadState("networkidle");
 }
 
 // ---------------------------------------------------------------------------
-// Upstream: portal.stories.tsx — "Base"
-// Content renders through Portal into PortalHost.
-// Dioxus portals may briefly render inline before settling into PortalHost,
-// so we scope content queries to the host.
+// Portal is now a no-op pass-through. Children render inline where the
+// component sits in the tree — there is no PortalHost and no DOM
+// re-parenting. Top-layer escape lives on overlay primitives via the
+// `popover` attribute / `<dialog>` element (see Top Layer demo).
 // ---------------------------------------------------------------------------
 
 test.describe("Portal: base", () => {
-  test("portal content is not visible in host until toggled", async ({
-    page,
-  }) => {
+  test("portal content is not present until toggled", async ({ page }) => {
     await gotoAndWait(page);
-    const host = page.locator('[data-slot="portal-host"]');
     await expect(
-      host.locator('[data-testid="base-portal-content"]')
-    ).not.toBeVisible();
+      page.locator('[data-testid="base-portal-content"]')
+    ).toHaveCount(0);
   });
 
-  test("portal content appears in host when toggled on", async ({ page }) => {
+  test("portal content appears inline when toggled on", async ({ page }) => {
     await gotoAndWait(page);
     await page.locator('[data-testid="base-toggle"]').click();
-    const host = page.locator('[data-slot="portal-host"]');
     await expect(
-      host.locator('[data-testid="base-portal-content"]')
+      page.locator(
+        '[data-testid="inline-container"] [data-testid="base-portal-content"]'
+      )
     ).toBeVisible();
   });
 
-  test("portal content renders inside PortalHost, not the overflow container", async ({
-    page,
-  }) => {
+  test("portal content disappears when toggled off", async ({ page }) => {
     await gotoAndWait(page);
-    await page.locator('[data-testid="base-toggle"]').click();
-
-    // The portal content should be inside [data-slot="portal-host"],
-    // NOT inside the overflow container.
-    const inHost = page.locator(
-      '[data-slot="portal-host"] [data-testid="base-portal-content"]'
-    );
-    await expect(inHost).toBeVisible();
-  });
-
-  test("portal content disappears from host when toggled off", async ({
-    page,
-  }) => {
-    await gotoAndWait(page);
-    const host = page.locator('[data-slot="portal-host"]');
+    const content = page.locator('[data-testid="base-portal-content"]');
 
     await page.locator('[data-testid="base-toggle"]').click();
-    await expect(
-      host.locator('[data-testid="base-portal-content"]')
-    ).toBeVisible();
+    await expect(content).toBeVisible();
 
     await page.locator('[data-testid="base-toggle"]').click();
-    await expect(
-      host.locator('[data-testid="base-portal-content"]')
-    ).not.toBeVisible();
+    await expect(content).toHaveCount(0);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Upstream: portal.stories.tsx — "Chromatic" zIndex and order section
-// Multiple portals render and maintain order
-// ---------------------------------------------------------------------------
 
 test.describe("Portal: multiple portals", () => {
-  test("all three portals render in host when toggled", async ({ page }) => {
+  test("all three portals render inline when toggled", async ({ page }) => {
     await gotoAndWait(page);
     await page.locator('[data-testid="multi-toggle"]').click();
 
-    const host = page.locator('[data-slot="portal-host"]');
+    const section = page.locator('[data-testid="portal-multi"]');
     await expect(
-      host.locator('[data-testid="multi-portal-1"]')
+      section.locator('[data-testid="multi-portal-1"]')
     ).toBeVisible();
     await expect(
-      host.locator('[data-testid="multi-portal-2"]')
+      section.locator('[data-testid="multi-portal-2"]')
     ).toBeVisible();
     await expect(
-      host.locator('[data-testid="multi-portal-3"]')
+      section.locator('[data-testid="multi-portal-3"]')
     ).toBeVisible();
   });
 
-  test("all portals render inside PortalHost", async ({ page }) => {
+  test("all portals disappear when toggled off", async ({ page }) => {
     await gotoAndWait(page);
-    await page.locator('[data-testid="multi-toggle"]').click();
-
-    const host = page.locator('[data-slot="portal-host"]');
-    await expect(
-      host.locator('[data-testid="multi-portal-1"]')
-    ).toBeVisible();
-    await expect(
-      host.locator('[data-testid="multi-portal-2"]')
-    ).toBeVisible();
-    await expect(
-      host.locator('[data-testid="multi-portal-3"]')
-    ).toBeVisible();
-  });
-
-  test("all portals disappear from host when toggled off", async ({
-    page,
-  }) => {
-    await gotoAndWait(page);
-    const host = page.locator('[data-slot="portal-host"]');
 
     await page.locator('[data-testid="multi-toggle"]').click();
     await expect(
-      host.locator('[data-testid="multi-portal-1"]')
+      page.locator('[data-testid="multi-portal-1"]')
     ).toBeVisible();
 
     await page.locator('[data-testid="multi-toggle"]').click();
-    await expect(
-      host.locator('[data-testid="multi-portal-1"]')
-    ).not.toBeVisible();
-    await expect(
-      host.locator('[data-testid="multi-portal-2"]')
-    ).not.toBeVisible();
-    await expect(
-      host.locator('[data-testid="multi-portal-3"]')
-    ).not.toBeVisible();
+    await expect(page.locator('[data-testid="multi-portal-1"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid="multi-portal-2"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid="multi-portal-3"]')).toHaveCount(0);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Portal renders in PortalHost, not inline
+// There is no PortalHost anymore — confirm the slot element is absent.
 // ---------------------------------------------------------------------------
 
-test.describe("Portal: location", () => {
-  test("portal content renders in PortalHost, not in the section", async ({
+test.describe("Portal: no host", () => {
+  test("no [data-slot=portal-host] element exists in the document", async ({
     page,
   }) => {
     await gotoAndWait(page);
-
-    // Content should exist inside the PortalHost
-    const inHost = page.locator(
-      '[data-slot="portal-host"] [data-testid="location-portal-content"]'
-    );
-    await expect(inHost).toBeVisible();
-
-    // It should NOT be inside the portal-location section
-    const inSection = page.locator(
-      '[data-testid="portal-location"] [data-testid="location-portal-content"]'
-    );
-    await expect(inSection).not.toBeVisible();
+    await expect(page.locator('[data-slot="portal-host"]')).toHaveCount(0);
   });
 });

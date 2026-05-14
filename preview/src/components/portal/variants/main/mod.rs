@@ -12,16 +12,16 @@ pub fn Demo() -> Element {
             class: "flex flex-col gap-8 p-4",
 
             // ---------------------------------------------------------
-            // Test 1: Base — content escapes overflow container
-            // Upstream: portal.stories.tsx "Base"
+            // Test 1: Portal is a no-op pass-through — children render
+            // inline where Portal sits in the tree.
             // ---------------------------------------------------------
             section {
                 "data-testid": "portal-base",
-                h3 { "Base Portal" }
+                h3 { "Base Portal (renders inline)" }
                 div {
-                    style: "max-width: 300px; max-height: 100px; overflow: hidden; border: 1px solid gray; padding: 8px;",
-                    "data-testid": "overflow-container",
-                    p { "This content is inside an overflow:hidden container." }
+                    "data-testid": "inline-container",
+                    style: "border: 1px solid gray; padding: 8px;",
+                    p { "Portal renders its children right here — no DOM re-parenting." }
                     button {
                         "data-testid": "base-toggle",
                         r#type: "button",
@@ -33,8 +33,8 @@ pub fn Demo() -> Element {
                             div {
                                 "data-testid": "base-portal-content",
                                 style: "padding: 10px; margin: 10px; border: 2px solid blue; background: #eef;",
-                                p { "This content is rendered through a Portal." }
-                                p { "It appears in the PortalHost, outside the overflow container." }
+                                p { "This content is rendered through Portal." }
+                                p { "It appears inline, inside its parent section." }
                             }
                         }
                     }
@@ -42,12 +42,11 @@ pub fn Demo() -> Element {
             }
 
             // ---------------------------------------------------------
-            // Test 2: Multiple portals — z-index ordering
-            // Upstream: portal.stories.tsx "Chromatic" zIndex section
+            // Test 2: Multiple portals render inline in source order.
             // ---------------------------------------------------------
             section {
                 "data-testid": "portal-multi",
-                h3 { "Multiple Portals (ordering)" }
+                h3 { "Multiple Portals (inline, in order)" }
                 button {
                     "data-testid": "multi-toggle",
                     r#type: "button",
@@ -78,27 +77,6 @@ pub fn Demo() -> Element {
                     }
                 }
             }
-
-            // ---------------------------------------------------------
-            // Test 3: Inline fallback — no PortalHost limitation test
-            // This section does NOT use PortalHost, so Portal renders inline.
-            // Note: In this demo we DO have a PortalHost below, so this
-            // test is verified via a separate check that content appears
-            // in the host, not inline.
-            // ---------------------------------------------------------
-            section {
-                "data-testid": "portal-location",
-                h3 { "Portal renders in PortalHost (not inline)" }
-                p { "The portal content below should NOT appear inside this section." }
-                Portal {
-                    div {
-                        "data-testid": "location-portal-content",
-                        style: "padding: 8px; margin: 4px; border: 2px solid purple; background: #fef;",
-                        "I should be in the PortalHost"
-                    }
-                }
-            }
         }
-        // PortalHost is provided by the app layout — no need to add one here.
     }
 }

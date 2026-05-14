@@ -17,7 +17,6 @@ pub mod accessible_icon;
 pub mod accordion;
 pub mod alert_dialog;
 pub mod announce;
-mod aria_hidden;
 pub mod arrow;
 pub mod aspect_ratio;
 pub mod avatar;

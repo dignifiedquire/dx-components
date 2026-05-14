@@ -1,1 +1,1 @@
-Teleports children to a PortalHost at the app root, escaping parent overflow and z-index stacking contexts. Dioxus equivalent of Radix's Portal using ReactDOM.createPortal.
+Kept for upstream `@radix-ui/react-portal` API parity. Renders children inline — no DOM re-parenting. Top-layer escape of ancestor `overflow`, `transform`, and stacking-contexts is provided by each overlay primitive directly via the [HTML `popover` attribute](https://developer.mozilla.org/en-US/docs/Web/API/Popover_API) and `<dialog>` element (see the **Top Layer** component for the underlying hook).

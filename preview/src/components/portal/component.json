@@ -1,6 +1,6 @@
 {
   "name": "portal",
-  "description": "Teleports children to a PortalHost at the app root, escaping parent stacking contexts.",
+  "description": "No-op alias kept for upstream API parity. Overlay primitives render in the browser top layer via the `popover` attribute and `<dialog>` element instead — see the top_layer component for the underlying mechanism.",
   "authors": ["Dioxus Labs"],
   "exclude": ["variants", "docs.md", "component.json"],
   "cargoDependencies": [
