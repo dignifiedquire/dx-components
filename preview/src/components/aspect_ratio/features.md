@@ -1,0 +1,1 @@
+- Accepts any custom ratio.
