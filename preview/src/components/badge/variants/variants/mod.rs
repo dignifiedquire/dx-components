@@ -5,11 +5,12 @@ use super::super::component::*;
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        div { class: "flex w-full flex-wrap items-center justify-center gap-2",
-            Badge { "Badge" }
+        div { class: "flex flex-wrap gap-2",
+            Badge { "Default" }
             Badge { variant: BadgeVariant::Secondary, "Secondary" }
             Badge { variant: BadgeVariant::Destructive, "Destructive" }
             Badge { variant: BadgeVariant::Outline, "Outline" }
+            Badge { variant: BadgeVariant::Ghost, "Ghost" }
         }
     }
 }
