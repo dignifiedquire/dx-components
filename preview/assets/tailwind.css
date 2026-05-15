@@ -673,6 +673,9 @@
   .h-auto {
     height: auto;
   }
+  .h-fit {
+    height: fit-content;
+  }
   .h-full {
     height: 100%;
   }
@@ -2656,6 +2659,20 @@
       outline-style: none;
     }
   }
+  .\*\:focus-visible\:relative {
+    :is(& > *) {
+      &:focus-visible {
+        position: relative;
+      }
+    }
+  }
+  .\*\:focus-visible\:z-10 {
+    :is(& > *) {
+      &:focus-visible {
+        z-index: 10;
+      }
+    }
+  }
   .active\:not-aria-\[haspopup\]\:translate-y-px {
     &:active {
       &:not(*[aria-haspopup]) {
@@ -3031,6 +3048,11 @@
       color: var(--destructive);
     }
   }
+  .data-\[orientation\=horizontal\]\:mx-px {
+    &[data-orientation="horizontal"] {
+      margin-inline: 1px;
+    }
+  }
   .data-\[orientation\=horizontal\]\:h-1\.5 {
     &[data-orientation="horizontal"] {
       height: calc(var(--spacing) * 1.5);
@@ -3046,6 +3068,11 @@
       height: 1px;
     }
   }
+  .data-\[orientation\=horizontal\]\:w-auto {
+    &[data-orientation="horizontal"] {
+      width: auto;
+    }
+  }
   .data-\[orientation\=horizontal\]\:w-full {
     &[data-orientation="horizontal"] {
       width: 100%;
@@ -3054,6 +3081,11 @@
   .data-\[orientation\=horizontal\]\:flex-col {
     &[data-orientation="horizontal"] {
       flex-direction: column;
+    }
+  }
+  .data-\[orientation\=vertical\]\:my-px {
+    &[data-orientation="vertical"] {
+      margin-block: 1px;
     }
   }
   .data-\[orientation\=vertical\]\:h-auto {
@@ -3624,6 +3656,11 @@
       margin-top: calc(var(--spacing) * 0);
     }
   }
+  .sm\:flex {
+    @media (width >= 40rem) {
+      display: flex;
+    }
+  }
   .sm\:inline-block {
     @media (width >= 40rem) {
       display: inline-block;
@@ -3819,6 +3856,11 @@
   .xl\:flex {
     @media (width >= 80rem) {
       display: flex;
+    }
+  }
+  .rtl\:rotate-180 {
+    &:where(:dir(rtl), [dir="rtl"], [dir="rtl"] *) {
+      rotate: 180deg;
     }
   }
   .dark\:border-input {
@@ -4571,16 +4613,22 @@
       }
     }
   }
+  .\[\&\>\*\:not\(\:first-child\)\]\:rounded-s-none {
+    &>*:not(:first-child) {
+      border-start-start-radius: 0;
+      border-end-start-radius: 0;
+    }
+  }
   .\[\&\>\*\:not\(\:first-child\)\]\:rounded-t-none {
     &>*:not(:first-child) {
       border-top-left-radius: 0;
       border-top-right-radius: 0;
     }
   }
-  .\[\&\>\*\:not\(\:first-child\)\]\:rounded-l-none {
+  .\[\&\>\*\:not\(\:first-child\)\]\:border-s-0 {
     &>*:not(:first-child) {
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
+      border-inline-start-style: var(--tw-border-style);
+      border-inline-start-width: 0px;
     }
   }
   .\[\&\>\*\:not\(\:first-child\)\]\:border-t-0 {
@@ -4593,6 +4641,12 @@
     &>*:not(:first-child) {
       border-left-style: var(--tw-border-style);
       border-left-width: 0px;
+    }
+  }
+  .\[\&\>\*\:not\(\:last-child\)\]\:rounded-e-none {
+    &>*:not(:last-child) {
+      border-start-end-radius: 0;
+      border-end-end-radius: 0;
     }
   }
   .\[\&\>\*\:not\(\:last-child\)\]\:rounded-r-none {
@@ -4620,6 +4674,31 @@
   .\[\&\>\[data-slot\=field-label\]\]\:flex-auto {
     &>[data-slot=field-label] {
       flex: auto;
+    }
+  }
+  .has-\[select\[aria-hidden\=true\]\:last-child\]\:\[\&\>\[data-slot\=select-trigger\]\:last-of-type\]\:rounded-e-lg {
+    &:has(*:is(select[aria-hidden=true]:last-child)) {
+      &>[data-slot=select-trigger]:last-of-type {
+        border-start-end-radius: var(--radius-lg);
+        border-end-end-radius: var(--radius-lg);
+      }
+    }
+  }
+  .\[\&\>\[data-slot\=select-trigger\]\:not\(\[class\*\=\'w-\'\]\)\]\:w-fit {
+    &>[data-slot=select-trigger]:not([class*='w-']) {
+      width: fit-content;
+    }
+  }
+  .\[\&\>\[data-slot\]\:not\(\:has\(\~\[data-slot\]\)\)\]\:rounded-e-lg\! {
+    &>[data-slot]:not(:has(~[data-slot])) {
+      border-start-end-radius: var(--radius-lg) !important;
+      border-end-end-radius: var(--radius-lg) !important;
+    }
+  }
+  .\[\&\>\[data-slot\]\:not\(\:has\(\~\[data-slot\]\)\)\]\:rounded-b-lg\! {
+    &>[data-slot]:not(:has(~[data-slot])) {
+      border-bottom-right-radius: var(--radius-lg) !important;
+      border-bottom-left-radius: var(--radius-lg) !important;
     }
   }
   .\[\&\>\[role\=checkbox\]\]\:translate-y-\[2px\] {

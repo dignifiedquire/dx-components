@@ -35,9 +35,9 @@ fn button_group_horizontal_default() {
 
     let html = render(TestApp);
 
-    // Horizontal orientation classes
-    assert!(html.contains("rounded-l-none"));
-    assert!(html.contains("rounded-r-none"));
+    // Horizontal orientation classes (logical properties for RTL parity)
+    assert!(html.contains("rounded-s-none"));
+    assert!(html.contains("rounded-e-none"));
 }
 
 #[test]

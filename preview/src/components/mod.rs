@@ -137,6 +137,7 @@ examples!(
     avatar[sizes],
     badge[variants, icon, colors],
     button[size, default, outline, secondary, ghost, destructive, link, icon, with_icon, rounded, spinner],
+    button_group[orientation, size, separator, split, rtl],
     calendar[simple, internationalized, range, multi_month, unavailable_dates],
     carousel[sizes, multiple, spacing, orientation],
     checkbox[disabled, with_text],
