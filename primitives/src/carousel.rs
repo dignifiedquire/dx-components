@@ -66,13 +66,32 @@ impl CarouselOrientation {
 pub struct CarouselCtx {
     /// Carousel orientation.
     pub orientation: CarouselOrientation,
+    /// Currently active slide index (index of the left-most visible slide).
+    pub current_index: usize,
+    /// Total number of slides.
+    pub total_slides: usize,
+    /// How many slides are visible per viewport. Drives both boundary
+    /// detection and the per-step translate distance — the information
+    /// embla derives from the DOM in shadcn's source.
+    pub slides_per_view: usize,
+    /// Whether can scroll to previous.
+    pub can_scroll_prev: bool,
+    /// Whether can scroll to next.
+    pub can_scroll_next: bool,
+}
+
+/// Read-only snapshot of carousel state, handed to the parent via the
+/// `on_api` callback. Mirrors shadcn's `setApi` / embla `CarouselApi`
+/// surface (the subset that doesn't require embla's DOM measurements).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CarouselApi {
     /// Currently active slide index.
     pub current_index: usize,
     /// Total number of slides.
     pub total_slides: usize,
-    /// Whether can scroll to previous.
+    /// Whether the carousel can scroll to a previous slide.
     pub can_scroll_prev: bool,
-    /// Whether can scroll to next.
+    /// Whether the carousel can scroll to a next slide.
     pub can_scroll_next: bool,
 }
 
@@ -96,6 +115,14 @@ pub struct CarouselProps {
     #[props(default = 1)]
     pub total_slides: usize,
 
+    /// Number of slides visible per viewport. Defaults to `1`. Set this to
+    /// match the `basis-1/N` utility on your `CarouselItem`s (e.g. `2` for
+    /// `basis-1/2`, `3` for `basis-1/3`) so the prev/next boundary and the
+    /// per-step translate distance are computed correctly. This stands in
+    /// for the DOM measurement embla performs in shadcn's source.
+    #[props(default = 1)]
+    pub slides_per_view: usize,
+
     /// Initial slide index.
     #[props(default)]
     pub initial_index: usize,
@@ -103,6 +130,11 @@ pub struct CarouselProps {
     /// Callback when the current slide changes.
     #[props(default)]
     pub on_slide_change: Callback<usize>,
+
+    /// Called whenever the carousel state changes, with a read-only
+    /// [`CarouselApi`] snapshot. Mirrors shadcn's `setApi` prop.
+    #[props(default)]
+    pub on_api: Callback<CarouselApi>,
 
     /// Additional CSS classes.
     #[props(default)]
@@ -122,14 +154,19 @@ pub fn Carousel(props: CarouselProps) -> Element {
     let mut current_index = use_signal(|| props.initial_index);
 
     let total = props.total_slides;
+    let spv = props.slides_per_view.max(1);
     let idx = current_index();
+
+    // Last index where a full group of `spv` slides is still flush-left.
+    let max_index = total.saturating_sub(spv);
 
     let ctx = CarouselCtx {
         orientation: props.orientation,
         current_index: idx,
         total_slides: total,
+        slides_per_view: spv,
         can_scroll_prev: idx > 0,
-        can_scroll_next: idx + 1 < total,
+        can_scroll_next: idx < max_index,
     };
 
     use_context_provider(|| Signal::new(ctx.clone()));
@@ -142,12 +179,24 @@ pub fn Carousel(props: CarouselProps) -> Element {
         ctx_signal.set(ctx);
     }
 
+    // Mirror shadcn's `setApi` — hand the parent a state snapshot.
+    let on_api = props.on_api;
+    use_effect(move || {
+        on_api.call(CarouselApi {
+            current_index: idx,
+            total_slides: total,
+            can_scroll_prev: idx > 0,
+            can_scroll_next: idx < max_index,
+        });
+    });
+
     let orientation = props.orientation;
 
     rsx! {
         div {
+            // Matches shadcn's root: only `data-slot`, no `data-orientation`
+            // (orientation is read from context, not the DOM).
             "data-slot": "carousel",
-            "data-orientation": orientation.as_str(),
             role: "region",
             aria_roledescription: "carousel",
             class: props.class,
@@ -155,6 +204,7 @@ pub fn Carousel(props: CarouselProps) -> Element {
                 match (orientation, e.key()) {
                     (CarouselOrientation::Horizontal, Key::ArrowLeft)
                     | (CarouselOrientation::Vertical, Key::ArrowUp) => {
+                        e.prevent_default();
                         let idx = current_index();
                         if idx > 0 {
                             current_index.set(idx - 1);
@@ -163,8 +213,9 @@ pub fn Carousel(props: CarouselProps) -> Element {
                     }
                     (CarouselOrientation::Horizontal, Key::ArrowRight)
                     | (CarouselOrientation::Vertical, Key::ArrowDown) => {
+                        e.prevent_default();
                         let idx = current_index();
-                        if idx + 1 < total {
+                        if idx < max_index {
                             current_index.set(idx + 1);
                             props.on_slide_change.call(idx + 1);
                         }
@@ -330,7 +381,10 @@ pub fn CarouselNext(props: CarouselNextProps) -> Element {
     let on_slide_change = use_context::<Callback<usize>>();
 
     let can_scroll = ctx.read().can_scroll_next;
-    let total = ctx.read().total_slides;
+    let max_index = {
+        let c = ctx.read();
+        c.total_slides.saturating_sub(c.slides_per_view.max(1))
+    };
     let has_children = props.children != Ok(VNode::placeholder());
 
     rsx! {
@@ -342,7 +396,7 @@ pub fn CarouselNext(props: CarouselNextProps) -> Element {
             class: props.class,
             onclick: move |_| {
                 let idx = current_index();
-                if idx + 1 < total {
+                if idx < max_index {
                     current_index.set(idx + 1);
                     on_slide_change.call(idx + 1);
                 }

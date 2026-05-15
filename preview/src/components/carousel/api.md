@@ -5,9 +5,11 @@ Root container. Sets up context (current index, total slides, orientation, `on_s
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
 | `total_slides` | `usize` | `1` | Total slide count. Must match the number of `CarouselItem`s rendered. |
+| `slides_per_view` | `usize` | `1` | Slides visible per viewport. Set to match the `basis-1/N` on each `CarouselItem` (`2` for `basis-1/2`, `3` for `basis-1/3`, …). Drives the boundary detection and the per-step translate distance — required because, unlike embla, we don't measure the DOM. |
 | `orientation` | `CarouselOrientation` | `Horizontal` | `Horizontal` or `Vertical`. Affects which axis the content translates on. |
 | `initial_index` | `usize` | `0` | Starting slide index when uncontrolled. |
-| `on_slide_change` | `Callback<usize>` | — | Fires whenever the active slide changes (via prev/next click). |
+| `on_slide_change` | `Callback<usize>` | — | Fires whenever the active slide changes (via prev/next click or arrow keys). |
+| `on_api` | `Callback<CarouselApi>` | — | Fires with a [`CarouselApi`] snapshot whenever state changes. Mirrors shadcn's `setApi`. |
 | `class` | `Option<String>` | — | Forwarded to the root element. |
 | `attributes` | `Vec<Attribute>` | — | Spread onto the root element. |
 | `children` | `Element` | — | `CarouselContent` + `CarouselPrevious` + `CarouselNext`. |
@@ -17,7 +19,21 @@ Root container. Sets up context (current index, total slides, orientation, `on_s
 | Attribute | Values |
 | --- | --- |
 | `[data-slot]` | `"carousel"` |
-| `[data-orientation]` | `"horizontal"` \| `"vertical"` |
+
+(`data-orientation` is not emitted on the root — matching shadcn, orientation is read from context.)
+
+### CarouselApi
+
+```rust
+pub struct CarouselApi {
+    pub current_index: usize,
+    pub total_slides: usize,
+    pub can_scroll_prev: bool,
+    pub can_scroll_next: bool,
+}
+```
+
+Read-only state snapshot delivered to `on_api`. The subset of embla's `CarouselApi` that doesn't depend on DOM measurement.
 
 ### CarouselContent
 

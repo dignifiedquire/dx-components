@@ -5,11 +5,20 @@
 
 use dioxus::prelude::*;
 use dioxus_primitives::carousel as primitives;
-use dx_icons_lucide::{IconArrowLeft, IconArrowRight};
+use dx_icons_lucide::{IconChevronLeft, IconChevronRight};
 use tailwind_fuse::*;
 
+/// shadcn `Button variant="outline" size="icon"` flattened to a class
+/// string (we don't route carousel buttons through the styled `Button`
+/// because the primitive renders its own `<button>`). Matches the
+/// registry `ui/carousel.tsx` which uses `size="icon"` (`size-8`) +
+/// `absolute size-8 rounded-full` — the radix-flavor file uses
+/// `icon-sm` (size-7) but that reads too small as a free-floating nav
+/// control, so we follow the registry sizing here.
+const NAV_BUTTON_CLASS: &str = "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 size-8 absolute touch-manipulation rounded-full";
+
 // Re-export context and types
-pub use primitives::{CarouselCtx, CarouselOrientation, use_carousel};
+pub use primitives::{CarouselApi, CarouselCtx, CarouselOrientation, use_carousel};
 
 // ---------------------------------------------------------------------------
 // Carousel (root)
@@ -26,6 +35,12 @@ pub struct CarouselProps {
     #[props(default = 1)]
     pub total_slides: usize,
 
+    /// Slides visible per viewport. Set to match the `basis-1/N` utility on
+    /// your `CarouselItem`s (`2` for `basis-1/2`, `3` for `basis-1/3`, …) so
+    /// the prev/next boundary and per-step distance are correct.
+    #[props(default = 1)]
+    pub slides_per_view: usize,
+
     /// Initial slide index.
     #[props(default)]
     pub initial_index: usize,
@@ -33,6 +48,11 @@ pub struct CarouselProps {
     /// Callback when slide changes.
     #[props(default)]
     pub on_slide_change: Callback<usize>,
+
+    /// Called with a [`CarouselApi`] snapshot whenever state changes —
+    /// mirrors shadcn's `setApi`.
+    #[props(default)]
+    pub on_api: Callback<CarouselApi>,
 
     /// Additional Tailwind classes.
     #[props(default)]
@@ -55,8 +75,10 @@ pub fn Carousel(props: CarouselProps) -> Element {
         primitives::Carousel {
             orientation: props.orientation,
             total_slides: props.total_slides,
+            slides_per_view: props.slides_per_view,
             initial_index: props.initial_index,
             on_slide_change: props.on_slide_change,
+            on_api: props.on_api,
             class: class,
             attributes: props.attributes,
             {props.children}
@@ -98,7 +120,11 @@ pub fn CarouselContent(props: CarouselContentProps) -> Element {
         props.class
     );
 
-    let offset = ctx.current_index as f64 * -100.0;
+    // Each step shifts by one slide width = 100 / slides_per_view percent
+    // of the flex track, so multi-visible carousels move one item at a
+    // time instead of a whole viewport.
+    let spv = ctx.slides_per_view.max(1) as f64;
+    let offset = ctx.current_index as f64 * -100.0 / spv;
     let transform = match ctx.orientation {
         CarouselOrientation::Horizontal => format!("transform: translateX({offset}%);"),
         CarouselOrientation::Vertical => format!("transform: translateY({offset}%);"),
@@ -107,7 +133,13 @@ pub fn CarouselContent(props: CarouselContentProps) -> Element {
     rsx! {
         div {
             "data-slot": "carousel-viewport",
-            class: "overflow-hidden",
+            // `overflow-clip`, NOT `overflow-hidden`: `hidden` still leaves
+            // the element programmatically/touch-scrollable (it only hides
+            // the scrollbar), so a trackpad swipe would scroll past our
+            // transform-driven boundary. `clip` fully clips and creates no
+            // scroll container. shadcn uses `overflow-hidden` because embla
+            // intercepts the drag; we have no embla, so we must hard-clip.
+            class: "overflow-clip",
 
             primitives::CarouselContent {
                 class: class,
@@ -191,7 +223,7 @@ pub fn CarouselPrevious(props: CarouselPreviousProps) -> Element {
         CarouselOrientation::Vertical => "left-1/2 -top-12 -translate-x-1/2 rotate-90",
     };
 
-    let class = tw_merge!("absolute size-8 rounded-full", orient_class, props.class,);
+    let class = tw_merge!(NAV_BUTTON_CLASS, orient_class, props.class);
 
     let has_children = props.children != Ok(VNode::placeholder());
 
@@ -202,7 +234,8 @@ pub fn CarouselPrevious(props: CarouselPreviousProps) -> Element {
             if has_children {
                 {props.children}
             } else {
-                IconArrowLeft { class: "size-4" }
+                IconChevronLeft { class: "cn-rtl-flip size-4" }
+                span { class: "sr-only", "Previous slide" }
             }
         }
     }
@@ -237,7 +270,7 @@ pub fn CarouselNext(props: CarouselNextProps) -> Element {
         CarouselOrientation::Vertical => "left-1/2 -bottom-12 -translate-x-1/2 rotate-90",
     };
 
-    let class = tw_merge!("absolute size-8 rounded-full", orient_class, props.class,);
+    let class = tw_merge!(NAV_BUTTON_CLASS, orient_class, props.class);
 
     let has_children = props.children != Ok(VNode::placeholder());
 
@@ -248,7 +281,8 @@ pub fn CarouselNext(props: CarouselNextProps) -> Element {
             if has_children {
                 {props.children}
             } else {
-                IconArrowRight { class: "size-4" }
+                IconChevronRight { class: "cn-rtl-flip size-4" }
+                span { class: "sr-only", "Next slide" }
             }
         }
     }

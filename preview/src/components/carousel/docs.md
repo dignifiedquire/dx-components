@@ -1,6 +1,6 @@
-A carousel slides through a series of items with prev/next navigation. Driven by a `total_slides` counter and an internal `current_index` signal; the buttons are automatically disabled at the boundaries. CSS `transition-transform` on `CarouselContent` provides the slide animation (~300 ms).
+A carousel slides through a series of items with prev/next navigation. Driven by `total_slides` + `slides_per_view`; the buttons disable automatically at the boundaries and `CarouselContent` translates one slide-width per step (`100 / slides_per_view` percent). CSS `transition-transform` provides the ~300 ms animation. Pass `on_api` to receive a [`CarouselApi`] snapshot whenever the state changes (mirrors shadcn's `setApi`).
 
-`CarouselItem` defaults to `basis-full` (one item visible at a time). Pass Tailwind classes like `basis-1/2` or `lg:basis-1/3` to show multiple items at once — see the "Multiple" example. Use `class: "-ml-1"` on `CarouselContent` plus `pl-1` on each `CarouselItem` to tighten spacing — see "Spacing".
+`CarouselItem` defaults to `basis-full` (one item per view). To show multiple items at once, set `slides_per_view` on `Carousel` AND a matching `basis-1/N` on each `CarouselItem` (e.g. `slides_per_view: 3` + `basis-1/3`) — see the "Multiple"/"Sizes"/"Spacing" examples. `slides_per_view` is required for the boundary + translate math because, unlike embla, we don't measure the DOM. Tighten the gap with `-ml-1` on `CarouselContent` + `pl-1` on each `CarouselItem` (the "Spacing" example).
 
 ```rust
 use dioxus::prelude::*;
@@ -33,11 +33,11 @@ fn ImageCarousel() -> Element {
 
 ### Known gaps vs shadcn (embla-backed)
 
-Our primitive is hand-written, not an embla wrapper, so some features are not yet available:
+shadcn wraps `embla-carousel-react`. Our primitive is hand-written, so the embla-only features are not yet available:
 
-- **Pointer drag / touch swipe** — embla provides physics-based dragging; our carousel only advances via the prev/next buttons.
+- **Pointer drag / touch swipe** — embla provides physics-based dragging; our carousel only advances via the prev/next buttons or arrow keys.
 - **Plugins** (auto-play, fade, etc.) — embla exposes a plugin API; we don't.
-- **API exposure** — embla returns an api ref the consumer can scroll programmatically; we don't.
-- **Loop, alignment, slidesToScroll** — embla `opts` aren't implemented.
+- **`opts` config** — embla's `loop`, `align`, `slidesToScroll`, `dragFree`, `containScroll`.
+- **Auto DOM measurement** — embla measures slide widths from the DOM; we require an explicit `slides_per_view` instead.
 
-These are tracked as follow-ups; the basic carousel (slides + prev/next + boundary disable + transition) is functional today.
+These are tracked as a follow-up. Everything else now matches shadcn's source: boundary disable that accounts for `slides_per_view`, the `setApi`-equivalent `on_api` callback, `aria-roledescription`, `sr-only` button labels, ArrowLeft/Right with `preventDefault`, and the outline-icon button styling.
