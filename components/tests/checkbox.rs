@@ -26,8 +26,10 @@ fn checkbox_base_classes() {
 
     let html = render(TestApp);
     assert!(
-        html.contains("peer size-4 shrink-0 rounded-[4px] border border-input shadow-xs"),
-        "checkbox should have base classes: {html}"
+        html.contains(
+            "peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input transition-colors"
+        ),
+        "checkbox should have radix-flavor base classes: {html}"
     );
     assert!(
         html.contains(r#"data-slot="checkbox""#),

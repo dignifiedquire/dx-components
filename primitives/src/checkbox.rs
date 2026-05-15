@@ -101,6 +101,10 @@ pub struct CheckboxProps {
     #[props(default)]
     pub name: Option<String>,
 
+    /// The `form` id the hidden input is associated with.
+    #[props(default)]
+    pub form: Option<String>,
+
     /// The value for form submission. Defaults to `"on"`.
     #[props(default = "on".to_string())]
     pub value: String,
@@ -181,6 +185,7 @@ pub fn Checkbox(props: CheckboxProps) -> Element {
             aria_hidden: true,
             tabindex: "-1",
             name: props.name.clone(),
+            form: props.form.clone(),
             value: props.value.clone(),
             checked: checked().is_checked(),
             disabled: disabled,

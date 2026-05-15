@@ -207,3 +207,23 @@ test.describe("checkbox accessibility", () => {
     expect(results.violations).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// default_checked — mirrors shadcn's checkbox-demo, which renders two
+// `defaultChecked` rows. Guards that uncontrolled checked initial state
+// actually renders checked (not just togglable).
+// ---------------------------------------------------------------------------
+
+test.describe("checkbox default_checked", () => {
+  test("default-checked rows render checked on load", async ({ page }) => {
+    await gotoAndWait(page);
+    const checked = page.locator(
+      '[data-slot="preview"] [data-slot="checkbox"][data-state="checked"]',
+    );
+    // checkbox-demo has two defaultChecked checkboxes (terms-2, toggle-2).
+    await expect(checked).toHaveCount(2);
+    await expect(
+      page.locator('[data-slot="preview"] [data-slot="checkbox"]#terms-2'),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+});
