@@ -24,7 +24,7 @@ fn default_variant() {
     assert!(html.contains(r#"data-slot="badge""#));
     assert!(html.contains(r#"data-variant="default""#));
     assert!(html.contains("bg-primary text-primary-foreground"));
-    assert!(html.contains("rounded-full"));
+    assert!(html.contains("rounded-4xl"));
 }
 
 #[test]
