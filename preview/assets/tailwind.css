@@ -1769,6 +1769,9 @@
   .opacity-75 {
     opacity: 75%;
   }
+  .bg-blend-color {
+    background-blend-mode: color;
+  }
   .shadow {
     --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -2167,6 +2170,12 @@
       position: absolute;
     }
   }
+  .after\:inset-0 {
+    &::after {
+      content: var(--tw-content);
+      inset: calc(var(--spacing) * 0);
+    }
+  }
   .after\:-inset-x-3 {
     &::after {
       content: var(--tw-content);
@@ -2236,6 +2245,25 @@
       translate: var(--tw-translate-x) var(--tw-translate-y);
     }
   }
+  .after\:rounded-full {
+    &::after {
+      content: var(--tw-content);
+      border-radius: calc(infinity * 1px);
+    }
+  }
+  .after\:border {
+    &::after {
+      content: var(--tw-content);
+      border-style: var(--tw-border-style);
+      border-width: 1px;
+    }
+  }
+  .after\:border-border {
+    &::after {
+      content: var(--tw-content);
+      border-color: var(--border);
+    }
+  }
   .after\:bg-foreground {
     &::after {
       content: var(--tw-content);
@@ -2246,6 +2274,12 @@
     &::after {
       content: var(--tw-content);
       opacity: 0%;
+    }
+  }
+  .after\:mix-blend-darken {
+    &::after {
+      content: var(--tw-content);
+      mix-blend-mode: darken;
     }
   }
   .after\:transition-opacity {
@@ -3798,6 +3832,14 @@
     &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       --tw-brightness: brightness(40%);
       filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
+    }
+  }
+  .dark\:after\:mix-blend-lighten {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
+      &::after {
+        content: var(--tw-content);
+        mix-blend-mode: lighten;
+      }
     }
   }
   .dark\:hover\:bg-accent\/50 {

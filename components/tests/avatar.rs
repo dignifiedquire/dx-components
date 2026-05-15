@@ -31,9 +31,9 @@ fn avatar_base_classes() {
     let html = render(TestApp);
     assert!(
         html.contains(
-            "group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none"
+            "group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border"
         ),
-        "avatar should have base classes: {html}"
+        "avatar should have radix-flavor base classes: {html}"
     );
     assert!(
         html.contains(r#"data-slot="avatar""#),

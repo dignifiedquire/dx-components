@@ -81,46 +81,52 @@ test.describe("avatar image loading", () => {
 // Error state / fallback
 // ---------------------------------------------------------------------------
 
+// The shipped demo mirrors shadcn's avatar-demo (all valid image URLs), so
+// no avatar is permanently in the fallback state. To exercise the real Radix
+// fallback path we abort the avatar image requests, which keeps every
+// AvatarImage from reaching `loaded` and forces AvatarFallback to render.
 test.describe("avatar fallback", () => {
-  test("error state avatar shows fallback text", async ({ page }) => {
+  async function gotoWithBrokenImages(page: import("@playwright/test").Page) {
+    await page.route(/github\.com\/.*\.png/, (route) => route.abort());
     await gotoAndWait(page);
-    // Third avatar (index 2) has an invalid URL and shows fallback
-    const errorAvatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').nth(3);
-    await expect(errorAvatar).toBeVisible();
+  }
 
-    const fallback = errorAvatar.locator('[data-slot="avatar-fallback"]');
+  test("fallback renders when the image fails to load", async ({ page }) => {
+    await gotoWithBrokenImages(page);
+    const fallback = page
+      .locator('[data-slot="preview"] [data-slot="avatar"]')
+      .first()
+      .locator('[data-slot="avatar-fallback"]');
     await expect(fallback).toBeVisible({ timeout: 10_000 });
-    await expect(fallback).toContainText("JK");
+    await expect(fallback).toContainText("CN");
   });
 
-  test("fallback has data-slot=avatar-fallback", async ({ page }) => {
-    await gotoAndWait(page);
-    const errorAvatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').nth(3);
-    const fallback = errorAvatar.locator('[data-slot="avatar-fallback"]');
+  test("fallback has data-slot=avatar-fallback and is a span", async ({
+    page,
+  }) => {
+    await gotoWithBrokenImages(page);
+    const fallback = page
+      .locator('[data-slot="preview"] [data-slot="avatar"]')
+      .first()
+      .locator('[data-slot="avatar-fallback"]');
     await expect(fallback).toBeVisible({ timeout: 10_000 });
     await expect(fallback).toHaveAttribute("data-slot", "avatar-fallback");
-  });
-
-  test("fallback is a span element", async ({ page }) => {
-    await gotoAndWait(page);
-    const errorAvatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').nth(3);
-    const fallback = errorAvatar.locator('[data-slot="avatar-fallback"]');
-    await expect(fallback).toBeVisible({ timeout: 10_000 });
     const tagName = await fallback.evaluate((el) => el.tagName.toLowerCase());
     expect(tagName).toBe("span");
   });
 
-  test("error avatar image is hidden when fallback shows", async ({ page }) => {
-    await gotoAndWait(page);
-    const errorAvatar = page.locator('[data-slot="preview"] [data-slot="avatar"]').nth(3);
-
-    // Wait for fallback to appear (indicates image load failed)
-    const fallback = errorAvatar.locator('[data-slot="avatar-fallback"]');
+  test("image element is not rendered while in the fallback state", async ({
+    page,
+  }) => {
+    await gotoWithBrokenImages(page);
+    const firstAvatar = page
+      .locator('[data-slot="preview"] [data-slot="avatar"]')
+      .first();
+    const fallback = firstAvatar.locator('[data-slot="avatar-fallback"]');
     await expect(fallback).toBeVisible({ timeout: 10_000 });
-
-    // The image element should be hidden (display: none)
-    const image = errorAvatar.locator('[data-slot="avatar-image"]');
-    if (await image.count() > 0) {
+    // Radix only mounts AvatarImage once it has loaded; on abort it stays out.
+    const image = firstAvatar.locator('[data-slot="avatar-image"]');
+    if ((await image.count()) > 0) {
       await expect(image).not.toBeVisible();
     }
   });
