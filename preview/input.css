@@ -10,8 +10,16 @@
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
-  /* shadcn extends the radius scale (styles/globals.css); Badge uses
-     `rounded-4xl`, which is not in Tailwind v4's default theme. */
+  /* Mirror shadcn's radius scale (styles/globals.css). Required because
+     components reference `var(--radius-md)` in arbitrary values
+     (e.g. button `rounded-[min(var(--radius-md),10px)]`) and use
+     `rounded-4xl` (Badge); Tailwind v4 does not emit these as usable
+     custom properties unless declared in @theme. */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
 }
