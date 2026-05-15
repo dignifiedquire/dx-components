@@ -48,7 +48,7 @@ fn carousel_content_has_viewport_wrapper() {
         "has viewport wrapper: {html}"
     );
     assert!(
-        html.contains("overflow-hidden"),
+        html.contains("overflow-clip"),
         "viewport overflow: {html}"
     );
 }

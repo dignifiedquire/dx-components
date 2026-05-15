@@ -693,6 +693,9 @@
   .max-h-screen {
     max-height: 100vh;
   }
+  .min-h-0 {
+    min-height: calc(var(--spacing) * 0);
+  }
   .min-h-4 {
     min-height: calc(var(--spacing) * 4);
   }
@@ -3529,11 +3532,6 @@
   .md\:min-w-\[450px\] {
     @media (width >= 48rem) {
       min-width: 450px;
-    }
-  }
-  .md\:basis-1\/2 {
-    @media (width >= 48rem) {
-      flex-basis: calc(1 / 2 * 100%);
     }
   }
   .md\:grid-cols-2 {

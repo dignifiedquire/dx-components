@@ -156,3 +156,53 @@ test.describe("carousel: viewport is not scrollable", () => {
     expect(overflowX).toBe("clip");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Vertical orientation — same multi-visible boundary maths as horizontal,
+// but the track is translated on Y. Guards the regression where the vertical
+// carousel scrolled past the last full group into empty space.
+// ---------------------------------------------------------------------------
+
+test.describe("carousel: vertical orientation", () => {
+  test("next stops at the last full group and clamps translateY", async ({
+    page,
+  }) => {
+    await gotoAndWait(page);
+    const car = variantCarousel(page, "orientation");
+    const next = car.locator('[data-slot="carousel-next"]');
+    const content = car.locator('[data-slot="carousel-content"]');
+
+    await clickUntilDisabled(next);
+
+    // 5 slides, 2 per view → max index 3, step = 100/2 % → clamps at -150%.
+    await expect(next).toBeDisabled();
+    await expect.poll(() => translatePct(content)).toBeCloseTo(-150, 1);
+  });
+
+  test("prev returns to the start and disables", async ({ page }) => {
+    await gotoAndWait(page);
+    const car = variantCarousel(page, "orientation");
+    const next = car.locator('[data-slot="carousel-next"]');
+    const prev = car.locator('[data-slot="carousel-previous"]');
+    const content = car.locator('[data-slot="carousel-content"]');
+
+    await next.click();
+    await expect(prev).toBeEnabled();
+    await clickUntilDisabled(prev);
+
+    await expect(prev).toBeDisabled();
+    await expect.poll(() => translatePct(content)).toBeCloseTo(0, 1);
+  });
+
+  test("viewport is not scrollable on the Y axis", async ({ page }) => {
+    await gotoAndWait(page);
+    const viewport = variantCarousel(page, "orientation").locator(
+      '[data-slot="carousel-viewport"]',
+    );
+    const scrolled = await viewport.evaluate((el) => {
+      el.scrollTop = 9999;
+      return el.scrollTop;
+    });
+    expect(scrolled).toBe(0);
+  });
+});
