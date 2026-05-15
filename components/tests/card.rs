@@ -26,9 +26,9 @@ fn card_data_slot_and_classes() {
     eprintln!("=== card_data_slot_and_classes ===\n{html}\n");
 
     assert!(html.contains(r#"data-slot="card""#));
-    assert!(html.contains("rounded-xl border"));
+    assert!(html.contains("rounded-xl"));
     assert!(html.contains("bg-card"));
-    assert!(html.contains("shadow-sm"));
+    assert!(html.contains("ring-1 ring-foreground/10"));
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn card_title_classes() {
     }
 
     let html = render(TestApp);
-    assert!(html.contains("leading-none font-semibold"));
+    assert!(html.contains("text-base leading-snug font-medium"));
 }
 
 #[test]
