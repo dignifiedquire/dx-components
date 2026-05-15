@@ -460,6 +460,9 @@
   .my-4 {
     margin-block: calc(var(--spacing) * 4);
   }
+  .ms-auto {
+    margin-inline-start: auto;
+  }
   .-mt-1 {
     margin-top: calc(var(--spacing) * -1);
   }
