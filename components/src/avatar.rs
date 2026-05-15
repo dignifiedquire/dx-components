@@ -108,7 +108,10 @@ pub struct AvatarImageProps {
 /// Styled AvatarImage — matches shadcn exactly.
 #[component]
 pub fn AvatarImage(props: AvatarImageProps) -> Element {
-    let class = tw_merge!("aspect-square size-full rounded-full object-cover", props.class);
+    let class = tw_merge!(
+        "aspect-square size-full rounded-full object-cover",
+        props.class
+    );
 
     rsx! {
         primitives::AvatarImage {
