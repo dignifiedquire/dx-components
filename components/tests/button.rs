@@ -111,8 +111,8 @@ fn button_ghost_variant() {
     let html = render(TestApp);
 
     assert!(
-        html.contains("hover:bg-accent"),
-        "ghost variant should have hover:bg-accent: {html}"
+        html.contains("hover:bg-muted"),
+        "ghost variant should have hover:bg-muted: {html}"
     );
 }
 
@@ -144,7 +144,7 @@ fn button_size_sm() {
 
     let html = render(TestApp);
 
-    assert!(html.contains("h-8"), "sm size should have h-8: {html}");
+    assert!(html.contains("h-7"), "sm size should have h-7: {html}");
 }
 
 #[test]
@@ -156,7 +156,7 @@ fn button_size_lg() {
 
     let html = render(TestApp);
 
-    assert!(html.contains("h-10"), "lg size should have h-10: {html}");
+    assert!(html.contains("h-9"), "lg size should have h-9: {html}");
 }
 
 #[test]
@@ -169,8 +169,8 @@ fn button_size_icon() {
     let html = render(TestApp);
 
     assert!(
-        html.contains("size-9"),
-        "icon size should have size-9: {html}"
+        html.contains("size-8"),
+        "icon size should have size-8: {html}"
     );
 }
 

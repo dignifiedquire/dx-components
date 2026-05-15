@@ -1,39 +1,44 @@
 import { test, expect } from '@playwright/test';
 
-test('test', async ({ page }) => {
-  await page.goto('http://127.0.0.1:8080/docs/components/button', { timeout: 20 * 60 * 1000 });
+const URL = 'http://127.0.0.1:8080/docs/components/button';
+const TIMEOUT = { timeout: 20 * 60 * 1000 };
 
-  // Scope to the first preview block (variant demo) to avoid strict mode violations
+test('main demo mirrors shadcn button-demo (outline text + icon)', async ({ page }) => {
+  await page.goto(URL, TIMEOUT);
+
+  // First preview block = main demo: an outline text button + an
+  // outline icon-only button (aria-label "Submit"), per button-demo.tsx.
   const preview = page.locator('[data-slot="preview"]').first();
 
-  // All variant buttons should be visible
-  await expect(preview.getByRole('button', { name: 'Default' })).toBeVisible();
-  await expect(preview.getByRole('button', { name: 'Secondary' })).toBeVisible();
-  await expect(preview.getByRole('button', { name: 'Destructive' })).toBeVisible();
-  await expect(preview.getByRole('button', { name: 'Outline' })).toBeVisible();
-  await expect(preview.getByRole('button', { name: 'Ghost' })).toBeVisible();
-  await expect(preview.getByRole('button', { name: 'Link' })).toBeVisible();
+  const textBtn = preview.getByRole('button', { name: 'Button' });
+  await expect(textBtn).toBeVisible();
+  await expect(textBtn).toHaveAttribute('data-slot', 'button');
+  await expect(textBtn).toHaveAttribute('data-variant', 'outline');
+  await expect(textBtn).toHaveAttribute('data-size', 'default');
 
-  // Variant data attributes
-  await expect(preview.getByRole('button', { name: 'Default' })).toHaveAttribute('data-variant', 'default');
-  await expect(preview.getByRole('button', { name: 'Secondary' })).toHaveAttribute('data-variant', 'secondary');
-  await expect(preview.getByRole('button', { name: 'Destructive' })).toHaveAttribute('data-variant', 'destructive');
-  await expect(preview.getByRole('button', { name: 'Outline' })).toHaveAttribute('data-variant', 'outline');
-  await expect(preview.getByRole('button', { name: 'Ghost' })).toHaveAttribute('data-variant', 'ghost');
-  await expect(preview.getByRole('button', { name: 'Link' })).toHaveAttribute('data-variant', 'link');
+  const iconBtn = preview.getByRole('button', { name: 'Submit' });
+  await expect(iconBtn).toBeVisible();
+  await expect(iconBtn).toHaveAttribute('data-variant', 'outline');
+  await expect(iconBtn).toHaveAttribute('data-size', 'icon');
 
-  // Size data attributes
-  await expect(preview.getByRole('button', { name: 'Default' })).toHaveAttribute('data-size', 'default');
-  await expect(page.getByRole('button', { name: 'Small' })).toHaveAttribute('data-size', 'sm');
-  await expect(page.getByRole('button', { name: 'Large' })).toHaveAttribute('data-size', 'lg');
+  // Clickable and focusable
+  await textBtn.click();
+  await expect(textBtn).toBeVisible();
+  await textBtn.focus();
+  await expect(textBtn).toBeFocused();
+});
 
-  // data-slot attribute
-  await expect(preview.getByRole('button', { name: 'Default' })).toHaveAttribute('data-slot', 'button');
+test('sizes variant exposes the radix-flavor size scale', async ({ page }) => {
+  await page.goto(URL, TIMEOUT);
+  await page.locator('[data-slot="preview"]').first().waitFor({ state: 'visible', timeout: 60_000 });
 
-  // Buttons should be clickable and focusable
-  let defaultBtn = preview.getByRole('button', { name: 'Default' });
-  await defaultBtn.click();
-  await expect(defaultBtn).toBeVisible();
-  await defaultBtn.focus();
-  await expect(defaultBtn).toBeFocused();
+  await expect(
+    page.getByRole('button', { name: 'Extra Small', exact: true }),
+  ).toHaveAttribute('data-size', 'xs');
+  await expect(
+    page.getByRole('button', { name: 'Small', exact: true }),
+  ).toHaveAttribute('data-size', 'sm');
+  await expect(
+    page.getByRole('button', { name: 'Large', exact: true }),
+  ).toHaveAttribute('data-size', 'lg');
 });

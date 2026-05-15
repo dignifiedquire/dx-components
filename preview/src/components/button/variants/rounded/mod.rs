@@ -5,12 +5,13 @@ use dx_icons_lucide::IconArrowUp;
 #[component]
 pub fn Demo() -> Element {
     rsx! {
-        Button {
-            variant: ButtonVariant::Outline,
-            size: ButtonSize::Icon,
-            class: "rounded-full",
-            aria_label: "Submit",
-            IconArrowUp { size: 16 }
+        div { class: "flex flex-col gap-8",
+            Button {
+                variant: ButtonVariant::Outline,
+                size: ButtonSize::Icon,
+                class: "rounded-full",
+                IconArrowUp {}
+            }
         }
     }
 }

@@ -41,12 +41,20 @@ pub enum ButtonSize {
     /// Default size.
     #[default]
     Default,
+    /// Extra-small button.
+    Xs,
     /// Small button.
     Sm,
     /// Large button.
     Lg,
     /// Square icon-only button.
     Icon,
+    /// Extra-small square icon-only button.
+    IconXs,
+    /// Small square icon-only button.
+    IconSm,
+    /// Large square icon-only button.
+    IconLg,
 }
 
 impl ButtonSize {
@@ -54,9 +62,13 @@ impl ButtonSize {
     pub fn as_data_attr(&self) -> &'static str {
         match self {
             Self::Default => "default",
+            Self::Xs => "xs",
             Self::Sm => "sm",
             Self::Lg => "lg",
             Self::Icon => "icon",
+            Self::IconXs => "icon-xs",
+            Self::IconSm => "icon-sm",
+            Self::IconLg => "icon-lg",
         }
     }
 }

@@ -592,6 +592,14 @@
     width: calc(var(--spacing) * 5);
     height: calc(var(--spacing) * 5);
   }
+  .size-6 {
+    width: calc(var(--spacing) * 6);
+    height: calc(var(--spacing) * 6);
+  }
+  .size-7 {
+    width: calc(var(--spacing) * 7);
+    height: calc(var(--spacing) * 7);
+  }
   .size-8 {
     width: calc(var(--spacing) * 8);
     height: calc(var(--spacing) * 8);
@@ -1118,6 +1126,12 @@
   .rounded-\[4px\] {
     border-radius: 4px;
   }
+  .rounded-\[min\(var\(--radius-md\)\,10px\)\] {
+    border-radius: min(var(--radius-md), 10px);
+  }
+  .rounded-\[min\(var\(--radius-md\)\,12px\)\] {
+    border-radius: min(var(--radius-md), 12px);
+  }
   .rounded-full {
     border-radius: calc(infinity * 1px);
   }
@@ -1405,6 +1419,9 @@
   .to-transparent {
     --tw-gradient-to: transparent;
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+  .bg-clip-padding {
+    background-clip: padding-box;
   }
   .fill-current {
     fill: currentcolor;
@@ -1767,17 +1784,11 @@
   .underline-offset-4 {
     text-underline-offset: 4px;
   }
-  .opacity-25 {
-    opacity: 25%;
-  }
   .opacity-50 {
     opacity: 50%;
   }
   .opacity-70 {
     opacity: 70%;
-  }
-  .opacity-75 {
-    opacity: 75%;
   }
   .bg-blend-color {
     background-blend-mode: color;
@@ -2395,12 +2406,12 @@
       }
     }
   }
-  .hover\:bg-destructive\/90 {
+  .hover\:bg-destructive\/20 {
     &:hover {
       @media (hover: hover) {
         background-color: var(--destructive);
         @supports (color: color-mix(in lab, red, red)) {
-          background-color: color-mix(in oklab, var(--destructive) 90%, transparent);
+          background-color: color-mix(in oklab, var(--destructive) 20%, transparent);
         }
       }
     }
@@ -2545,6 +2556,14 @@
       z-index: 10;
     }
   }
+  .focus-visible\:border-destructive\/40 {
+    &:focus-visible {
+      border-color: var(--destructive);
+      @supports (color: color-mix(in lab, red, red)) {
+        border-color: color-mix(in oklab, var(--destructive) 40%, transparent);
+      }
+    }
+  }
   .focus-visible\:border-ring {
     &:focus-visible {
       border-color: var(--ring);
@@ -2634,6 +2653,14 @@
       outline-style: none;
     }
   }
+  .active\:not-aria-\[haspopup\]\:translate-y-px {
+    &:active {
+      &:not(*[aria-haspopup]) {
+        --tw-translate-y: 1px;
+        translate: var(--tw-translate-x) var(--tw-translate-y);
+      }
+    }
+  }
   .disabled\:pointer-events-none {
     &:disabled {
       pointer-events: none;
@@ -2649,6 +2676,11 @@
       opacity: 50%;
     }
   }
+  .in-data-\[slot\=button-group\]\:rounded-lg {
+    :where(*[data-slot="button-group"]) & {
+      border-radius: var(--radius);
+    }
+  }
   .has-disabled\:opacity-50 {
     &:has(*:disabled) {
       opacity: 50%;
@@ -2659,9 +2691,29 @@
       padding-right: calc(var(--spacing) * 1.5);
     }
   }
+  .has-data-\[icon\=inline-end\]\:pr-2 {
+    &:has(*[data-icon="inline-end"]) {
+      padding-right: calc(var(--spacing) * 2);
+    }
+  }
+  .has-data-\[icon\=inline-end\]\:pr-3 {
+    &:has(*[data-icon="inline-end"]) {
+      padding-right: calc(var(--spacing) * 3);
+    }
+  }
   .has-data-\[icon\=inline-start\]\:pl-1\.5 {
     &:has(*[data-icon="inline-start"]) {
       padding-left: calc(var(--spacing) * 1.5);
+    }
+  }
+  .has-data-\[icon\=inline-start\]\:pl-2 {
+    &:has(*[data-icon="inline-start"]) {
+      padding-left: calc(var(--spacing) * 2);
+    }
+  }
+  .has-data-\[icon\=inline-start\]\:pl-3 {
+    &:has(*[data-icon="inline-start"]) {
+      padding-left: calc(var(--spacing) * 3);
     }
   }
   .has-data-\[slot\=card-action\]\:grid-cols-\[1fr_auto\] {
@@ -2813,6 +2865,26 @@
   .has-\[\>textarea\]\:h-auto {
     &:has(>textarea) {
       height: auto;
+    }
+  }
+  .aria-expanded\:bg-muted {
+    &[aria-expanded="true"] {
+      background-color: var(--muted);
+    }
+  }
+  .aria-expanded\:bg-secondary {
+    &[aria-expanded="true"] {
+      background-color: var(--secondary);
+    }
+  }
+  .aria-expanded\:text-foreground {
+    &[aria-expanded="true"] {
+      color: var(--foreground);
+    }
+  }
+  .aria-expanded\:text-secondary-foreground {
+    &[aria-expanded="true"] {
+      color: var(--secondary-foreground);
     }
   }
   .aria-invalid\:border-destructive {
@@ -3882,6 +3954,18 @@
       }
     }
   }
+  .dark\:hover\:bg-destructive\/30 {
+    &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
+      &:hover {
+        @media (hover: hover) {
+          background-color: var(--destructive);
+          @supports (color: color-mix(in lab, red, red)) {
+            background-color: color-mix(in oklab, var(--destructive) 30%, transparent);
+          }
+        }
+      }
+    }
+  }
   .dark\:hover\:bg-input\/50 {
     &:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *) {
       &:hover {
@@ -4271,6 +4355,12 @@
     & svg:not([class*='size-']) {
       width: calc(var(--spacing) * 3);
       height: calc(var(--spacing) * 3);
+    }
+  }
+  .\[\&_svg\:not\(\[class\*\=\'size-\'\]\)\]\:size-3\.5 {
+    & svg:not([class*='size-']) {
+      width: calc(var(--spacing) * 3.5);
+      height: calc(var(--spacing) * 3.5);
     }
   }
   .\[\&_svg\:not\(\[class\*\=\'size-\'\]\)\]\:size-4 {
