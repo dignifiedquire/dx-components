@@ -65,6 +65,19 @@ pub fn Collapsible(props: CollapsibleProps) -> Element {
 /// The props for the styled [`CollapsibleTrigger`] component.
 #[derive(Props, Clone, PartialEq)]
 pub struct CollapsibleTriggerProps {
+    // Explicit event props — `extends = GlobalAttributes` does not capture
+    // event handlers (Dioxus limitation), so forward them to the primitive
+    // so the styled trigger matches shadcn's full prop spread.
+    /// Callback fired when the trigger is mounted.
+    #[props(default)]
+    pub onmounted: Callback<Event<MountedData>>,
+    /// Callback fired when the trigger receives focus.
+    #[props(default)]
+    pub onfocus: Callback<Event<FocusData>>,
+    /// Callback fired when a key is pressed on the trigger.
+    #[props(default)]
+    pub onkeydown: Callback<Event<KeyboardData>>,
+
     /// Additional Tailwind classes to apply.
     #[props(default)]
     pub class: Option<String>,
@@ -82,6 +95,9 @@ pub struct CollapsibleTriggerProps {
 pub fn CollapsibleTrigger(props: CollapsibleTriggerProps) -> Element {
     rsx! {
         primitives::CollapsibleTrigger {
+            onmounted: props.onmounted,
+            onfocus: props.onfocus,
+            onkeydown: props.onkeydown,
             class: props.class,
             attributes: props.attributes,
             {props.children}

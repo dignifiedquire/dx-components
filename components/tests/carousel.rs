@@ -47,10 +47,7 @@ fn carousel_content_has_viewport_wrapper() {
         html.contains("data-slot=\"carousel-viewport\""),
         "has viewport wrapper: {html}"
     );
-    assert!(
-        html.contains("overflow-clip"),
-        "viewport overflow: {html}"
-    );
+    assert!(html.contains("overflow-clip"), "viewport overflow: {html}");
 }
 
 #[test]

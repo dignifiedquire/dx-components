@@ -736,6 +736,9 @@
   .w-\[80\%\] {
     width: 80%;
   }
+  .w-\[350px\] {
+    width: 350px;
+  }
   .w-\[400px\] {
     width: 400px;
   }
@@ -759,9 +762,6 @@
   }
   .max-w-3xl {
     max-width: var(--container-3xl);
-  }
-  .max-w-80 {
-    max-width: calc(var(--spacing) * 80);
   }
   .max-w-\[10rem\] {
     max-width: 10rem;
