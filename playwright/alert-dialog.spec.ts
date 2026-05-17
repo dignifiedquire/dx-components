@@ -43,10 +43,10 @@ test.describe("alert dialog", () => {
     // Title and description
     await expect(
       content.locator('[data-slot="alert-dialog-title"]'),
-    ).toHaveText("Delete item");
+    ).toHaveText("Are you absolutely sure?");
     await expect(
       content.locator('[data-slot="alert-dialog-description"]'),
-    ).toContainText("Are you sure");
+    ).toContainText("This action cannot be undone");
 
     // Footer + buttons
     const footer = content.locator('[data-slot="alert-dialog-footer"]');
@@ -54,7 +54,7 @@ test.describe("alert dialog", () => {
     const cancelBtn = content.locator('[data-slot="alert-dialog-cancel"]');
     const actionBtn = content.locator('[data-slot="alert-dialog-action"]');
     await expect(cancelBtn).toHaveText("Cancel");
-    await expect(actionBtn).toHaveText("Delete");
+    await expect(actionBtn).toHaveText("Continue");
 
     // Native focus trap
     const focusedInDialog = await page.evaluate(() => {
