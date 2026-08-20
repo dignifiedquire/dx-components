@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('test', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/scroll_area', { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // Scope to first preview block
   const preview = page.locator('[data-slot="preview"]').first();

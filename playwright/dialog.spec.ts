@@ -5,6 +5,8 @@ const URL = "http://127.0.0.1:8080/docs/components/dialog";
 test.describe("dialog", () => {
   test("trigger has accessibility attributes when closed", async ({ page }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
     const trigger = page.locator('[data-slot="dialog-trigger"]').first();
     await expect(trigger).toBeVisible();
@@ -16,6 +18,8 @@ test.describe("dialog", () => {
     page,
   }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page.locator('[data-slot="dialog-trigger"]').first();
     await trigger.click();
 
@@ -61,6 +65,8 @@ test.describe("dialog", () => {
 
   test("close button closes dialog and unmounts overlay", async ({ page }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page.locator('[data-slot="dialog-trigger"]').first();
     await trigger.click();
 
@@ -84,6 +90,8 @@ test.describe("dialog", () => {
 
   test("overlay click closes dialog", async ({ page }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page.locator('[data-slot="dialog-trigger"]').first();
     await trigger.click();
 
@@ -105,6 +113,8 @@ test.describe("dialog", () => {
     // synthesized ESC does not reliably trigger the native cancel/close
     // flow.
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page.locator('[data-slot="dialog-trigger"]').first();
     await trigger.click();
 

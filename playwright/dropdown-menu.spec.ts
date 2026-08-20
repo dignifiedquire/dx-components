@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 
 test("test", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/dropdown_menu", { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // Trigger
   const trigger = page.locator('[data-slot="dropdown-menu-trigger"]').first();

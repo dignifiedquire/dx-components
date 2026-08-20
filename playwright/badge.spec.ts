@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('badge variants render with correct data attributes and classes', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/badge', { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // Scope to the first preview block (main demo, mirrors shadcn badge-demo).
   const preview = page.locator('[data-slot="preview"]').first();

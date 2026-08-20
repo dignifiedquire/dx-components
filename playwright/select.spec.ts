@@ -4,6 +4,8 @@ test("test", async ({ page }) => {
     await page.goto("http://127.0.0.1:8080/docs/components/select", {
         timeout: 20 * 60 * 1000,
     });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
     // Scope to the preview container
     const preview = page.locator('[data-slot="preview"]').first();
@@ -88,6 +90,8 @@ test("tabbing out closes", async ({ page }) => {
     await page.goto("http://127.0.0.1:8080/docs/components/select", {
         timeout: 20 * 60 * 1000,
     });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
     const preview = page.locator('[data-slot="preview"]').first();
     const selectTrigger = preview.locator('[data-slot="select-trigger"]');
@@ -105,6 +109,8 @@ test("arrow keys from trigger", async ({ page }) => {
     await page.goto("http://127.0.0.1:8080/docs/components/select", {
         timeout: 20 * 60 * 1000,
     });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
     const preview = page.locator('[data-slot="preview"]').first();
     const selectTrigger = preview.locator('[data-slot="select-trigger"]');

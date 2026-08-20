@@ -6,6 +6,8 @@ const TIMEOUT = { timeout: 20 * 60 * 1000 };
 /** Navigate and wait for WASM hydration (at least one carousel rendered). */
 async function gotoAndWait(page: Page) {
   await page.goto(URL, TIMEOUT);
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
   await page
     .locator('[data-slot="carousel"]')
     .first()

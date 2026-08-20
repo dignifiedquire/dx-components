@@ -9,6 +9,8 @@ const TIMEOUT = { timeout: 20 * 60 * 1000 };
 /** Navigate and wait for WASM hydration (accordion root rendered). */
 async function gotoAndWait(page: import("@playwright/test").Page, url: string) {
   await page.goto(url, TIMEOUT);
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
   await page.locator('[data-slot="accordion"]').waitFor({ state: "visible", timeout: 60_000 });
 }
 

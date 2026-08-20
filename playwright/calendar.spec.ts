@@ -4,6 +4,8 @@ test("data slots and classes", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/calendar", {
     timeout: 20 * 60 * 1000,
   });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const calendar = page.locator('[data-slot="calendar"]').nth(0);
   await expect(calendar).toBeVisible({ timeout: 30000 });
@@ -34,6 +36,8 @@ test("test", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/calendar", {
     timeout: 20 * 60 * 1000,
   });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
   const calendar = page.locator('[data-slot="calendar"]').nth(0);
   const prevButton = calendar.locator('[data-slot="calendar-nav-prev"]');
   const nextButton = calendar.locator('[data-slot="calendar-nav-next"]');
@@ -102,6 +106,8 @@ test("year navigation by moving 52 weeks with arrow keys", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/calendar", {
     timeout: 20 * 60 * 1000,
   });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const calendar = page.locator('[data-slot="calendar"]').nth(0);
   const monthSelect = calendar.locator('[data-slot="calendar-select-month"] select');
@@ -152,6 +158,8 @@ test("shift + arrow keys navigation", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/calendar", {
     timeout: 20 * 60 * 1000,
   });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const calendar = page.locator('[data-slot="calendar"]').nth(0);
   const monthSelect = calendar.locator('[data-slot="calendar-select-month"] select');
@@ -197,6 +205,8 @@ async function testArrowKeyNavigation(
   await page.goto("http://127.0.0.1:8080/docs/components/calendar", {
     timeout: 20 * 60 * 1000,
   });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const calendar = page.locator('[data-slot="calendar"]').nth(0);
   const monthSelect = calendar.locator('[data-slot="calendar-select-month"] select');

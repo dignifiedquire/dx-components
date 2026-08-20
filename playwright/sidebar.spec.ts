@@ -6,6 +6,8 @@ async function gotoSidebarBlock(page: Page) {
   await page.goto(`${BASE_URL}/component/block/sidebar/main`, {
     timeout: 20 * 60 * 1000,
   });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   await expect(page.locator(".sidebar-wrapper")).toBeVisible();
 }
@@ -14,6 +16,8 @@ test("sidebar: preview page renders block", async ({ page }) => {
   await page.goto(`${BASE_URL}/docs/components/sidebar`, {
     timeout: 20 * 60 * 1000,
   });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
   // Sidebar is a block-type component rendered in an iframe
   await expect(page.locator('iframe').first()).toBeVisible({ timeout: 60_000 });
 });

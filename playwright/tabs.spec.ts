@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 
 test("data slots and classes", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/tabs", { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const tabs = page.locator('[data-slot="tabs"]').first();
   await expect(tabs).toBeVisible();
@@ -39,6 +41,8 @@ test("data slots and classes", async ({ page }) => {
 
 test("tab activation and content switching", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/tabs", { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const tabs = page.locator('[data-slot="tabs"]').first();
   const accountTab = tabs.getByRole("tab", { name: "Account" });
@@ -66,6 +70,8 @@ test("tab activation and content switching", async ({ page }) => {
 
 test("keyboard navigation", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/tabs", { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const tabs = page.locator('[data-slot="tabs"]').first();
   const accountTab = tabs.getByRole("tab", { name: "Account" });
@@ -88,6 +94,8 @@ test("keyboard navigation", async ({ page }) => {
 
 test("accessibility attributes", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/tabs", { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const tabs = page.locator('[data-slot="tabs"]').first();
 

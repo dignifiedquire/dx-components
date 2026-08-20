@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('card renders with correct data-slot attributes and structure', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/card', { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // Scope to the first preview block (main demo = the login card) — the
   // page renders several card previews (size / image / rtl).

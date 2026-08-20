@@ -7,6 +7,8 @@ const EXPECT_TIMEOUT = { timeout: 15_000 };
 /** Navigate and wait for WASM hydration. */
 async function gotoAndWait(page: import("@playwright/test").Page) {
   await page.goto(URL, TIMEOUT);
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
   await page
     .locator('[data-testid="announce-demos"]')
     .waitFor({ state: "visible", timeout: 60_000 });

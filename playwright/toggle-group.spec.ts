@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 
 test("data slots and classes", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/toggle_group", { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const preview = page.locator('[data-slot="preview"]').first();
   await expect(preview).toBeVisible();
@@ -27,6 +29,8 @@ test("data slots and classes", async ({ page }) => {
 
 test("multiple mode toggle", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/toggle_group", { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const preview = page.locator('[data-slot="preview"]').first();
   const group = preview.locator('[data-slot="toggle-group"]');
@@ -57,6 +61,8 @@ test("multiple mode toggle", async ({ page }) => {
 
 test("keyboard navigation", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/toggle_group", { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const preview = page.locator('[data-slot="preview"]').first();
   const group = preview.locator('[data-slot="toggle-group"]');
@@ -83,6 +89,8 @@ test("keyboard navigation", async ({ page }) => {
 
 test("accessibility attributes", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/toggle_group", { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const preview = page.locator('[data-slot="preview"]').first();
   const group = preview.locator('[data-slot="toggle-group"]');

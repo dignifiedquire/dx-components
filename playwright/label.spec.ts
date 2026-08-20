@@ -7,6 +7,10 @@ const TIMEOUT = { timeout: 20 * 60 * 1000 };
 /** Navigate and wait for WASM hydration. */
 async function gotoAndWait(page: import("@playwright/test").Page) {
   await page.goto(URL, TIMEOUT);
+  // `app_layout.rs` removes the `preload` class from <body> after the first
+  // render, so this clears only once the app's listeners are attached.
+  // Interactions dispatched before that are dropped, not replayed.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
   await page
     .locator('[data-testid="label-demo"]')
     .waitFor({ state: "visible", timeout: 60_000 });
@@ -64,6 +68,29 @@ test.describe("Label: double-click prevention", () => {
   test("double-click on label does not select text", async ({ page }) => {
     await gotoAndWait(page);
     const label = page.locator('[data-testid="label-demo"] [data-slot="label"]');
+
+    // The Label attaches its mousedown/selectstart listeners from an effect,
+    // which lands a tick after the element itself is visible. A real
+    // double-click fired in that window is handled by nobody and WebKit
+    // selects the word. Probe with a synthetic multi-click mousedown — its
+    // default is only prevented once the listener is live — then assert on a
+    // real double-click.
+    await expect
+      .poll(
+        async () =>
+          label.evaluate((el) => {
+            const probe = new MouseEvent("mousedown", {
+              bubbles: true,
+              cancelable: true,
+              detail: 2,
+            });
+            el.dispatchEvent(probe);
+            return probe.defaultPrevented;
+          }),
+        { timeout: 10_000 },
+      )
+      .toBe(true);
+
     // Double-click the label
     await label.dblclick();
     // Check that no text is selected

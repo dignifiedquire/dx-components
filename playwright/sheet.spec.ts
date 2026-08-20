@@ -6,8 +6,10 @@ import { test, expect } from '@playwright/test';
 const inPreview = (selector: string) =>
   `[data-slot="preview"] ${selector}`;
 
-test('sheet basic interactions', async ({ page }) => {
+test('sheet basic interactions', async ({ page, browserName }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/sheet', { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // Open sheet from Right button
   await page.getByRole('button', { name: 'Right' }).click();
@@ -25,13 +27,19 @@ test('sheet basic interactions', async ({ page }) => {
   const usernameInput = page.locator('#sheet-demo-username');
   await expect(usernameInput).toBeFocused();
 
-  await page.keyboard.press('Tab');
-  const saveButton = page.getByRole('button', { name: 'Save changes' });
-  await expect(saveButton).toBeFocused();
+  // Playwright's WebKit build leaves buttons out of sequential Tab
+  // navigation (Safari's default keyboard-navigation behaviour: Tab visits
+  // form fields only), so the footer buttons are reachable by Tab on the
+  // other engines only. Everything below this block runs on all three.
+  if (browserName !== 'webkit') {
+    await page.keyboard.press('Tab');
+    const saveButton = page.getByRole('button', { name: 'Save changes' });
+    await expect(saveButton).toBeFocused();
 
-  await page.keyboard.press('Tab');
-  const cancelButton = page.getByRole('button', { name: 'Cancel' });
-  await expect(cancelButton).toBeFocused();
+    await page.keyboard.press('Tab');
+    const cancelButton = page.getByRole('button', { name: 'Cancel' });
+    await expect(cancelButton).toBeFocused();
+  }
 
   // Hitting escape should close the sheet
   await page.keyboard.press('Escape');
@@ -48,6 +56,8 @@ test('sheet basic interactions', async ({ page }) => {
 
 test('sheet opens from different sides', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/sheet', { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const sheetContent = page.locator(inPreview('[data-slot="sheet-content"]'));
 

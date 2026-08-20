@@ -5,6 +5,8 @@ const LOAD_TIMEOUT = 20 * 60 * 1000;
 
 test("data slots and classes", async ({ page }) => {
   await page.goto(URL, { timeout: LOAD_TIMEOUT });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // Assert date-picker root data-slot
   const datePicker = page.locator('[data-slot="date-picker"]').first();
@@ -28,6 +30,8 @@ test("data slots and classes", async ({ page }) => {
 
 test("segment keyboard interaction", async ({ page }) => {
   await page.goto(URL, { timeout: LOAD_TIMEOUT });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const datePicker = page.locator('[data-slot="date-picker"]').first();
   await expect(datePicker).toBeVisible({ timeout: 30000 });

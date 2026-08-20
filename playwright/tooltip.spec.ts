@@ -6,6 +6,8 @@ const EXPECT_TIMEOUT = { timeout: 15_000 };
 
 test("test", async ({ page }) => {
   await page.goto("http://127.0.0.1:8080/docs/components/tooltip", { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // Trigger is a button with correct attributes
   const trigger = page.locator('[data-slot="tooltip-trigger"]');

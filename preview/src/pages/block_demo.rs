@@ -1,9 +1,14 @@
 use dioxus::prelude::*;
 
 use crate::find_block_demo;
+use crate::layouts::app_layout::use_preload_release;
 
 #[component]
 pub(crate) fn ComponentBlockDemo(name: String, variant: String) -> Element {
+    // Block demos render outside AppLayout, so they release the preload class
+    // themselves — otherwise CSS transitions stay disabled on these pages.
+    use_preload_release();
+
     let Comp = match find_block_demo(&name, &variant) {
         Some(f) => f,
         None => {

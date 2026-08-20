@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('skeleton renders with correct data-slot and animation classes', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/skeleton', { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // Multiple skeleton elements rendered
   const skeletons = page.locator('[data-slot="skeleton"]');

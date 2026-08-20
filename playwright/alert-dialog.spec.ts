@@ -5,6 +5,8 @@ const URL = "http://127.0.0.1:8080/docs/components/alert_dialog";
 test.describe("alert dialog", () => {
   test("trigger accessibility attributes when closed", async ({ page }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page
       .locator('[data-slot="alert-dialog-trigger"]')
       .first();
@@ -15,6 +17,8 @@ test.describe("alert dialog", () => {
 
   test("opens with role=alertdialog and aria attributes", async ({ page }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page
       .locator('[data-slot="alert-dialog-trigger"]')
       .first();
@@ -68,6 +72,8 @@ test.describe("alert dialog", () => {
     page,
   }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     await page.locator('[data-slot="alert-dialog-trigger"]').first().click();
 
     const content = page
@@ -90,6 +96,8 @@ test.describe("alert dialog", () => {
 
   test("cancel button closes", async ({ page }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     await page.locator('[data-slot="alert-dialog-trigger"]').first().click();
     const content = page
       .locator('[data-slot="alert-dialog-content"]')
@@ -106,6 +114,8 @@ test.describe("alert dialog", () => {
 
   test("action button closes", async ({ page }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     await page.locator('[data-slot="alert-dialog-trigger"]').first().click();
     const content = page
       .locator('[data-slot="alert-dialog-content"]')
@@ -126,6 +136,8 @@ test.describe("alert dialog", () => {
     // .close() since CDP-synthesized ESC does not reliably trigger the
     // native cancel/close flow.
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page
       .locator('[data-slot="alert-dialog-trigger"]')
       .first();

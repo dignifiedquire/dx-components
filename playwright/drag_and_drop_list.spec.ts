@@ -8,6 +8,8 @@ const LOAD_TIMEOUT = 20 * 60 * 1000;
 /** Navigate to the DnD page and return the first (main) variant list. */
 async function loadMainList(page: import("@playwright/test").Page) {
   await page.goto(URL, { timeout: LOAD_TIMEOUT });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
   const list = page.locator('[data-slot="drag-and-drop-list"]').first();
   await expect(list).toBeVisible({ timeout: 30000 });
   return list;
@@ -16,6 +18,8 @@ async function loadMainList(page: import("@playwright/test").Page) {
 /** Navigate to the DnD page and return the second (removable) variant list. */
 async function loadRemovableList(page: import("@playwright/test").Page) {
   await page.goto(URL, { timeout: LOAD_TIMEOUT });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
   const list = page.locator('[data-slot="drag-and-drop-list"]').nth(1);
   await expect(list).toBeVisible({ timeout: 30000 });
   return list;

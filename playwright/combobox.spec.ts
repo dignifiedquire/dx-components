@@ -2,9 +2,18 @@ import { test, expect } from "@playwright/test";
 
 const URL = "http://127.0.0.1:8080/docs/components/combobox";
 
+/** Navigate and wait for WASM hydration. */
+async function gotoAndWait(page: import("@playwright/test").Page) {
+  await page.goto(URL, { timeout: 20 * 60 * 1000 });
+  // `app_layout.rs` removes the `preload` class from <body> after the first
+  // render, so this clears only once the app's listeners are attached.
+  // Interactions dispatched before that are dropped, not replayed.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
+}
+
 test.describe("combobox", () => {
   test("input renders with ARIA attributes", async ({ page }) => {
-    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    await gotoAndWait(page);
     const input = page.locator('[data-slot="combobox-input"]').first();
     await expect(input).toBeVisible();
     await expect(input).toHaveAttribute("role", "combobox");
@@ -13,7 +22,7 @@ test.describe("combobox", () => {
   });
 
   test("opens in top layer positioned below the input", async ({ page }) => {
-    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    await gotoAndWait(page);
     const input = page.locator('[data-slot="combobox-input"]').first();
     await input.focus();
 
@@ -37,42 +46,31 @@ test.describe("combobox", () => {
     expect(status.popoverOpen).toBe(true);
 
     // Dropdown is anchored below the input (floating-ui positioning).
-    // Floating-ui computes position asynchronously, so wait until the
-    // wrapper has a non-zero transform applied before measuring.
-    await page
-      .locator("[data-radix-popper-content-wrapper]")
-      .first()
-      .evaluate((el) =>
-        new Promise<void>((resolve) => {
-          const check = () => {
-            if ((el as HTMLElement).style.transform.includes("translate")) {
-              resolve();
-            } else {
-              requestAnimationFrame(check);
-            }
-          };
-          check();
-        }),
-      );
-    const positioning = await page.evaluate(() => {
-      const input = document.querySelector(
-        '[data-slot="combobox-input"]',
-      ) as HTMLElement;
-      const content = document.querySelector(
-        '[data-slot="combobox-content"]',
-      ) as HTMLElement;
-      const i = input.getBoundingClientRect();
-      const c = content.getBoundingClientRect();
-      return { inputBottom: i.bottom, contentTop: c.top };
-    });
-    // Allow a small offset (Popper may add side_offset)
-    expect(Math.abs(positioning.contentTop - positioning.inputBottom)).toBeLessThan(
-      8,
-    );
+    // Floating-ui positions asynchronously over several frames; on WebKit
+    // the final pass lands a frame or two later than Chromium/Firefox, so
+    // poll the measured gap until it settles instead of measuring once.
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const input = document.querySelector(
+              '[data-slot="combobox-input"]',
+            ) as HTMLElement;
+            const content = document.querySelector(
+              '[data-slot="combobox-content"]',
+            ) as HTMLElement;
+            const i = input.getBoundingClientRect();
+            const c = content.getBoundingClientRect();
+            return Math.abs(c.top - i.bottom);
+          }),
+        { timeout: 5000 },
+      )
+      // Allow a small offset (Popper may add side_offset).
+      .toBeLessThan(8);
   });
 
   test("typing filters items", async ({ page }) => {
-    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    await gotoAndWait(page);
     const input = page.locator('[data-slot="combobox-input"]').first();
     await input.focus();
     await input.fill("re");
@@ -83,7 +81,7 @@ test.describe("combobox", () => {
   });
 
   test("selecting an item closes and unmounts content", async ({ page }) => {
-    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    await gotoAndWait(page);
     const input = page.locator('[data-slot="combobox-input"]').first();
     await input.focus();
 

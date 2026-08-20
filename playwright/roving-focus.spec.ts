@@ -6,6 +6,8 @@ const TIMEOUT = { timeout: 20 * 60 * 1000 };
 /** Navigate and wait for WASM hydration. */
 async function gotoAndWait(page: import("@playwright/test").Page) {
   await page.goto(URL, TIMEOUT);
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
   await page
     .locator('[data-testid="roving-focus-demos"]')
     .waitFor({ state: "visible", timeout: 60_000 });
@@ -231,13 +233,25 @@ test.describe("RovingFocus: edge cases", () => {
     await expect(one).not.toBeFocused();
   });
 
-  test("Tab moves focus out of the group", async ({ page }) => {
+  test("Tab moves focus out of the group", async ({ page, browserName }) => {
     await gotoAndWait(page);
     const section = page.locator('[data-testid="edge-cases"]');
 
     const three = section.locator('button[data-value="three"]');
     await three.focus();
     await expect(three).toBeFocused();
+
+    // Roving tabindex is what makes Tab leave the group: the focused item is
+    // the group's only tab stop, its siblings are removed from the sequence.
+    await expect(three).toHaveAttribute("tabindex", "0");
+    await expect(
+      section.locator('button[data-value="four"]')
+    ).toHaveAttribute("tabindex", "-1");
+
+    // Playwright's WebKit build leaves buttons out of sequential Tab
+    // navigation (Safari's default keyboard-navigation behaviour), so the
+    // outside button can only be reached by a real Tab on the other engines.
+    if (browserName === "webkit") return;
 
     // Tab should move focus to the outside button
     await page.keyboard.press("Tab");

@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('textarea renders with correct data-slot and classes', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/textarea', { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // Scope to first preview block
   const preview = page.locator('[data-slot="preview"]').first();
@@ -23,6 +25,8 @@ test('textarea renders with correct data-slot and classes', async ({ page }) => 
 
 test('textarea accepts input', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/textarea', { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   const textarea = page.locator('[data-slot="textarea"]').first();
   await textarea.fill('Hello World');

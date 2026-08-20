@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('test', async ({ page }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/toast', { timeout: 20 * 60 * 1000 });
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // Create a toast
   await page.getByRole('button', { name: 'Info (60s)' }).click();

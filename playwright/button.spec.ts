@@ -5,6 +5,8 @@ const TIMEOUT = { timeout: 20 * 60 * 1000 };
 
 test('main demo mirrors shadcn button-demo (outline text + icon)', async ({ page }) => {
   await page.goto(URL, TIMEOUT);
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
 
   // First preview block = main demo: an outline text button + an
   // outline icon-only button (aria-label "Submit"), per button-demo.tsx.
@@ -30,6 +32,8 @@ test('main demo mirrors shadcn button-demo (outline text + icon)', async ({ page
 
 test('sizes variant exposes the radix-flavor size scale', async ({ page }) => {
   await page.goto(URL, TIMEOUT);
+  // Wait for WASM hydration before interacting.
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
   await page.locator('[data-slot="preview"]').first().waitFor({ state: 'visible', timeout: 60_000 });
 
   await expect(

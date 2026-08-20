@@ -5,6 +5,8 @@ const URL = "http://127.0.0.1:8080/docs/components/popover";
 test.describe("popover", () => {
   test("trigger accessibility attributes when closed", async ({ page }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page.locator('[data-slot="popover-trigger"]').first();
     await expect(trigger).toBeVisible();
     await expect(trigger).toHaveAttribute("data-state", "closed");
@@ -13,6 +15,8 @@ test.describe("popover", () => {
 
   test("opens in top layer with positioning attributes", async ({ page }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page.locator('[data-slot="popover-trigger"]').first();
     await trigger.click();
 
@@ -44,6 +48,8 @@ test.describe("popover", () => {
     // on the wrapper directly — this fires the `toggle` event that
     // use_top_layer subscribes to.
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page.locator('[data-slot="popover-trigger"]').first();
     await trigger.click();
 
@@ -63,6 +69,8 @@ test.describe("popover", () => {
 
   test("trigger toggles open and closed", async ({ page }) => {
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page.locator('[data-slot="popover-trigger"]').first();
     const content = page.locator('[data-slot="popover-content"]').first();
 
@@ -77,6 +85,8 @@ test.describe("popover", () => {
     // If the signal hadn't synced after hidePopover, the next trigger
     // click would set open to `false` (no-op) instead of `true` (reopen).
     await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    // Wait for WASM hydration before interacting.
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
     const trigger = page.locator('[data-slot="popover-trigger"]').first();
     const content = page.locator('[data-slot="popover-content"]').first();
     await trigger.click();
