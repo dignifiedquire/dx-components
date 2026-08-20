@@ -32,7 +32,7 @@ jobs:
           prefix-key: "v1-ghpages"
       - uses: cargo-bins/cargo-binstall@main
       - name: Install CLI
-        run: cargo binstall dioxus-cli -y --force --version 0.7.3
+        run: cargo binstall dioxus-cli -y --force --version 0.7.10
       - name: Build
         run: |
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
