@@ -1,4 +1,4 @@
-Displays rich content in a portal, triggered by a button.
+Displays rich content in the browser top layer, triggered by a button.
 
 ## Usage
 

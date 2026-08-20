@@ -29,8 +29,14 @@ use std::rc::Rc;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TopLayerKind {
     /// `popover="auto"` — light-dismisses on ESC and click-outside.
-    /// Only one auto popover open at a time globally, unless nested via
-    /// the `popovertarget` attribute on an ancestor.
+    ///
+    /// Opening one auto popover closes every other *unrelated* one. Nesting is
+    /// the exception, and DOM ancestry alone establishes it: showing an auto
+    /// popover that is a descendant of an open one keeps both open, with no
+    /// `popovertarget` attribute or anchor relationship required (verified in
+    /// Chromium). Since our overlays render in place rather than being portaled
+    /// to `document.body`, a nested overlay *is* a descendant, so nested
+    /// auto popovers coexist.
     PopoverAuto,
     /// `popover="manual"` — must be hidden explicitly. No light-dismiss.
     /// Multiple manual popovers can be open simultaneously.

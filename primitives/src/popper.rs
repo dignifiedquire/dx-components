@@ -831,10 +831,27 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             "translate(0, -200%)".to_string()
         };
 
+        // Neutralise the user-agent `[popover]` stylesheet. This wrapper carries
+        // `popover="auto" | "manual"` (see [`crate::top_layer`]), so the browser
+        // applies `background-color: Canvas; color: CanvasText; overflow: auto`
+        // plus margin/padding/border to it. That paints an opaque panel behind
+        // the content — visible through the content's rounded corners in dark
+        // mode — and `overflow: auto` clips the content's `box-shadow`. Upstream
+        // renders a plain portaled div and never meets these rules.
+        //
+        // `visibility` and `pointer-events` are pinned for a different reason:
+        // a top-layer element still *inherits* them, so an ancestor with
+        // `visibility: hidden` or `pointer-events: none` would kill an open
+        // overlay. Upstream escapes that by portaling to `document.body`; we
+        // render in place, so we restore it here. The reference-hidden branch
+        // below overrides both on purpose.
         let mut style = format!(
             "position: fixed; left: 0px; top: 0px; \
              transform: {transform}; \
-             min-width: max-content; {z_part}"
+             min-width: max-content; \
+             margin: 0; padding: 0; border: 0; \
+             background: transparent; color: inherit; overflow: visible; \
+             visibility: visible; pointer-events: auto; {z_part}"
         );
 
         // Upstream: hide when reference is detached
