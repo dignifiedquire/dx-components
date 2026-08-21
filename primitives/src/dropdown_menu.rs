@@ -338,7 +338,7 @@ pub struct DropdownMenuContentProps {
 /// The menu content container, positioned via [`PopperContent`].
 ///
 /// Mirrors upstream's split: this gates mounting through [`Presence`] so exit
-/// animations can finish, and [`DropdownMenuContentImpl`] holds everything that
+/// animations can finish, and a private inner component holds everything that
 /// only exists while the menu is mounted.
 #[component]
 pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {

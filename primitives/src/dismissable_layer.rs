@@ -248,6 +248,32 @@ impl DismissableEvent {
         matches!(self.button, Some(2)) || (matches!(self.button, Some(0)) && self.ctrl_key)
     }
 
+    /// Whether the originating event's target is inside an element matching
+    /// this CSS selector.
+    ///
+    /// Upstream checks specific refs; a selector covers the cases where the
+    /// exclusion is a *set* of elements rather than one — Menubar must not
+    /// dismiss when the pointer lands on any of its triggers, since that press
+    /// is switching menus rather than leaving them. Always `false` off-wasm.
+    pub fn target_closest_matches(&self, selector: &str) -> bool {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use wasm_bindgen::JsCast;
+            let Some(target) = self.target.as_ref() else {
+                return false;
+            };
+            target
+                .dyn_ref::<web_sys::Element>()
+                .and_then(|el| el.closest(selector).ok().flatten())
+                .is_some()
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let _ = selector;
+            false
+        }
+    }
+
     /// Whether the originating event's target sits inside a mounted element.
     ///
     /// Upstream asks `context.triggerRef.current?.contains(event.target)`; this

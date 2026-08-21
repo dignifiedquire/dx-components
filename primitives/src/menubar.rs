@@ -26,15 +26,14 @@
 use std::rc::Rc;
 
 use crate::direction::Orientation;
-use crate::menu::MenuCtx;
+use crate::dismissable_layer::DismissableEvent;
+use crate::menu::{use_menu_dismissal, MenuCtx, MenuDismissalOptions};
 use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
 use crate::presence::Presence;
+use crate::presence::PresenceContext;
 use crate::roving_focus::{RovingFocusGroup, RovingFocusGroupItem, RovingFocusSlotProps};
 use crate::top_layer::{use_top_layer, TopLayerKind};
-use crate::{
-    merge_attributes, use_global_escape_listener, use_id_or, use_outside_click_with_exclude,
-    use_refocus_on_close, use_unique_id,
-};
+use crate::{merge_attributes, use_id_or, use_refocus_on_close_unless, use_unique_id};
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
@@ -476,6 +475,26 @@ pub struct MenubarContentProps {
     #[props(default)]
     pub collision_padding: CollisionPadding,
 
+    /// Called when Escape is pressed while this is the topmost layer. Can be
+    /// prevented. Upstream: `onEscapeKeyDown`.
+    #[props(default)]
+    pub on_escape_key_down: Callback<DismissableEvent>,
+
+    /// Called on a pointer-down outside the content. Can be prevented.
+    /// Upstream: `onPointerDownOutside`.
+    #[props(default)]
+    pub on_pointer_down_outside: Callback<DismissableEvent>,
+
+    /// Called when focus moves outside the content. Can be prevented.
+    /// Upstream: `onFocusOutside`.
+    #[props(default)]
+    pub on_focus_outside: Callback<DismissableEvent>,
+
+    /// Called on any outside interaction, pointer or focus. Can be prevented.
+    /// Upstream: `onInteractOutside`.
+    #[props(default)]
+    pub on_interact_outside: Callback<DismissableEvent>,
+
     /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
@@ -496,31 +515,87 @@ pub struct MenubarContentProps {
 #[component]
 pub fn MenubarContent(props: MenubarContentProps) -> Element {
     let ctx: MenuCtx = use_context();
-    let mut bar_ctx: MenubarInternalCtx = use_context();
-
     let id = use_id_or(ctx.content_id, props.id);
 
-    // Refocus trigger when menu closes (upstream onCloseAutoFocus)
-    use_refocus_on_close(ctx.open, ctx.trigger_id);
+    rsx! {
+        Presence {
+            present: props.force_mount || (ctx.open)(),
+            id: id,
+            MenubarContentImpl {
+                content_id: id,
+                side: props.side,
+                side_offset: props.side_offset,
+                align: props.align,
+                align_offset: props.align_offset,
+                avoid_collisions: props.avoid_collisions,
+                collision_padding: props.collision_padding,
+                on_escape_key_down: props.on_escape_key_down,
+                on_pointer_down_outside: props.on_pointer_down_outside,
+                on_focus_outside: props.on_focus_outside,
+                on_interact_outside: props.on_interact_outside,
+                class: props.class,
+                attributes: props.attributes,
+                children: props.children,
+            }
+        }
+    }
+}
 
-    // Document-level Escape listener
-    // Gated on `open`: while installed, the listener cancels Escape's default
-    // action for the whole document, so a closed menu must not install it.
-    use_global_escape_listener(ctx.open.into(), move || {
-        if *ctx.open.peek() {
-            bar_ctx.open_menu_id.set(None);
+/// Props for [`MenubarContentImpl`].
+#[derive(Props, Clone, PartialEq)]
+struct MenubarContentImplProps {
+    content_id: Memo<String>,
+    side: Side,
+    side_offset: f64,
+    align: Align,
+    align_offset: f64,
+    avoid_collisions: bool,
+    collision_padding: CollisionPadding,
+    on_escape_key_down: Callback<DismissableEvent>,
+    on_pointer_down_outside: Callback<DismissableEvent>,
+    on_focus_outside: Callback<DismissableEvent>,
+    on_interact_outside: Callback<DismissableEvent>,
+    class: Option<String>,
+    attributes: Vec<Attribute>,
+    children: Element,
+}
+
+/// Everything that only exists while the menu is mounted.
+#[component]
+fn MenubarContentImpl(props: MenubarContentImplProps) -> Element {
+    let ctx: MenuCtx = use_context();
+    let mut bar_ctx: MenubarInternalCtx = use_context();
+    let id = props.content_id;
+
+    // A menubar menu is never modal — upstream hard-codes `modal={false}`,
+    // because holding the page inert would break moving between the bar's own
+    // triggers.
+    let user_interact_outside = props.on_interact_outside;
+    let on_interact_outside = use_callback(move |event: DismissableEvent| {
+        user_interact_outside.call(event.clone());
+        // Pressing another menubar trigger switches menus; it must not also
+        // dismiss, or the press would close this menu and the trigger would
+        // immediately reopen its own.
+        if event.target_closest_matches("[data-slot=\"menubar-trigger\"]") {
+            event.prevent_default();
         }
     });
 
-    // Dismiss on click outside content (but not when clicking another menubar trigger)
-    {
-        let open = ctx.open;
-        use_outside_click_with_exclude(id, "[data-slot=\"menubar-trigger\"]", move || {
-            if *open.peek() {
-                bar_ctx.open_menu_id.set(None);
-            }
-        });
-    }
+    let dismissal = use_menu_dismissal(
+        id,
+        MenuDismissalOptions {
+            is_modal: false,
+            on_escape_key_down: props.on_escape_key_down,
+            on_pointer_down_outside: props.on_pointer_down_outside,
+            on_focus_outside: props.on_focus_outside,
+            on_interact_outside,
+        },
+    );
+    use_refocus_on_close_unless(
+        ctx.open,
+        ctx.trigger_id,
+        dismissal.has_interacted_outside.into(),
+    );
 
     let on_escape = Callback::new(move |()| {
         bar_ctx.open_menu_id.set(None);
@@ -541,13 +616,16 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
         "data-slot": "menubar-content",
         "data-state": data_state,
     });
-    let merged = merge_attributes(vec![content_attrs, props.attributes]);
+    let merged = merge_attributes(vec![content_attrs, dismissal.attributes, props.attributes]);
 
-    // popover="manual" lifts the floated wrapper into the top layer. We
-    // use manual rather than auto so navigating between menubar items
-    // (which rapidly opens/closes adjacent menus) doesn't fight with the
-    // browser's single-auto-popover-at-a-time rule.
-    let wrapper_attrs = attributes!(div { popover: "manual" });
+    // `popover="manual"` lifts the floated wrapper into the top layer. Manual
+    // rather than auto so moving between menubar items — which opens and closes
+    // adjacent menus in quick succession — does not fight the browser's
+    // one-auto-popover-at-a-time rule.
+    //
+    // Driven by Presence's `present`, not `open`, so the exit animation runs.
+    let presence: PresenceContext = use_context();
+    let present = presence.present;
     let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
     let set_open = Callback::new(move |open: bool| {
         if !open {
@@ -556,38 +634,35 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
     });
     use_top_layer(
         wrapper_mounted.into(),
-        ctx.open.into(),
+        present.into(),
         set_open,
         TopLayerKind::PopoverManual,
     );
 
     rsx! {
-        Presence {
-            present: props.force_mount || (ctx.open)(),
-            id: id,
-            PopperContent {
-                side: props.side,
-                side_offset: props.side_offset,
-                align: props.align,
-                align_offset: props.align_offset,
-                avoid_collisions: props.avoid_collisions,
-                collision_padding: props.collision_padding,
-                css_var_prefix: "menubar",
-                class: props.class,
-                content_attributes: merged,
-                wrapper_attributes: wrapper_attrs,
-                on_wrapper_mounted: move |evt: Event<MountedData>| {
-                    wrapper_mounted.set(Some(evt.data()));
-                },
+        PopperContent {
+            side: props.side,
+            side_offset: props.side_offset,
+            align: props.align,
+            align_offset: props.align_offset,
+            avoid_collisions: props.avoid_collisions,
+            collision_padding: props.collision_padding,
+            css_var_prefix: "menubar",
+            class: props.class,
+            content_attributes: merged,
+            content_style: dismissal.content_style,
+            wrapper_attributes: attributes!(div { popover: "manual" }),
+            on_wrapper_mounted: move |evt: Event<MountedData>| {
+                wrapper_mounted.set(Some(evt.data()));
+            },
 
-                crate::menu::MenuContent {
-                    content_id: id,
-                    on_escape_override: on_escape,
-                    on_arrow_left: on_arrow_left,
-                    on_arrow_right: on_arrow_right,
-                    focus_exclude_selector: "[data-slot=\"menubar-trigger\"]",
-                    {props.children}
-                }
+            crate::menu::MenuContent {
+                content_id: id,
+                on_escape_override: on_escape,
+                on_arrow_left: on_arrow_left,
+                on_arrow_right: on_arrow_right,
+                focus_exclude_selector: "[data-slot=\"menubar-trigger\"]",
+                {props.children}
             }
         }
     }

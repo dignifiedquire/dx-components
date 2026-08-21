@@ -1,11 +1,10 @@
 #![doc = include_str!("../README.md")]
 #![warn(missing_docs)]
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use dioxus::core::{current_scope_id, use_drop};
 use dioxus::prelude::*;
 
 use dioxus_core::AttributeValue::Text;
@@ -272,40 +271,6 @@ fn use_effect_with_cleanup<F: FnMut() -> C + 'static, C: FnOnce() + 'static>(mut
     }))
 }
 
-/// A stack of escape listeners to allow only the top-most listener to be called.
-#[derive(Clone)]
-struct EscapeListenerStack(Rc<RefCell<Vec<ScopeId>>>);
-
-fn use_global_escape_listener(
-    enabled: ReadSignal<bool>,
-    mut on_escape: impl FnMut() + Clone + 'static,
-) {
-    let scope_id = current_scope_id();
-    let stack = use_hook(move || {
-        // Get or create the escape listener stack
-        let stack: EscapeListenerStack = try_consume_context()
-            .unwrap_or_else(|| provide_context(EscapeListenerStack(Default::default())));
-        // Push the current scope onto the stack
-        stack.0.borrow_mut().push(scope_id);
-        stack
-    });
-    // Remove the current scope id from the stack when we unmount
-    use_drop({
-        let stack = stack.clone();
-        move || {
-            let mut stack = stack.0.borrow_mut();
-            stack.retain(|id| *id != scope_id);
-        }
-    });
-    use_global_keydown_listener("Escape", enabled, true, move || {
-        // Only call the listener if this component is on top of the stack
-        let stack = stack.0.borrow();
-        if stack.last() == Some(&scope_id) {
-            on_escape();
-        }
-    });
-}
-
 /// Listen for a key at the document level, for as long as `enabled` is true.
 ///
 /// `prevent_default` decides whether the listener cancels the key's default
@@ -355,69 +320,6 @@ fn use_global_keydown_listener(
             }
         });
         Box::new(move || _ = close.send(true)) as Box<dyn FnOnce()>
-    });
-}
-
-/// Calls `on_outside` when a pointer down event occurs outside the element
-/// with the given `id`. Matches Radix's `onPointerDownOutside` in
-/// `DismissableLayer`. The listener is active for the lifetime of the
-/// calling component.
-pub(crate) fn use_outside_click(id: Memo<String>, on_outside: impl FnMut() + Clone + 'static) {
-    use_effect_with_cleanup(move || {
-        let mut eval = document::eval(
-            "let id = await dioxus.recv();
-            function listener(event) {
-                let el = document.getElementById(id);
-                if (el && !el.contains(event.target)) {
-                    dioxus.send(true);
-                }
-            }
-            document.addEventListener('pointerdown', listener, true);
-            await dioxus.recv();
-            document.removeEventListener('pointerdown', listener, true);",
-        );
-        let _ = eval.send(id.peek().clone());
-        let mut on_outside = on_outside.clone();
-        spawn(async move {
-            while let Ok(true) = eval.recv().await {
-                on_outside();
-            }
-        });
-        move || _ = eval.send(String::new())
-    });
-}
-
-/// Like [`use_outside_click`] but ignores clicks on elements matching `exclude_selector`.
-///
-/// Used by menubar to prevent dismiss when clicking another menubar trigger.
-pub(crate) fn use_outside_click_with_exclude(
-    id: Memo<String>,
-    exclude_selector: &'static str,
-    on_outside: impl FnMut() + Clone + 'static,
-) {
-    use_effect_with_cleanup(move || {
-        let js = format!(
-            "let id = await dioxus.recv();
-            function listener(event) {{
-                let el = document.getElementById(id);
-                if (el && !el.contains(event.target)) {{
-                    if (event.target.closest('{exclude_selector}')) return;
-                    dioxus.send(true);
-                }}
-            }}
-            document.addEventListener('pointerdown', listener, true);
-            await dioxus.recv();
-            document.removeEventListener('pointerdown', listener, true);"
-        );
-        let mut eval = document::eval(&js);
-        let _ = eval.send(id.peek().clone());
-        let mut on_outside = on_outside.clone();
-        spawn(async move {
-            while let Ok(true) = eval.recv().await {
-                on_outside();
-            }
-        });
-        move || _ = eval.send(String::new())
     });
 }
 
