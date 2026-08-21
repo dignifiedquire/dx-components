@@ -588,7 +588,18 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
             #[cfg(target_arch = "wasm32")]
             {
                 let promise = js_sys::Promise::new(&mut |resolve, _| {
-                    let _ = web_sys::window().unwrap().request_animation_frame(&resolve);
+                    let Some(window) = web_sys::window() else {
+                        return;
+                    };
+                    let _ = window.request_animation_frame(&resolve);
+                    // rAF does not fire in a backgrounded or occluded tab, and
+                    // positioning must not depend on the tab being visible: the
+                    // content is parked at `translate(0, -200%)` until this
+                    // resolves, so a stalled frame leaves an open overlay
+                    // off-screen indefinitely. A timer still fires there (merely
+                    // throttled), so whichever comes first wins.
+                    let _ =
+                        window.set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, 50);
                 });
                 let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
             }
