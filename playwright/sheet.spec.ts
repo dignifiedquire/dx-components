@@ -6,6 +6,30 @@ import { test, expect } from '@playwright/test';
 const inPreview = (selector: string) =>
   `[data-slot="preview"] ${selector}`;
 
+/**
+ * Close the sheet the way a user would.
+ *
+ * Sheet content is a native modal `<dialog>`, so ESC is the browser's own
+ * cancel/close path and our `use_top_layer` hook only syncs the resulting
+ * `close` event back into the open signal. Playwright's WebKit build on Linux
+ * does not deliver a synthesized ESC to a modal dialog — the same limitation
+ * `dialog.spec.ts:109` documents — so there we invoke `close()` directly,
+ * which fires the identical `close` event and exercises the same code path.
+ * Chromium and Firefox press the real key.
+ */
+async function closeWithEscape(
+  page: import("@playwright/test").Page,
+  browserName: string,
+) {
+  if (browserName === "webkit") {
+    await page
+      .locator(inPreview('[data-slot="sheet-content"]'))
+      .evaluate((el) => (el as HTMLDialogElement).close());
+    return;
+  }
+  await page.keyboard.press("Escape");
+}
+
 test('sheet basic interactions', async ({ page, browserName }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/sheet', { timeout: 20 * 60 * 1000 });
   // Wait for WASM hydration before interacting.
@@ -42,7 +66,7 @@ test('sheet basic interactions', async ({ page, browserName }) => {
   }
 
   // Hitting escape should close the sheet
-  await page.keyboard.press('Escape');
+  await closeWithEscape(page, browserName);
   await expect(sheetContent).toHaveAttribute('data-state', 'closed');
 
   // Reopen the sheet
@@ -54,7 +78,7 @@ test('sheet basic interactions', async ({ page, browserName }) => {
   await expect(sheetContent).toHaveAttribute('data-state', 'closed');
 });
 
-test('sheet opens from different sides', async ({ page }) => {
+test('sheet opens from different sides', async ({ page, browserName }) => {
   await page.goto('http://127.0.0.1:8080/docs/components/sheet', { timeout: 20 * 60 * 1000 });
   // Wait for WASM hydration before interacting.
   await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
@@ -65,20 +89,20 @@ test('sheet opens from different sides', async ({ page }) => {
   await page.getByRole('button', { name: 'Top' }).click();
   await expect(sheetContent).toHaveAttribute('data-state', 'open');
   await expect(sheetContent).toHaveAttribute('data-side', 'top');
-  await page.keyboard.press('Escape');
+  await closeWithEscape(page, browserName);
   await expect(sheetContent).toHaveAttribute('data-state', 'closed');
 
   // Test Bottom
   await page.getByRole('button', { name: 'Bottom' }).click();
   await expect(sheetContent).toHaveAttribute('data-state', 'open');
   await expect(sheetContent).toHaveAttribute('data-side', 'bottom');
-  await page.keyboard.press('Escape');
+  await closeWithEscape(page, browserName);
   await expect(sheetContent).toHaveAttribute('data-state', 'closed');
 
   // Test Left
   await page.getByRole('button', { name: 'Left' }).click();
   await expect(sheetContent).toHaveAttribute('data-state', 'open');
   await expect(sheetContent).toHaveAttribute('data-side', 'left');
-  await page.keyboard.press('Escape');
+  await closeWithEscape(page, browserName);
   await expect(sheetContent).toHaveAttribute('data-state', 'closed');
 });
