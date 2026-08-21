@@ -109,22 +109,100 @@ fn use_dismissable_layer_context() -> DismissableLayerContext {
 // DismissableEvent — replaces upstream's preventable CustomEvent pattern
 // ---------------------------------------------------------------------------
 
+/// Which interaction produced a [`DismissableEvent`].
+///
+/// Upstream reads `event.detail.originalEvent.type`; consumers branch on it —
+/// Popover's non-modal content, for instance, ignores right-clicks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DismissableSource {
+    /// A `pointerdown` outside the layer.
+    PointerDown,
+    /// A `focusin` outside the layer.
+    FocusIn,
+    /// The Escape key, pressed while this is the topmost layer.
+    EscapeKeyDown,
+}
+
 /// A preventable event passed to dismissable layer callbacks.
 ///
 /// Upstream uses DOM `CustomEvent` with `cancelable: true` and checks
-/// `event.defaultPrevented`. This Rust type replicates that pattern.
+/// `event.defaultPrevented`. This Rust type replicates that pattern, and
+/// carries the details of the originating event that upstream consumers read
+/// off `event.detail.originalEvent`.
 ///
 /// Call [`prevent_default()`](DismissableEvent::prevent_default) in your
 /// callback to prevent the layer from being dismissed.
 pub struct DismissableEvent {
     prevented: Rc<Cell<bool>>,
+    source: DismissableSource,
+    button: Option<i16>,
+    ctrl_key: bool,
+    #[cfg(target_arch = "wasm32")]
+    target: Option<web_sys::Node>,
 }
 
 impl DismissableEvent {
-    /// Create a new preventable event.
+    /// Create a new preventable event for an Escape keypress.
     pub fn new() -> Self {
         Self {
             prevented: Rc::new(Cell::new(false)),
+            source: DismissableSource::EscapeKeyDown,
+            button: None,
+            ctrl_key: false,
+            #[cfg(target_arch = "wasm32")]
+            target: None,
+        }
+    }
+
+    /// Create an event describing an outside `pointerdown`.
+    ///
+    /// Upstream: `detail.originalEvent` for `dismissableLayer.pointerDownOutside`.
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn from_pointer(event: &web_sys::PointerEvent) -> Self {
+        use wasm_bindgen::JsCast;
+        Self {
+            prevented: Rc::new(Cell::new(false)),
+            source: DismissableSource::PointerDown,
+            button: Some(event.button()),
+            ctrl_key: event.ctrl_key(),
+            target: event
+                .target()
+                .and_then(|t| t.dyn_ref::<web_sys::Node>().cloned()),
+        }
+    }
+
+    /// Create an event describing an outside `focusin`.
+    ///
+    /// Upstream: `detail.originalEvent` for `dismissableLayer.focusOutside`.
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn from_focus(event: &web_sys::FocusEvent) -> Self {
+        use wasm_bindgen::JsCast;
+        Self {
+            prevented: Rc::new(Cell::new(false)),
+            source: DismissableSource::FocusIn,
+            button: None,
+            ctrl_key: false,
+            target: event
+                .target()
+                .and_then(|t| t.dyn_ref::<web_sys::Node>().cloned()),
+        }
+    }
+
+    /// Same originating details, a fresh `prevented` flag.
+    ///
+    /// Upstream dispatches two separate `CustomEvent`s carrying one
+    /// `originalEvent` — the specific one (pointer/focus) and then
+    /// `interactOutside` — each independently preventable. Only the wasm
+    /// listeners dispatch pairs like that, so this is wasm-only.
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn with_fresh_prevented(&self) -> Self {
+        Self {
+            prevented: Rc::new(Cell::new(false)),
+            source: self.source,
+            button: self.button,
+            ctrl_key: self.ctrl_key,
+            #[cfg(target_arch = "wasm32")]
+            target: self.target.clone(),
         }
     }
 
@@ -136,6 +214,60 @@ impl DismissableEvent {
     /// Check if `prevent_default()` was called.
     pub fn is_default_prevented(&self) -> bool {
         self.prevented.get()
+    }
+
+    /// Which interaction produced this event.
+    pub fn source(&self) -> DismissableSource {
+        self.source
+    }
+
+    /// The mouse button of the originating event, if it was a pointer event.
+    ///
+    /// Upstream: `originalEvent.button`.
+    pub fn button(&self) -> Option<i16> {
+        self.button
+    }
+
+    /// Whether Ctrl was held during the originating event.
+    ///
+    /// Upstream: `originalEvent.ctrlKey`.
+    pub fn ctrl_key(&self) -> bool {
+        self.ctrl_key
+    }
+
+    /// Whether this was a right-click (or a Ctrl-left-click, which macOS
+    /// turns into a context-menu gesture).
+    ///
+    /// Upstream (popover.tsx): `const ctrlLeftClick = originalEvent.button === 0
+    /// && originalEvent.ctrlKey === true; const isRightClick =
+    /// originalEvent.button === 2 || ctrlLeftClick;`
+    pub fn is_right_click(&self) -> bool {
+        matches!(self.button, Some(2)) || (matches!(self.button, Some(0)) && self.ctrl_key)
+    }
+
+    /// Whether the originating event's target sits inside the element with
+    /// this id.
+    ///
+    /// Upstream stores DOM refs and asks `triggerRef.current?.contains(target)`;
+    /// this module addresses elements by id instead (see the module docs).
+    /// Always `false` off-wasm.
+    pub fn target_is_within(&self, element_id: &str) -> bool {
+        #[cfg(target_arch = "wasm32")]
+        {
+            let Some(target) = self.target.as_ref() else {
+                return false;
+            };
+            web_sys::window()
+                .and_then(|w| w.document())
+                .and_then(|d| d.get_element_by_id(element_id))
+                .map(|el| el.contains(Some(target)))
+                .unwrap_or(false)
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let _ = element_id;
+            false
+        }
     }
 }
 
@@ -191,31 +323,68 @@ pub struct DismissableLayerProps {
     pub children: Element,
 }
 
-/// A layer that can be dismissed via Escape key or outside interactions.
-///
-/// Matches Radix's `DismissableLayer`. Escape key handling uses stack
-/// discipline (only the topmost layer responds). Outside interaction
-/// detection uses document-level event listeners via web-sys.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::dismissable_layer::{DismissableLayer, DismissableEvent};
-/// rsx! {
-///     DismissableLayer {
-///         on_dismiss: move |_| { /* close the overlay */ },
-///         div { "Dismissable content" }
-///     }
-/// };
-/// ```
-#[component]
-pub fn DismissableLayer(props: DismissableLayerProps) -> Element {
-    let on_dismiss = props.on_dismiss;
-    let on_escape_key_down = props.on_escape_key_down;
-    let disable_outside_pointer_events = props.disable_outside_pointer_events;
+/// Options for [`use_dismissable_layer`] — the prop set of
+/// [`DismissableLayer`] minus the rendering concerns.
+#[derive(Clone, Copy, Default)]
+pub struct DismissableLayerOptions {
+    /// When `true`, hover/focus/click interactions are disabled on elements
+    /// outside the layer.
+    /// Upstream: `disableOutsidePointerEvents?: boolean` (default `false`)
+    pub disable_outside_pointer_events: bool,
+    /// Called when the Escape key is pressed. Can be prevented.
+    pub on_escape_key_down: Callback<DismissableEvent>,
+    /// Called when a pointer event occurs outside the layer. Can be prevented.
+    pub on_pointer_down_outside: Callback<DismissableEvent>,
+    /// Called when focus moves outside the layer. Can be prevented.
+    pub on_focus_outside: Callback<DismissableEvent>,
+    /// Called when any outside interaction occurs. Can be prevented.
+    pub on_interact_outside: Callback<DismissableEvent>,
+    /// Called when the layer should be dismissed.
+    pub on_dismiss: Callback<()>,
+}
 
-    let layer_id = crate::use_unique_id();
-    #[allow(clippy::redundant_closure)] // Signal<String> is not FnMut, clippy's suggestion is wrong
-    let layer_id_memo = use_memo(move || layer_id());
+/// What [`use_dismissable_layer`] needs the caller to put on the layer element.
+#[derive(Clone, Copy)]
+pub struct DismissableLayerHandle {
+    /// `"pointer-events: auto;"`, `"pointer-events: none;"` or `""` — append to
+    /// the layer element's `style`.
+    ///
+    /// Upstream sets this inline on the layer so that, while any layer has
+    /// `disableOutsidePointerEvents`, only layers at or above it in the stack
+    /// stay interactive.
+    pub pointer_events_style: &'static str,
+    /// Attach to the layer element's `onpointerdown`.
+    /// Upstream: `onPointerDownCapture`.
+    pub on_pointer_down: Callback<PointerEvent>,
+    /// Attach to the layer element's `onfocusin`. Upstream: `onFocusCapture`.
+    pub on_focus_in: Callback<FocusEvent>,
+    /// Attach to the layer element's `onfocusout`. Upstream: `onBlurCapture`.
+    pub on_focus_out: Callback<FocusEvent>,
+}
+
+/// The behaviour of [`DismissableLayer`] without its `<div>`.
+///
+/// [`DismissableLayer`] renders a wrapper element, which is fine when the layer
+/// *is* the content. Overlays built on [`crate::popper::PopperContent`] cannot
+/// use it: their styled box is Popper's own content div, so a nested layer div
+/// would sit inside that padding. A pointer-down on the padding would never
+/// reach the layer div's `onpointerdown`, the "pointer is inside the tree" flag
+/// would stay `false`, and the document-level listener would read it as an
+/// outside interaction — dismissing the overlay when the user clicks its own
+/// padding. Upstream collapses the layer into the content element with
+/// `asChild`; lacking that, those overlays call this hook and spread the
+/// returned handlers onto the element they already render.
+///
+/// `layer_id_memo` must resolve to the `id` of the element carrying the
+/// handlers — this module addresses elements by id rather than by ref (see the
+/// module docs).
+pub fn use_dismissable_layer(
+    layer_id_memo: Memo<String>,
+    opts: DismissableLayerOptions,
+) -> DismissableLayerHandle {
+    let on_dismiss = opts.on_dismiss;
+    let on_escape_key_down = opts.on_escape_key_down;
+    let disable_outside_pointer_events = opts.disable_outside_pointer_events;
 
     // Ensure a layer context exists (creates one if this is the outermost layer)
     // Upstream: `const context = React.useContext(DismissableLayerContext)`
@@ -262,8 +431,8 @@ pub fn DismissableLayer(props: DismissableLayerProps) -> Element {
 
     #[cfg(target_arch = "wasm32")]
     {
-        let on_pointer_down_outside = props.on_pointer_down_outside;
-        let on_interact_outside = props.on_interact_outside;
+        let on_pointer_down_outside = opts.on_pointer_down_outside;
+        let on_interact_outside = opts.on_interact_outside;
         let is_pointer_inside = is_pointer_inside_tree.clone();
         wasm_impl::use_pointer_down_outside_effect(
             layer_id_memo,
@@ -280,8 +449,8 @@ pub fn DismissableLayer(props: DismissableLayerProps) -> Element {
 
     #[cfg(target_arch = "wasm32")]
     {
-        let on_focus_outside = props.on_focus_outside;
-        let on_interact_outside = props.on_interact_outside;
+        let on_focus_outside = opts.on_focus_outside;
+        let on_interact_outside = opts.on_interact_outside;
         let is_focus_inside = is_focus_inside_tree.clone();
         wasm_impl::use_focus_outside_effect(
             layer_id_memo,
@@ -418,31 +587,71 @@ pub fn DismissableLayer(props: DismissableLayerProps) -> Element {
         ""
     };
 
-    // --- Capture handlers for pointer-inside-tree and focus-inside-tree flags ---
-    let pointer_inside_clone = is_pointer_inside_tree.clone();
-    let focus_inside_clone_focus = is_focus_inside_tree.clone();
-    let focus_inside_clone_blur = is_focus_inside_tree.clone();
+    let pointer_inside_for_handler = is_pointer_inside_tree.clone();
+    let focus_inside_for_focus = is_focus_inside_tree.clone();
+    let focus_inside_for_blur = is_focus_inside_tree.clone();
+
+    DismissableLayerHandle {
+        pointer_events_style,
+        // Upstream: onPointerDownCapture => isPointerInsideReactTreeRef.current = true
+        on_pointer_down: use_callback(move |_: PointerEvent| {
+            pointer_inside_for_handler.set(true);
+        }),
+        // Upstream: onFocusCapture => isFocusInsideReactTreeRef.current = true
+        on_focus_in: use_callback(move |_: FocusEvent| {
+            focus_inside_for_focus.set(true);
+        }),
+        // Upstream: onBlurCapture => isFocusInsideReactTreeRef.current = false
+        on_focus_out: use_callback(move |_: FocusEvent| {
+            focus_inside_for_blur.set(false);
+        }),
+    }
+}
+
+/// A layer that can be dismissed via Escape key or outside interactions.
+///
+/// Matches Radix's `DismissableLayer`. Escape key handling uses stack
+/// discipline (only the topmost layer responds). Outside interaction
+/// detection uses document-level event listeners via web-sys.
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::dismissable_layer::{DismissableLayer, DismissableEvent};
+/// rsx! {
+///     DismissableLayer {
+///         on_dismiss: move |_| { /* close the overlay */ },
+///         div { "Dismissable content" }
+///     }
+/// };
+/// ```
+///
+/// Renders a `<div>` wrapper; see [`use_dismissable_layer`] when the layer
+/// must be an element you already render.
+#[component]
+pub fn DismissableLayer(props: DismissableLayerProps) -> Element {
+    let layer_id = crate::use_unique_id();
+    #[allow(clippy::redundant_closure)] // Signal<String> is not FnMut, clippy's suggestion is wrong
+    let layer_id_memo = use_memo(move || layer_id());
+
+    let layer = use_dismissable_layer(
+        layer_id_memo,
+        DismissableLayerOptions {
+            disable_outside_pointer_events: props.disable_outside_pointer_events,
+            on_escape_key_down: props.on_escape_key_down,
+            on_pointer_down_outside: props.on_pointer_down_outside,
+            on_focus_outside: props.on_focus_outside,
+            on_interact_outside: props.on_interact_outside,
+            on_dismiss: props.on_dismiss,
+        },
+    );
 
     rsx! {
         div {
             id: "{layer_id}",
-            style: pointer_events_style,
-
-            // Upstream: onPointerDownCapture => isPointerInsideReactTreeRef.current = true
-            onpointerdown: move |_: PointerEvent| {
-                pointer_inside_clone.set(true);
-            },
-
-            // Upstream: onFocusCapture => isFocusInsideReactTreeRef.current = true
-            onfocusin: move |_: FocusEvent| {
-                focus_inside_clone_focus.set(true);
-            },
-
-            // Upstream: onBlurCapture => isFocusInsideReactTreeRef.current = false
-            onfocusout: move |_: FocusEvent| {
-                focus_inside_clone_blur.set(false);
-            },
-
+            style: layer.pointer_events_style,
+            onpointerdown: move |e: PointerEvent| layer.on_pointer_down.call(e),
+            onfocusin: move |e: FocusEvent| layer.on_focus_in.call(e),
+            onfocusout: move |e: FocusEvent| layer.on_focus_out.call(e),
             ..props.attributes,
             {props.children}
         }
@@ -604,16 +813,22 @@ mod wasm_impl {
                     let on_io = on_interact_outside;
                     let on_d = on_dismiss;
 
+                    // Snapshot the originating event now: on touch the dispatch
+                    // is deferred to a later `click`, by which time the pointer
+                    // event is gone. Upstream keeps the same `originalEvent` in
+                    // the detail for both dispatches.
+                    let detail = DismissableEvent::from_pointer(&event);
+
                     let do_dispatch = {
                         move || {
                             // Upstream: handleAndDispatchCustomEvent(POINTER_DOWN_OUTSIDE, handler, eventDetail, { discrete: true })
                             // We call callbacks directly instead.
-                            let event = DismissableEvent::new();
+                            let event = detail.with_fresh_prevented();
                             let prevented = event.prevented.clone();
                             on_pdo.call(event);
 
                             if !prevented.get() {
-                                let event2 = DismissableEvent::new();
+                                let event2 = detail.with_fresh_prevented();
                                 let prevented2 = event2.prevented.clone();
                                 on_io.call(event2);
 
@@ -771,12 +986,13 @@ mod wasm_impl {
                     }
 
                     // Upstream: handleAndDispatchCustomEvent(FOCUS_OUTSIDE, handler, ..., { discrete: false })
-                    let event = DismissableEvent::new();
-                    let prevented = event.prevented.clone();
-                    on_focus_outside.call(event);
+                    let detail = DismissableEvent::from_focus(&event);
+                    let dismissable_event = detail.with_fresh_prevented();
+                    let prevented = dismissable_event.prevented.clone();
+                    on_focus_outside.call(dismissable_event);
 
                     if !prevented.get() {
-                        let event2 = DismissableEvent::new();
+                        let event2 = detail.with_fresh_prevented();
                         let prevented2 = event2.prevented.clone();
                         on_interact_outside.call(event2);
 
