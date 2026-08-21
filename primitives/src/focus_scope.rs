@@ -99,7 +99,10 @@ pub enum AutoFocusPhase {
 /// and `onCloseAutoFocus`. Call
 /// [`prevent_default()`](AutoFocusEvent::prevent_default) to take focus
 /// management into your own hands.
+#[derive(Clone)]
 pub struct AutoFocusEvent {
+    /// Shared on clone: composing handlers must observe each other's
+    /// `prevent_default()`, exactly as multiple DOM listeners on one event do.
     prevented: Rc<Cell<bool>>,
     phase: AutoFocusPhase,
 }

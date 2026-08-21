@@ -132,7 +132,10 @@ pub enum DismissableSource {
 ///
 /// Call [`prevent_default()`](DismissableEvent::prevent_default) in your
 /// callback to prevent the layer from being dismissed.
+#[derive(Clone)]
 pub struct DismissableEvent {
+    /// Shared on clone: composing handlers must observe each other's
+    /// `prevent_default()`, exactly as multiple DOM listeners on one event do.
     prevented: Rc<Cell<bool>>,
     source: DismissableSource,
     button: Option<i16>,
@@ -243,6 +246,29 @@ impl DismissableEvent {
     /// originalEvent.button === 2 || ctrlLeftClick;`
     pub fn is_right_click(&self) -> bool {
         matches!(self.button, Some(2)) || (matches!(self.button, Some(0)) && self.ctrl_key)
+    }
+
+    /// Whether the originating event's target sits inside a mounted element.
+    ///
+    /// Upstream asks `context.triggerRef.current?.contains(event.target)`; this
+    /// is the same question for callers that hold a `MountedData` rather than
+    /// an id. Always `false` off-wasm.
+    pub fn target_is_within_mounted(&self, mounted: &Rc<MountedData>) -> bool {
+        #[cfg(target_arch = "wasm32")]
+        {
+            let Some(target) = self.target.as_ref() else {
+                return false;
+            };
+            mounted
+                .downcast::<web_sys::Element>()
+                .map(|el| el.contains(Some(target)))
+                .unwrap_or(false)
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let _ = mounted;
+            false
+        }
     }
 
     /// Whether the originating event's target sits inside the element with
