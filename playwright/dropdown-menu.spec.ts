@@ -51,10 +51,23 @@ test("test", async ({ page }) => {
   await expect(content).toHaveCount(0);
   await expect(trigger).toHaveAttribute("data-state", "closed");
 
-  // Reopen and toggle
+  // Reopen, then close by clicking the trigger again.
   await trigger.click();
   await expect(content).toBeVisible();
-  await trigger.click();
+
+  // A raw mouse click rather than `trigger.click()`. The menu is modal, so the
+  // dismissable layer sets `pointer-events: none` outside itself — the trigger
+  // included, exactly as upstream does. The user's click therefore falls
+  // through to the document, where the layer's outside-pointerdown handler
+  // dismisses it; the menu closes and the trigger never sees the event.
+  // Playwright's `click()` refuses to drive an element that will not receive
+  // the event, so it would wait forever on behaviour that is correct.
+  const triggerBox = await trigger.boundingBox();
+  expect(triggerBox).not.toBeNull();
+  await page.mouse.click(
+    triggerBox!.x + triggerBox!.width / 2,
+    triggerBox!.y + triggerBox!.height / 2,
+  );
   await expect(content).toHaveCount(0);
 });
 
@@ -105,4 +118,73 @@ test("a closed menu does not cancel Escape for the rest of the page", async ({
 
   // ...and it stops consuming it again once closed.
   expect(await escapeWasCancelled()).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
+// Dismissable layer behaviour
+//
+// The menu family used to dismiss through three ad-hoc mechanisms — a document
+// Escape listener, an outside-click helper and a focusout probe — none of which
+// could take part in the shared layer stack or disable outside pointer events.
+// These pin what the layer brought.
+// ---------------------------------------------------------------------------
+
+test.describe("dropdown menu: layer semantics", () => {
+  async function open(page: import("@playwright/test").Page) {
+    await page.goto("http://127.0.0.1:8080/docs/components/dropdown_menu", {
+      timeout: 20 * 60 * 1000,
+    });
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
+    const trigger = page.locator('[data-slot="dropdown-menu-trigger"]').first();
+    const content = page.locator('[data-slot="dropdown-menu-content"]').first();
+    await trigger.click();
+    await expect(content).toBeVisible();
+    return { trigger, content };
+  }
+
+  test("a modal menu makes the rest of the page inert while open", async ({ page }) => {
+    // Upstream's `disableOutsidePointerEvents`: the layer sets
+    // `pointer-events: none` on the body and `auto` on itself, so the first
+    // click outside dismisses the menu instead of also activating whatever it
+    // landed on. Without it a single click both closed the menu and pressed the
+    // button underneath.
+    const { content } = await open(page);
+    expect(await page.evaluate(() => document.body.style.pointerEvents)).toBe("none");
+
+    await page.keyboard.press("Escape");
+    await expect(content).toHaveCount(0);
+    expect(await page.evaluate(() => document.body.style.pointerEvents)).toBe("");
+  });
+
+  test("clicking outside closes the menu", async ({ page }) => {
+    const { content } = await open(page);
+    await page.mouse.click(5, 5);
+    await expect(content).toHaveCount(0);
+  });
+
+  test("closing plays the exit animation", async ({ page }) => {
+    // The top layer follows Presence's animation-aware `present` rather than
+    // `open`, so `hidePopover()` no longer sets `display: none` in the frame
+    // the state flips and `data-[state=closed]:animate-out` can run.
+    const { content } = await open(page);
+    await content.evaluate((el) => {
+      (window as Window & { __exit?: unknown }).__exit = null;
+      el.addEventListener("animationstart", (event) => {
+        (window as Window & { __exit?: unknown }).__exit = {
+          name: (event as AnimationEvent).animationName,
+          state: el.getAttribute("data-state"),
+        };
+      });
+    });
+
+    await page.keyboard.press("Escape");
+    await expect(content).toHaveCount(0);
+
+    const recorded = (await page.evaluate(
+      () => (window as Window & { __exit?: unknown }).__exit,
+    )) as { name: string; state: string } | null;
+    expect(recorded, "an exit animation should have started on close").not.toBeNull();
+    expect(recorded!.state).toBe("closed");
+    expect(recorded!.name).not.toBe("none");
+  });
 });

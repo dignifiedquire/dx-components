@@ -6,6 +6,9 @@
 use std::rc::Rc;
 
 use crate::direction::Orientation;
+use crate::dismissable_layer::{
+    use_dismissable_layer, DismissableEvent, DismissableLayerOptions, DismissableSource,
+};
 use crate::merge_attributes;
 use crate::popper::{Popper, PopperContent, PopperCtx, Side};
 use crate::presence::Presence;
@@ -99,6 +102,117 @@ pub struct MenuPortalProps {
 pub fn MenuPortal(props: MenuPortalProps) -> Element {
     rsx! {
         {props.children}
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Shared dismissal wiring
+// ---------------------------------------------------------------------------
+
+/// What a menu wrapper passes to [`use_menu_dismissal`].
+///
+/// These mirror the `DismissableLayer` props upstream threads through
+/// `MenuContentImpl` (menu.tsx), so a consumer can intercept or veto any
+/// dismissal path.
+#[derive(Clone, Copy, Default)]
+pub(crate) struct MenuDismissalOptions {
+    /// Upstream: `MenuRootContentModal` vs `MenuRootContentNonModal`. Modal
+    /// menus disable pointer events outside the layer and never dismiss on a
+    /// focus-outside event.
+    pub is_modal: bool,
+    pub on_escape_key_down: Callback<DismissableEvent>,
+    pub on_pointer_down_outside: Callback<DismissableEvent>,
+    pub on_focus_outside: Callback<DismissableEvent>,
+    pub on_interact_outside: Callback<DismissableEvent>,
+}
+
+/// What [`use_menu_dismissal`] needs merged onto the menu's content element.
+pub(crate) struct MenuDismissalHandle {
+    /// Spread onto the content element — the layer's pointer/focus handlers.
+    pub attributes: Vec<Attribute>,
+    /// Append to the content element's style: the layer's `pointer-events`.
+    pub content_style: Option<String>,
+    /// Upstream's `hasInteractedOutsideRef`: whether the close was caused by
+    /// an interaction elsewhere, which decides whether focus returns to the
+    /// trigger.
+    pub has_interacted_outside: Signal<bool>,
+}
+
+/// Wire a menu's content element up as a dismissable layer.
+///
+/// Replaces the three ad-hoc mechanisms the menu family used to dismiss with —
+/// a document Escape listener, an outside-click helper and a `focusout` probe.
+/// Those could not participate in the shared layer stack, so a menu could not
+/// order itself against a dialog or popover, and modal menus never disabled
+/// pointer events outside themselves (making the first outside click both
+/// close the menu *and* activate whatever was underneath).
+///
+/// The handlers ride on the content element itself rather than a nested div —
+/// see [`use_dismissable_layer`] for why that distinction matters.
+pub(crate) fn use_menu_dismissal(
+    content_id: Memo<String>,
+    opts: MenuDismissalOptions,
+) -> MenuDismissalHandle {
+    let ctx: MenuCtx = use_context();
+    let open = ctx.open;
+    let on_close = ctx.on_close;
+    let is_modal = opts.is_modal;
+
+    let mut has_interacted_outside = use_signal(|| false);
+
+    let user_pointer_down_outside = opts.on_pointer_down_outside;
+    let on_pointer_down_outside = use_callback(move |event: DismissableEvent| {
+        user_pointer_down_outside.call(event.clone());
+        // Upstream dropdown records the interaction when the menu is non-modal
+        // or the press was a right-click, and uses it to decide whether focus
+        // returns to the trigger.
+        if !is_modal || event.is_right_click() {
+            has_interacted_outside.set(true);
+        }
+    });
+
+    let user_focus_outside = opts.on_focus_outside;
+    let on_focus_outside = use_callback(move |event: DismissableEvent| {
+        user_focus_outside.call(event.clone());
+        if is_modal {
+            // Upstream composes this with `checkForDefaultPrevented: false`:
+            // focus can leave while trapped, and that must never dismiss.
+            event.prevent_default();
+        }
+    });
+
+    let user_interact_outside = opts.on_interact_outside;
+    let on_interact_outside = use_callback(move |event: DismissableEvent| {
+        user_interact_outside.call(event.clone());
+        if !event.is_default_prevented() && event.source() == DismissableSource::PointerDown {
+            has_interacted_outside.set(true);
+        }
+    });
+
+    let layer = use_dismissable_layer(
+        content_id,
+        DismissableLayerOptions {
+            // Upstream passes `context.open` here, not a constant: a menu that
+            // is animating out must stop disabling outside pointer events.
+            disable_outside_pointer_events: is_modal && open(),
+            on_escape_key_down: opts.on_escape_key_down,
+            on_pointer_down_outside,
+            on_focus_outside,
+            on_interact_outside,
+            on_dismiss: use_callback(move |_: ()| on_close.call(())),
+        },
+    );
+
+    let pointer_events_style = layer.pointer_events_style;
+
+    MenuDismissalHandle {
+        attributes: attributes!(div {
+            onpointerdown: move |e: Event<PointerData>| layer.on_pointer_down.call(e),
+            onfocusin: move |e: Event<FocusData>| layer.on_focus_in.call(e),
+            onfocusout: move |e: Event<FocusData>| layer.on_focus_out.call(e),
+        }),
+        content_style: (!pointer_events_style.is_empty()).then(|| pointer_events_style.to_string()),
+        has_interacted_outside,
     }
 }
 

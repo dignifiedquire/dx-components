@@ -24,15 +24,16 @@
 
 use std::rc::Rc;
 
+use crate::dismissable_layer::DismissableEvent;
 use crate::focus_scope::FocusScope;
-use crate::menu::MenuCtx;
+use crate::menu::{use_menu_dismissal, MenuCtx, MenuDismissalOptions};
 use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
 use crate::presence::Presence;
+use crate::presence::PresenceContext;
 use crate::scroll_lock::use_scroll_lock;
 use crate::top_layer::{use_top_layer, TopLayerKind};
 use crate::{
-    merge_attributes, use_controlled, use_global_escape_listener, use_id_or,
-    use_outside_click_with_exclude, use_refocus_on_close, use_unique_id,
+    merge_attributes, use_controlled, use_id_or, use_refocus_on_close_unless, use_unique_id,
 };
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
@@ -302,6 +303,26 @@ pub struct DropdownMenuContentProps {
     #[props(default)]
     pub collision_padding: CollisionPadding,
 
+    /// Called when Escape is pressed while this is the topmost layer. Can be
+    /// prevented. Upstream: `onEscapeKeyDown`.
+    #[props(default)]
+    pub on_escape_key_down: Callback<DismissableEvent>,
+
+    /// Called on a pointer-down outside the content. Can be prevented.
+    /// Upstream: `onPointerDownOutside`.
+    #[props(default)]
+    pub on_pointer_down_outside: Callback<DismissableEvent>,
+
+    /// Called when focus moves outside the content. Can be prevented.
+    /// Upstream: `onFocusOutside`.
+    #[props(default)]
+    pub on_focus_outside: Callback<DismissableEvent>,
+
+    /// Called on any outside interaction, pointer or focus. Can be prevented.
+    /// Upstream: `onInteractOutside`.
+    #[props(default)]
+    pub on_interact_outside: Callback<DismissableEvent>,
+
     /// Additional CSS classes.
     #[props(default)]
     pub class: Option<String>,
@@ -316,48 +337,90 @@ pub struct DropdownMenuContentProps {
 
 /// The menu content container, positioned via [`PopperContent`].
 ///
-/// Owns presence tracking. Passes `class`, `data-state`, `data-slot` to
-/// PopperContent's inner div. Delegates keyboard/focus behavior to
-/// `MenuContent`.
+/// Mirrors upstream's split: this gates mounting through [`Presence`] so exit
+/// animations can finish, and [`DropdownMenuContentImpl`] holds everything that
+/// only exists while the menu is mounted.
 #[component]
 pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
     let ctx: MenuCtx = use_context();
-    let internal: DropdownMenuInternalCtx = use_context();
     let id = use_id_or(ctx.content_id, props.id);
+
+    rsx! {
+        Presence {
+            present: props.force_mount || (ctx.open)(),
+            id: id,
+            DropdownMenuContentImpl {
+                content_id: id,
+                side: props.side,
+                side_offset: props.side_offset,
+                align: props.align,
+                align_offset: props.align_offset,
+                avoid_collisions: props.avoid_collisions,
+                collision_padding: props.collision_padding,
+                on_escape_key_down: props.on_escape_key_down,
+                on_pointer_down_outside: props.on_pointer_down_outside,
+                on_focus_outside: props.on_focus_outside,
+                on_interact_outside: props.on_interact_outside,
+                class: props.class,
+                attributes: props.attributes,
+                children: props.children,
+            }
+        }
+    }
+}
+
+/// Props for [`DropdownMenuContentImpl`].
+#[derive(Props, Clone, PartialEq)]
+struct DropdownMenuContentImplProps {
+    content_id: Memo<String>,
+    side: Side,
+    side_offset: f64,
+    align: Align,
+    align_offset: f64,
+    avoid_collisions: bool,
+    collision_padding: CollisionPadding,
+    on_escape_key_down: Callback<DismissableEvent>,
+    on_pointer_down_outside: Callback<DismissableEvent>,
+    on_focus_outside: Callback<DismissableEvent>,
+    on_interact_outside: Callback<DismissableEvent>,
+    class: Option<String>,
+    attributes: Vec<Attribute>,
+    children: Element,
+}
+
+/// Everything that only exists while the menu is mounted.
+///
+/// Sits inside [`Presence`], so it can read [`PresenceContext`] and keep the
+/// element in the top layer until the exit animation has finished rather than
+/// the instant `open` flips.
+#[component]
+fn DropdownMenuContentImpl(props: DropdownMenuContentImplProps) -> Element {
+    let ctx: MenuCtx = use_context();
+    let internal: DropdownMenuInternalCtx = use_context();
+    let id = props.content_id;
     let is_modal = internal.modal;
 
-    // Modal: lock scroll when open
-    let scroll_lock_active = use_memo(move || is_modal && (ctx.open)());
-    use_scroll_lock(scroll_lock_active);
+    // Modal: lock scroll while open (upstream: `RemoveScroll`).
+    let modal_active = use_memo(move || is_modal && (ctx.open)());
+    use_scroll_lock(modal_active);
 
-    // Refocus trigger when menu closes (upstream onCloseAutoFocus)
-    use_refocus_on_close(ctx.open, ctx.trigger_id);
-
-    // Document-level Escape listener (closes menu even without focus inside)
-    {
-        let on_close = ctx.on_close;
-        let open = ctx.open;
-        // Gated on `open`: while installed, the listener cancels Escape's
-        // default action for the whole document, so a closed menu must not
-        // install it.
-        use_global_escape_listener(open.into(), move || {
-            if *open.peek() {
-                on_close.call(());
-            }
-        });
-    }
-
-    // Dismiss on click outside content — exclude clicks on the trigger to
-    // avoid racing with the trigger's own toggle handler.
-    {
-        let on_close = ctx.on_close;
-        let open = ctx.open;
-        use_outside_click_with_exclude(id, "[data-slot=\"dropdown-menu-trigger\"]", move || {
-            if *open.peek() {
-                on_close.call(());
-            }
-        });
-    }
+    // Refocus trigger when the menu closes (upstream `onCloseAutoFocus`),
+    // unless the close was caused by interacting somewhere else.
+    let dismissal = use_menu_dismissal(
+        id,
+        MenuDismissalOptions {
+            is_modal,
+            on_escape_key_down: props.on_escape_key_down,
+            on_pointer_down_outside: props.on_pointer_down_outside,
+            on_focus_outside: props.on_focus_outside,
+            on_interact_outside: props.on_interact_outside,
+        },
+    );
+    use_refocus_on_close_unless(
+        ctx.open,
+        ctx.trigger_id,
+        dismissal.has_interacted_outside.into(),
+    );
 
     let data_state = if (ctx.open)() { "open" } else { "closed" };
 
@@ -369,14 +432,17 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
         "data-state": data_state,
         aria_labelledby: (ctx.trigger_id)(),
     });
-    let merged = merge_attributes(vec![content_attrs, props.attributes]);
+    let merged = merge_attributes(vec![content_attrs, dismissal.attributes, props.attributes]);
 
-    // popover="manual" puts the floated wrapper in the browser top layer
-    // (escaping ancestor overflow/transform/stacking-contexts) while leaving
-    // ESC and outside-click dismiss to our existing handlers above. Nested
-    // submenus need this — `popover="auto"` would only allow one menu open
-    // at a time globally.
-    let wrapper_attrs = attributes!(div { popover: "manual" });
+    // `popover="manual"` puts the floated wrapper in the browser top layer,
+    // escaping ancestor overflow/transform/stacking contexts. `manual` rather
+    // than `auto` because dismissal is the layer's job and nested submenus must
+    // coexist — `auto` allows only one open popover at a time.
+    //
+    // Driven by Presence's animation-aware `present`, not `open`: hiding on
+    // `open` sets `display: none` before the exit animation can run.
+    let presence: PresenceContext = use_context();
+    let present = presence.present;
     let mut wrapper_mounted = use_signal(|| None::<Rc<MountedData>>);
     let set_open = Callback::new(move |open: bool| {
         if !open {
@@ -385,37 +451,34 @@ pub fn DropdownMenuContent(props: DropdownMenuContentProps) -> Element {
     });
     use_top_layer(
         wrapper_mounted.into(),
-        ctx.open.into(),
+        present.into(),
         set_open,
         TopLayerKind::PopoverManual,
     );
 
     rsx! {
-        Presence {
-            present: props.force_mount || (ctx.open)(),
-            id: id,
-            PopperContent {
-                side: props.side,
-                side_offset: props.side_offset,
-                align: props.align,
-                align_offset: props.align_offset,
-                avoid_collisions: props.avoid_collisions,
-                collision_padding: props.collision_padding,
-                css_var_prefix: "dropdown-menu",
-                class: props.class,
-                content_attributes: merged,
-                wrapper_attributes: wrapper_attrs,
-                on_wrapper_mounted: move |evt: Event<MountedData>| {
-                    wrapper_mounted.set(Some(evt.data()));
-                },
+        PopperContent {
+            side: props.side,
+            side_offset: props.side_offset,
+            align: props.align,
+            align_offset: props.align_offset,
+            avoid_collisions: props.avoid_collisions,
+            collision_padding: props.collision_padding,
+            css_var_prefix: "dropdown-menu",
+            class: props.class,
+            content_attributes: merged,
+            content_style: dismissal.content_style,
+            wrapper_attributes: attributes!(div { popover: "manual" }),
+            on_wrapper_mounted: move |evt: Event<MountedData>| {
+                wrapper_mounted.set(Some(evt.data()));
+            },
 
-                FocusScope {
-                    trapped: is_modal && (ctx.open)(),
-                    r#loop: is_modal && (ctx.open)(),
-                    crate::menu::MenuContent {
-                        content_id: id,
-                        {props.children}
-                    }
+            FocusScope {
+                trapped: is_modal && (ctx.open)(),
+                r#loop: is_modal && (ctx.open)(),
+                crate::menu::MenuContent {
+                    content_id: id,
+                    {props.children}
                 }
             }
         }

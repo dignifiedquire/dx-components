@@ -209,6 +209,28 @@ pub fn use_refocus_on_close(open: Memo<bool>, trigger_id: Signal<String>) {
     });
 }
 
+/// Refocus the trigger when a menu closes, unless something outside caused it.
+///
+/// Upstream's `onCloseAutoFocus` on `DropdownMenuContent` focuses the trigger
+/// only when `hasInteractedOutsideRef` is false — dismissing a menu by clicking
+/// somewhere else should leave focus where the user put it, not yank it back to
+/// the trigger.
+pub(crate) fn use_refocus_on_close_unless(
+    open: Memo<bool>,
+    trigger_id: Signal<String>,
+    interacted_outside: ReadSignal<bool>,
+) {
+    let prev_open = use_previous(open.into());
+    use_effect(move || {
+        if prev_open() && !open() && !interacted_outside() {
+            let id = trigger_id();
+            document::eval(&format!(
+                "var e=document.getElementById('{id}');if(e)e.focus()"
+            ));
+        }
+    });
+}
+
 /// Returns `true` once the component has mounted on the client.
 ///
 /// Matches Radix's `useIsHydrated()`: returns `false` during SSR and on
