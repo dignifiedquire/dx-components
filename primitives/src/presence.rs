@@ -241,9 +241,23 @@ fn use_presence(open: Memo<bool>, id: Memo<String>) -> UsePresence {
 
                 if is_open {
                     presence_send(&mut state, PresenceEvent::Mount);
-                } else if current_anim_name == "none" || display == "none" {
+                } else if current_anim_name == "none"
+                    || display == "none"
+                    || !is_rendered_by_id(&id_val)
+                {
                     // If there is no exit animation or the element is hidden,
-                    // animations won't run so we unmount instantly
+                    // animations won't run so we unmount instantly.
+                    //
+                    // The `is_rendered_by_id` arm is ours, not upstream's.
+                    // Upstream portals to `document.body`, so only the element's
+                    // own `display` can hide it. Our overlays sit inside a
+                    // positioning wrapper that the top layer can hide out from
+                    // under them — `hidePopover()` on the wrapper, or a
+                    // `showModal()` elsewhere, which closes every open popover.
+                    // `getComputedStyle` still reports the *content's* own
+                    // `display: block` in that case, so without this check we
+                    // would wait for an `animationend` that can never fire and
+                    // leave the element mounted forever.
                     presence_send(&mut state, PresenceEvent::Unmount);
                 } else {
                     // When `present` changes to `false`, we check changes to
@@ -487,6 +501,26 @@ fn get_animation_name_by_id(id: &str) -> String {
         .unwrap_or_else(|| "none".to_string())
 }
 
+/// Whether the element with this ID is actually being rendered.
+///
+/// An element inside a `display: none` ancestor still reports its own
+/// `display` from `getComputedStyle`, but generates no boxes — and CSS
+/// animations do not run for it. A zero-area bounding rect is the cheap,
+/// feature-free way to detect that. An element that is genuinely 0x0 is
+/// treated as not rendered, which is correct for this purpose: nothing about
+/// it can animate visibly either.
+#[cfg(target_arch = "wasm32")]
+fn is_rendered_by_id(id: &str) -> bool {
+    web_sys::window()
+        .and_then(|w| w.document())
+        .and_then(|d| d.get_element_by_id(id))
+        .map(|el| {
+            let rect = el.get_bounding_client_rect();
+            rect.width() > 0.0 || rect.height() > 0.0
+        })
+        .unwrap_or(false)
+}
+
 /// Get `display` computed style for an element found by ID.
 #[cfg(target_arch = "wasm32")]
 fn get_display_by_id(id: &str) -> String {
@@ -534,4 +568,11 @@ fn get_animation_name_by_id(_id: &str) -> String {
 #[cfg(not(target_arch = "wasm32"))]
 fn get_display_by_id(_id: &str) -> String {
     "block".to_string()
+}
+
+/// Off-wasm there is no layout, so treat the element as rendered and let the
+/// animation-name check decide.
+#[cfg(not(target_arch = "wasm32"))]
+fn is_rendered_by_id(_id: &str) -> bool {
+    true
 }
