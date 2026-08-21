@@ -76,6 +76,58 @@ fn stack_remove(scope: &Rc<FocusScopeState>) {
 // Props
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// AutoFocusEvent — replaces upstream's cancelable AUTOFOCUS_ON_* CustomEvents
+// ---------------------------------------------------------------------------
+
+/// Which auto-focus moment produced an [`AutoFocusEvent`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AutoFocusPhase {
+    /// The scope has mounted and is about to focus its first tabbable child.
+    /// Upstream: `focusScope.autoFocusOnMount`.
+    Mount,
+    /// The scope is unmounting and is about to restore focus to the element
+    /// that had it before. Upstream: `focusScope.autoFocusOnUnmount`.
+    Unmount,
+}
+
+/// A preventable auto-focus event.
+///
+/// Upstream dispatches cancelable `CustomEvent`s and skips its default focus
+/// behaviour when `event.defaultPrevented` is set — this is how
+/// `DialogContent`, `PopoverContent` and friends implement `onOpenAutoFocus`
+/// and `onCloseAutoFocus`. Call
+/// [`prevent_default()`](AutoFocusEvent::prevent_default) to take focus
+/// management into your own hands.
+pub struct AutoFocusEvent {
+    prevented: Rc<Cell<bool>>,
+    phase: AutoFocusPhase,
+}
+
+impl AutoFocusEvent {
+    fn new(phase: AutoFocusPhase) -> Self {
+        Self {
+            prevented: Rc::new(Cell::new(false)),
+            phase,
+        }
+    }
+
+    /// Skip the scope's default focus behaviour for this moment.
+    pub fn prevent_default(&self) {
+        self.prevented.set(true);
+    }
+
+    /// Whether [`prevent_default()`](AutoFocusEvent::prevent_default) was called.
+    pub fn is_default_prevented(&self) -> bool {
+        self.prevented.get()
+    }
+
+    /// Whether this is the mount or the unmount moment.
+    pub fn phase(&self) -> AutoFocusPhase {
+        self.phase
+    }
+}
+
 /// Props for [`FocusScope`].
 #[derive(Props, Clone, PartialEq)]
 pub struct FocusScopeProps {
@@ -88,13 +140,17 @@ pub struct FocusScopeProps {
     #[props(default)]
     pub trapped: bool,
 
-    /// Called when auto-focusing on mount.
+    /// Called before the scope auto-focuses its first tabbable child on mount.
+    /// Call [`AutoFocusEvent::prevent_default`] to keep focus where it is.
+    /// Upstream: `onMountAutoFocus`.
     #[props(default)]
-    pub on_mount_auto_focus: Callback<()>,
+    pub on_mount_auto_focus: Callback<AutoFocusEvent>,
 
-    /// Called when auto-focusing on unmount.
+    /// Called before the scope restores focus on unmount. Call
+    /// [`AutoFocusEvent::prevent_default`] to keep focus where it is.
+    /// Upstream: `onUnmountAutoFocus`.
     #[props(default)]
-    pub on_unmount_auto_focus: Callback<()>,
+    pub on_unmount_auto_focus: Callback<AutoFocusEvent>,
 
     /// Spread attributes.
     #[props(extends = GlobalAttributes)]
@@ -162,17 +218,40 @@ pub fn FocusScope(props: FocusScopeProps) -> Element {
         let scope = scope_state.clone();
         crate::use_effect_with_cleanup(move || {
             stack_add(&scope);
-            on_mount_auto_focus.call(());
 
+            // Upstream only dispatches the mount event when it would actually
+            // move focus — i.e. when focus is not already inside the container
+            // (`hasFocusedCandidate`) — and skips `focusFirst` if the handler
+            // prevented it.
             #[cfg(target_arch = "wasm32")]
-            let previously_focused = wasm_impl::mount_auto_focus(container_id);
+            let previously_focused = {
+                let previously_focused = wasm_impl::active_element();
+                if !wasm_impl::contains_focus(container_id, previously_focused.as_ref()) {
+                    let event = AutoFocusEvent::new(AutoFocusPhase::Mount);
+                    let prevented = event.prevented.clone();
+                    on_mount_auto_focus.call(event);
+                    if !prevented.get() {
+                        wasm_impl::focus_first_candidate(container_id);
+                    }
+                }
+                previously_focused
+            };
+
+            #[cfg(not(target_arch = "wasm32"))]
+            on_mount_auto_focus.call(AutoFocusEvent::new(AutoFocusPhase::Mount));
 
             let scope_cleanup = scope.clone();
             Box::new(move || {
-                on_unmount_auto_focus.call(());
+                let event = AutoFocusEvent::new(AutoFocusPhase::Unmount);
+                let prevented = event.prevented.clone();
+                on_unmount_auto_focus.call(event);
 
                 #[cfg(target_arch = "wasm32")]
-                wasm_impl::restore_focus(previously_focused);
+                if !prevented.get() {
+                    wasm_impl::restore_focus(previously_focused);
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                let _ = prevented;
 
                 stack_remove(&scope_cleanup);
             }) as Box<dyn FnOnce()>
@@ -375,24 +454,38 @@ mod wasm_impl {
         }) as Box<dyn FnOnce()>
     }
 
-    /// Auto-focus first tabbable element on mount.
-    /// Returns the previously focused element for restoration on unmount.
-    pub(super) fn mount_auto_focus(container_id: Signal<String>) -> Option<web_sys::HtmlElement> {
-        let doc = web_sys::window().and_then(|w| w.document())?;
-        let previously_focused = doc
-            .active_element()
-            .and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok());
+    /// The currently focused element, captured before the scope takes over.
+    /// Upstream: `const previouslyFocusedElement = document.activeElement`.
+    pub(super) fn active_element() -> Option<web_sys::HtmlElement> {
+        web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.active_element())
+            .and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok())
+    }
 
+    /// Whether `element` already sits inside the scope container.
+    /// Upstream: `const hasFocusedCandidate = container.contains(previouslyFocusedElement)`.
+    pub(super) fn contains_focus(
+        container_id: Signal<String>,
+        element: Option<&web_sys::HtmlElement>,
+    ) -> bool {
+        let Some(element) = element else {
+            return false;
+        };
+        let id = container_id.peek().clone();
+        web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id(&id))
+            .map(|container| container.contains(Some(element.as_ref())))
+            .unwrap_or(false)
+    }
+
+    /// Focus the scope's first tabbable child, falling back to the container.
+    /// Upstream: `focusFirst(removeLinks(getTabbableCandidates(container)), { select: true })`.
+    pub(super) fn focus_first_candidate(container_id: Signal<String>) -> Option<()> {
+        let doc = web_sys::window().and_then(|w| w.document())?;
         let id = container_id.peek().clone();
         let container = doc.get_element_by_id(&id)?;
-
-        // Check if focus is already inside the container
-        if let Some(ref pf) = previously_focused {
-            let pf_node: &web_sys::Node = pf.as_ref();
-            if container.contains(Some(pf_node)) {
-                return previously_focused;
-            }
-        }
 
         // Focus first tabbable candidate (excluding links, matching upstream's removeLinks)
         let candidates = get_tabbable_candidates(&container);
@@ -409,7 +502,7 @@ mod wasm_impl {
             }
         }
 
-        previously_focused
+        Some(())
     }
 
     /// Restore focus to the previously focused element on unmount.
