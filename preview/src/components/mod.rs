@@ -152,7 +152,7 @@ examples!(
     dismissable_layer,
     drawer[directions],
     drag_and_drop_list[removable],
-    dropdown_menu[checkboxes, radio],
+    dropdown_menu[submenu, checkboxes, radio],
     focus_scope,
     form,
     hover_card,

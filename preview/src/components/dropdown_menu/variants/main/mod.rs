@@ -10,9 +10,10 @@ pub fn Demo() -> Element {
                 Button { variant: ButtonVariant::Outline, "Open" }
             }
             DropdownMenuContent {
-                DropdownMenuLabel { "My Account" }
-                DropdownMenuSeparator {}
+                class: "w-40",
+                align: Align::Start,
                 DropdownMenuGroup {
+                    DropdownMenuLabel { "My Account" }
                     DropdownMenuItem {
                         "Profile"
                         DropdownMenuShortcut { "⇧⌘P" }
@@ -25,24 +26,38 @@ pub fn Demo() -> Element {
                         "Settings"
                         DropdownMenuShortcut { "⌘S" }
                     }
-                    DropdownMenuItem {
-                        "Keyboard shortcuts"
-                        DropdownMenuShortcut { "⌘K" }
-                    }
                 }
                 DropdownMenuSeparator {}
                 DropdownMenuGroup {
                     DropdownMenuItem { "Team" }
+                    DropdownMenuSub {
+                        DropdownMenuSubTrigger { "Invite users" }
+                        DropdownMenuPortal {
+                            DropdownMenuSubContent {
+                                DropdownMenuItem { "Email" }
+                                DropdownMenuItem { "Message" }
+                                DropdownMenuSeparator {}
+                                DropdownMenuItem { "More..." }
+                            }
+                        }
+                    }
                     DropdownMenuItem {
-                        disabled: true,
                         "New Team"
                         DropdownMenuShortcut { "⌘+T" }
                     }
                 }
                 DropdownMenuSeparator {}
-                DropdownMenuItem {
-                    "Log out"
-                    DropdownMenuShortcut { "⇧⌘Q" }
+                DropdownMenuGroup {
+                    DropdownMenuItem { "GitHub" }
+                    DropdownMenuItem { "Support" }
+                    DropdownMenuItem { disabled: true, "API" }
+                }
+                DropdownMenuSeparator {}
+                DropdownMenuGroup {
+                    DropdownMenuItem {
+                        "Log out"
+                        DropdownMenuShortcut { "⇧⌘Q" }
+                    }
                 }
             }
         }

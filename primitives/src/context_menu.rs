@@ -26,7 +26,7 @@ use std::rc::Rc;
 
 use crate::dismissable_layer::DismissableEvent;
 use crate::focus_scope::FocusScope;
-use crate::menu::{use_menu_dismissal, MenuCtx, MenuDismissalOptions};
+use crate::menu::{use_menu_dismissal, GraceSide, MenuCtx, MenuDismissalOptions};
 use crate::popper::{Align, CollisionPadding, PopperAnchorKind, PopperContent, PopperCtx, Side};
 use crate::presence::Presence;
 use crate::presence::PresenceContext;
@@ -146,6 +146,8 @@ pub fn ContextMenuRoot(props: ContextMenuRootProps) -> Element {
     let set_open_cb = set_open;
     let typeahead_items = use_signal(Vec::new);
     let grace_intent = use_signal(|| None);
+    let pointer_dir = use_signal(|| GraceSide::Right);
+    let last_pointer_x = use_signal(|| None);
     use_context_provider(|| MenuCtx {
         open,
         on_close: Callback::new(move |()| set_open_cb.call(false)),
@@ -154,6 +156,8 @@ pub fn ContextMenuRoot(props: ContextMenuRootProps) -> Element {
         slot_prefix: "context-menu",
         typeahead_items,
         grace_intent,
+        pointer_dir,
+        last_pointer_x,
     });
 
     // Provide PopperCtx with virtual anchor (click coordinates)

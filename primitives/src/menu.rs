@@ -37,11 +37,24 @@ pub(crate) struct Point {
     y: f64,
 }
 
-/// Grace area intent — polygon from pointer to sub-content edges.
-/// When set, pointer moves inside this polygon don't close the sub-menu.
+/// Which way the pointer must be travelling for a grace area to apply.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum GraceSide {
+    Left,
+    Right,
+}
+
+/// Grace area intent — the polygon from the pointer to the sub-content edges.
+///
+/// While the pointer is inside this polygon *and* travelling towards the
+/// submenu, hovering intervening items must not steal focus or close the sub.
+/// Upstream gates on direction as well as position (menu.tsx
+/// `isPointerMovingToSubmenu`): a pointer inside the triangle but moving away
+/// is leaving, not aiming.
 #[derive(Clone, Debug)]
 pub(crate) struct GraceIntent {
     pub area: Vec<Point>,
+    pub side: GraceSide,
 }
 
 /// Provided by each wrapper (DropdownMenu, ContextMenu, Menubar).
@@ -56,6 +69,23 @@ pub(crate) struct MenuCtx {
     pub typeahead_items: Signal<Vec<MenuTypeaheadEntry>>,
     /// Grace area for sub-menu pointer navigation.
     pub grace_intent: Signal<Option<GraceIntent>>,
+    /// Direction the pointer is currently travelling, sampled on the content's
+    /// pointer-move. Upstream: `pointerDirRef`.
+    pub pointer_dir: Signal<GraceSide>,
+    /// Previous pointer x, to derive that direction. Upstream reads
+    /// `event.clientX` deltas rather than `movementX`, which Safari reports as
+    /// 0.
+    pub last_pointer_x: Signal<Option<f64>>,
+}
+
+/// Upstream `isPointerMovingToSubmenu`: is the pointer inside an open
+/// submenu's grace area *and* heading towards it?
+pub(crate) fn pointer_is_moving_to_submenu(ctx: &MenuCtx, x: f64, y: f64) -> bool {
+    let intent = ctx.grace_intent.read();
+    let Some(intent) = intent.as_ref() else {
+        return false;
+    };
+    *ctx.pointer_dir.read() == intent.side && is_point_in_polygon(x, y, &intent.area)
 }
 
 /// Provided by MenuCheckboxItem / MenuRadioItem for MenuItemIndicator.
@@ -373,22 +403,25 @@ pub fn MenuContent(props: MenuContentProps) -> Element {
                                 event.prevent_default();
                                 event.stop_propagation();
                             },
-                            // Grace area: if pointer is inside the grace polygon, don't close sub-menu
+                            // Upstream tracks pointer direction here and
+                            // nothing else; the grace area is cleared by its
+                            // own timer, not by leaving the polygon.
                             onpointermove: {
-                                let mut grace = ctx.grace_intent;
+                                let mut pointer_dir = ctx.pointer_dir;
+                                let mut last_x = ctx.last_pointer_x;
                                 move |event: Event<PointerData>| {
-                                    let should_clear = {
-                                        let read = grace.read();
-                                        if let Some(ref intent) = *read {
-                                            let px = event.data().client_coordinates().x;
-                                            let py = event.data().client_coordinates().y;
-                                            !is_point_in_polygon(px, py, &intent.area)
-                                        } else {
-                                            false
+                                    if event.data().pointer_type() == "mouse" {
+                                        let x = event.data().client_coordinates().x;
+                                        if let Some(prev) = *last_x.peek() {
+                                            if x != prev {
+                                                pointer_dir.set(if x > prev {
+                                                    GraceSide::Right
+                                                } else {
+                                                    GraceSide::Left
+                                                });
+                                            }
                                         }
-                                    };
-                                    if should_clear {
-                                        grace.set(None);
+                                        last_x.set(Some(x));
                                     }
                                 }
                             },
@@ -451,6 +484,7 @@ pub fn MenuItem(props: MenuItemProps) -> Element {
 
     // Register for typeahead search (matching Radix textValue prop)
     let mut element_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+    let mut highlighted = use_signal(|| false);
     if let Some(text) = props.text_value.clone() {
         let entry_index = use_hook(|| {
             let mut items = ctx.typeahead_items.write();
@@ -478,6 +512,9 @@ pub fn MenuItem(props: MenuItemProps) -> Element {
                     let item_attrs = attributes!(div {
                         role: "menuitem",
                         "data-slot": slot.clone(),
+                        // Upstream marks the focused item so hover and keyboard
+                        // navigation share one visual state.
+                        "data-highlighted": if highlighted() { Some("") } else { None },
                         "data-disabled": if disabled { Some("true") } else { None },
                         aria_disabled: if disabled { Some("true") } else { None },
                         class: class.clone(),
@@ -490,7 +527,43 @@ pub fn MenuItem(props: MenuItemProps) -> Element {
                                 element_ref.set(Some(e.data()));
                                 slot_props.on_mounted.call(e);
                             },
-                            onfocus: move |e| slot_props.on_focus.call(e),
+                            onfocus: move |e| {
+                                highlighted.set(true);
+                                slot_props.on_focus.call(e);
+                            },
+                            onblur: move |_| highlighted.set(false),
+                            // Upstream focuses the item the pointer is over, so
+                            // hover and keyboard highlight are the same state.
+                            // While the pointer is crossing an open submenu's
+                            // grace area it must not: that move is aimed past
+                            // these items, not at them.
+                            onpointermove: move |event: Event<PointerData>| {
+                                if event.data().pointer_type() != "mouse" {
+                                    return;
+                                }
+                                let x = event.data().client_coordinates().x;
+                                let y = event.data().client_coordinates().y;
+                                if pointer_is_moving_to_submenu(&ctx, x, y) {
+                                    return;
+                                }
+                                if disabled {
+                                    crate::focus_element_by_id(&(ctx.content_id)());
+                                } else if let Some(element) = element_ref.read().as_ref() {
+                                    crate::focus_mounted(element);
+                                }
+                            },
+                            // Upstream's `onItemLeave`: focus returns to the
+                            // content so nothing stays highlighted.
+                            onpointerleave: move |event: Event<PointerData>| {
+                                if event.data().pointer_type() != "mouse" {
+                                    return;
+                                }
+                                let x = event.data().client_coordinates().x;
+                                let y = event.data().client_coordinates().y;
+                                if !pointer_is_moving_to_submenu(&ctx, x, y) {
+                                    crate::focus_element_by_id(&(ctx.content_id)());
+                                }
+                            },
                             onmousedown: move |e| slot_props.on_mousedown.call(e),
                             onkeydown: {
                                 move |event: Event<KeyboardData>| {
@@ -953,6 +1026,12 @@ pub fn MenuSubTrigger(props: MenuSubTriggerProps) -> Element {
 
     // Generation counter for cancelling stale hover timers (replaces document::eval timers)
     let mut open_gen = use_signal(|| 0u64);
+    // Generation counter cancelling the 300ms grace-area expiry when a newer
+    // pointer-leave supersedes it.
+    let grace_gen = use_signal(|| 0u64);
+    // Whether an open timer is already in flight — upstream's
+    // `openTimerRef.current` guard.
+    let open_timer_pending = use_signal(|| false);
 
     rsx! {
         RovingFocusGroupItem {
@@ -999,51 +1078,116 @@ pub fn MenuSubTrigger(props: MenuSubTriggerProps) -> Element {
                                     }
                                 }
                             },
-                            onpointerenter: move |_| {
-                                if !disabled {
-                                    // Cancel any previous open timer
-                                    let gen = *open_gen.peek() + 1;
-                                    open_gen.set(gen);
-                                    // Open after 100ms delay (matching Radix SELECTION_OPEN_DELAY)
-                                    spawn(async move {
-                                        dioxus_sdk_time::sleep(std::time::Duration::from_millis(100)).await;
-                                        if *open_gen.peek() == gen {
-                                            sub_ctx.set_open.call(true);
-                                        }
-                                    });
+                            // Upstream opens from `onPointerMove`, not
+                            // `onPointerEnter`: entering is not enough, the
+                            // pointer has to still be over the trigger and not
+                            // on its way into an already-open submenu.
+                            onpointermove: move |event: Event<PointerData>| {
+                                if event.data().pointer_type() != "mouse" {
+                                    return;
                                 }
+                                let x = event.data().client_coordinates().x;
+                                let y = event.data().client_coordinates().y;
+                                if pointer_is_moving_to_submenu(&ctx, x, y) {
+                                    return;
+                                }
+                                // The timer must not restart on every move, or
+                                // it would never fire while the pointer drifts
+                                // across the trigger.
+                                if disabled || is_open() || *open_timer_pending.peek() {
+                                    return;
+                                }
+                                ctx.grace_intent.clone().set(None);
+                                let mut open_timer_pending = open_timer_pending;
+                                open_timer_pending.set(true);
+                                let gen = *open_gen.peek() + 1;
+                                open_gen.set(gen);
+                                // Upstream's SELECTION_OPEN_DELAY.
+                                spawn(async move {
+                                    dioxus_sdk_time::sleep(std::time::Duration::from_millis(100)).await;
+                                    if *open_gen.peek() == gen {
+                                        sub_ctx.set_open.call(true);
+                                    }
+                                    open_timer_pending.set(false);
+                                });
                             },
                             onpointerleave: move |event: Event<PointerData>| {
+                                if event.data().pointer_type() != "mouse" {
+                                    return;
+                                }
                                 // Cancel pending open timer
                                 let current = *open_gen.peek();
                                 open_gen.set(current + 1);
 
-                                // Compute grace area triangle from pointer to sub-content edges
-                                // (upstream menu.tsx:1082-1122)
+                                // Build the grace area: a polygon from the
+                                // pointer to the sub-content's near and far
+                                // edges, so a diagonal move towards the submenu
+                                // crosses intervening items without closing it
+                                // (upstream menu.tsx `onPointerLeave`).
                                 if is_open() {
                                     let px = event.data().client_coordinates().x;
                                     let py = event.data().client_coordinates().y;
                                     let content_id_str = (sub_ctx.content_id)();
                                     let mut grace = ctx.grace_intent;
+                                    let grace_generation = *grace_gen.peek() + 1;
+                                    let mut grace_gen = grace_gen;
+                                    grace_gen.set(grace_generation);
                                     spawn(async move {
+                                        // `data-side` decides which edge is
+                                        // near: the polygon has to open towards
+                                        // the submenu, whichever side collision
+                                        // detection put it on.
                                         let js = format!(
                                             "var e=document.getElementById('{content_id_str}');\
                                              if(e){{var r=e.getBoundingClientRect();\
-                                             dioxus.send([r.left,r.top,r.right,r.bottom])}}else{{dioxus.send(null)}}"
+                                             dioxus.send([r.left,r.top,r.right,r.bottom,\
+                                             e.getAttribute('data-side')==='right'?1:0])}}\
+                                             else{{dioxus.send(null)}}"
                                         );
                                         let mut eval = document::eval(&js);
-                                        if let Ok(Some([left, top, right, bottom])) = eval.recv::<Option<[f64; 4]>>().await {
-                                            // Polygon: pointer position → sub-content bounding box corners
+                                        let rect = eval.recv::<Option<[f64; 5]>>().await;
+                                        if let Ok(Some([left, top, right, bottom, is_right])) = rect {
+                                            let right_side = is_right != 0.0;
+                                            // Upstream nudges the pointer corner
+                                            // 5px into the trigger so the very
+                                            // first move already counts as
+                                            // aiming at the submenu.
+                                            let bleed = if right_side { -5.0 } else { 5.0 };
+                                            let near_edge = if right_side { left } else { right };
+                                            let far_edge = if right_side { right } else { left };
                                             let area = vec![
-                                                Point { x: px, y: py },
-                                                Point { x: left, y: top },
-                                                Point { x: right, y: top },
-                                                Point { x: right, y: bottom },
-                                                Point { x: left, y: bottom },
+                                                Point { x: px + bleed, y: py },
+                                                Point { x: near_edge, y: top },
+                                                Point { x: far_edge, y: top },
+                                                Point { x: far_edge, y: bottom },
+                                                Point { x: near_edge, y: bottom },
                                             ];
-                                            grace.set(Some(GraceIntent { area }));
+                                            grace.set(Some(GraceIntent {
+                                                area,
+                                                side: if right_side {
+                                                    GraceSide::Right
+                                                } else {
+                                                    GraceSide::Left
+                                                },
+                                            }));
+
+                                            // Upstream drops the intent after
+                                            // 300ms: a pointer that stopped
+                                            // inside the triangle is not on its
+                                            // way anywhere.
+                                            dioxus_sdk_time::sleep(
+                                                std::time::Duration::from_millis(300),
+                                            )
+                                            .await;
+                                            if *grace_gen.peek() == grace_generation {
+                                                grace.set(None);
+                                            }
+                                        } else {
+                                            grace.set(None);
                                         }
                                     });
+                                } else {
+                                    ctx.grace_intent.clone().set(None);
                                 }
                             },
                             ..merged,
@@ -1097,10 +1241,43 @@ pub fn MenuSubContent(props: MenuSubContentProps) -> Element {
     let data_state = if (sub_ctx.open)() { "open" } else { "closed" };
     let children = props.children;
 
+    // A submenu is its own dismissable layer, registered above its parent's.
+    // Escape therefore reaches the submenu first — upstream closes the whole
+    // menu from there — and a focus move to anything that is not this
+    // submenu's own trigger closes the submenu. That focus rule is what makes
+    // hover work: moving the pointer onto a sibling item focuses it, focus
+    // leaves the submenu, and the submenu closes.
+    let sub_trigger_id = sub_ctx.trigger_id;
+    let on_focus_outside = use_callback(move |event: DismissableEvent| {
+        // Not when the trigger itself takes focus, or the submenu would close
+        // and immediately reopen.
+        if !event.target_is_within(&sub_trigger_id()) {
+            sub_ctx.set_open.call(false);
+        }
+    });
+    let on_escape_key_down = use_callback(move |_: DismissableEvent| {
+        // Upstream: Escape inside a submenu closes the entire menu, not just
+        // the submenu.
+        ctx.on_close.call(());
+    });
+    let layer = use_dismissable_layer(
+        id,
+        DismissableLayerOptions {
+            disable_outside_pointer_events: false,
+            on_escape_key_down,
+            on_focus_outside,
+            on_dismiss: use_callback(move |_: ()| sub_ctx.set_open.call(false)),
+            ..Default::default()
+        },
+    );
+
     let content_attrs = attributes!(div {
         id: id,
         "data-slot": slot,
         "data-state": data_state,
+        onpointerdown: move |e: Event<PointerData>| layer.on_pointer_down.call(e),
+        onfocusin: move |e: Event<FocusData>| layer.on_focus_in.call(e),
+        onfocusout: move |e: Event<FocusData>| layer.on_focus_out.call(e),
     });
     let merged = merge_attributes(vec![content_attrs, props.attributes]);
 

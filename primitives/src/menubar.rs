@@ -27,7 +27,7 @@ use std::rc::Rc;
 
 use crate::direction::Orientation;
 use crate::dismissable_layer::DismissableEvent;
-use crate::menu::{use_menu_dismissal, MenuCtx, MenuDismissalOptions};
+use crate::menu::{use_menu_dismissal, GraceSide, MenuCtx, MenuDismissalOptions};
 use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
 use crate::presence::Presence;
 use crate::presence::PresenceContext;
@@ -259,6 +259,8 @@ pub fn MenubarMenu(props: MenubarMenuProps) -> Element {
     // Provide MenuCtx for the shared menu base components (MenuItem, etc.)
     let typeahead_items = use_signal(Vec::new);
     let grace_intent = use_signal(|| None);
+    let pointer_dir = use_signal(|| GraceSide::Right);
+    let last_pointer_x = use_signal(|| None);
     use_context_provider(|| MenuCtx {
         open: is_open,
         on_close,
@@ -267,6 +269,8 @@ pub fn MenubarMenu(props: MenubarMenuProps) -> Element {
         slot_prefix: "menubar",
         typeahead_items,
         grace_intent,
+        pointer_dir,
+        last_pointer_x,
     });
 
     use_context_provider(|| MenubarMenuInternalCtx {

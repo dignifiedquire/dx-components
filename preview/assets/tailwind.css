@@ -254,6 +254,9 @@
     container-type: inline-size;
     container-name: card-header;
   }
+  .\@container {
+    container-type: inline-size;
+  }
   .pointer-events-auto {
     pointer-events: auto;
   }
@@ -738,6 +741,9 @@
   }
   .w-9 {
     width: calc(var(--spacing) * 9);
+  }
+  .w-40 {
+    width: calc(var(--spacing) * 40);
   }
   .w-48 {
     width: calc(var(--spacing) * 48);

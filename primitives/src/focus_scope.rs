@@ -202,7 +202,10 @@ pub struct FocusScopeHandle {
 /// this hook and spread the handle onto it, exactly as with
 /// [`crate::dismissable_layer::use_dismissable_layer`]. `container_id` must be
 /// that element's `id`.
-pub fn use_focus_scope(container_id: Signal<String>, opts: FocusScopeOptions) -> FocusScopeHandle {
+pub fn use_focus_scope(
+    container_id: ReadSignal<String>,
+    opts: FocusScopeOptions,
+) -> FocusScopeHandle {
     let trapped = opts.trapped;
     let looping = opts.r#loop;
     let on_mount_auto_focus = opts.on_mount_auto_focus;
@@ -337,7 +340,7 @@ pub fn FocusScope(props: FocusScopeProps) -> Element {
     let container_id = crate::use_unique_id();
 
     let scope = use_focus_scope(
-        container_id,
+        container_id.into(),
         FocusScopeOptions {
             r#loop: props.r#loop,
             trapped: props.trapped,
@@ -383,7 +386,7 @@ mod wasm_impl {
     /// Set up document-level focus trap listeners and MutationObserver.
     /// Returns a cleanup closure that removes everything.
     pub(super) fn setup_trap(
-        container_id: Signal<String>,
+        container_id: ReadSignal<String>,
         scope: Rc<FocusScopeState>,
     ) -> impl FnOnce() {
         let doc = match web_sys::window().and_then(|w| w.document()) {
@@ -532,7 +535,7 @@ mod wasm_impl {
     /// Whether `element` already sits inside the scope container.
     /// Upstream: `const hasFocusedCandidate = container.contains(previouslyFocusedElement)`.
     pub(super) fn contains_focus(
-        container_id: Signal<String>,
+        container_id: ReadSignal<String>,
         element: Option<&web_sys::HtmlElement>,
     ) -> bool {
         let Some(element) = element else {
@@ -548,7 +551,7 @@ mod wasm_impl {
 
     /// Focus the scope's first tabbable child, falling back to the container.
     /// Upstream: `focusFirst(removeLinks(getTabbableCandidates(container)), { select: true })`.
-    pub(super) fn focus_first_candidate(container_id: Signal<String>) -> Option<()> {
+    pub(super) fn focus_first_candidate(container_id: ReadSignal<String>) -> Option<()> {
         let doc = web_sys::window().and_then(|w| w.document())?;
         let id = container_id.peek().clone();
         let container = doc.get_element_by_id(&id)?;
@@ -591,7 +594,7 @@ mod wasm_impl {
     /// causing focus to skip buttons or escape the scope. We always intercept
     /// Tab and manually move focus to ensure consistent behavior across browsers.
     pub(super) fn handle_tab(
-        container_id: Signal<String>,
+        container_id: ReadSignal<String>,
         looping: bool,
         shift: bool,
         event: &KeyboardEvent,

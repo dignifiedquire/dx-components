@@ -26,7 +26,7 @@ use std::rc::Rc;
 
 use crate::dismissable_layer::DismissableEvent;
 use crate::focus_scope::FocusScope;
-use crate::menu::{use_menu_dismissal, MenuCtx, MenuDismissalOptions};
+use crate::menu::{use_menu_dismissal, GraceSide, MenuCtx, MenuDismissalOptions};
 use crate::popper::{Align, CollisionPadding, Popper, PopperContent, PopperCtx, Side};
 use crate::presence::Presence;
 use crate::presence::PresenceContext;
@@ -144,6 +144,8 @@ pub fn DropdownMenuRoot(props: DropdownMenuRootProps) -> Element {
     let set_open_cb = set_open;
     let typeahead_items = use_signal(Vec::new);
     let grace_intent = use_signal(|| None);
+    let pointer_dir = use_signal(|| GraceSide::Right);
+    let last_pointer_x = use_signal(|| None);
     use_context_provider(|| MenuCtx {
         open,
         on_close: Callback::new(move |()| set_open_cb.call(false)),
@@ -152,6 +154,8 @@ pub fn DropdownMenuRoot(props: DropdownMenuRootProps) -> Element {
         slot_prefix: "dropdown-menu",
         typeahead_items,
         grace_intent,
+        pointer_dir,
+        last_pointer_x,
     });
 
     use_context_provider(|| DropdownMenuInternalCtx {

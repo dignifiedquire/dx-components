@@ -188,3 +188,137 @@ test.describe("dropdown menu: layer semantics", () => {
     expect(recorded!.name).not.toBe("none");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Submenu pointer behaviour
+//
+// Menus follow the pointer: hovering an item focuses it, so hover and keyboard
+// navigation share one highlighted state, and hovering a sub-trigger opens its
+// submenu. The subtle part is the grace area — a pointer travelling diagonally
+// from the sub-trigger into the submenu passes over the items in between, and
+// those must not steal focus and close the submenu on the way.
+// ---------------------------------------------------------------------------
+
+test.describe("dropdown menu: submenu pointer behaviour", () => {
+  // Scope to the first demo. The navbar's mobile-nav Sheet is always in the
+  // DOM and contains its own dropdown trigger, so a bare `.first()` can resolve
+  // to a hidden trigger whose menu positions off-screen — which is exactly what
+  // happens on WebKit.
+  const demo = (page: import("@playwright/test").Page) =>
+    page.locator('[data-slot="preview"]').first();
+
+  /**
+   * Hover an element until an assertion about the result holds.
+   *
+   * Every step here re-reads the element's box, because floating-ui places
+   * content asynchronously and can re-measure afterwards: a box read once and
+   * reused points at where the menu *was*. WebKit places roughly three times
+   * slower than Chromium, and slower still under parallel load, which is
+   * exactly when a stale coordinate turns into a flaky test. A menu that never
+   * responds still fails, on the outer timeout.
+   */
+  async function hoverUntil(
+    page: import("@playwright/test").Page,
+    target: import("@playwright/test").Locator,
+    check: () => Promise<void>,
+  ) {
+    await expect(async () => {
+      const box = await target.boundingBox();
+      expect(box, "target should have a box").not.toBeNull();
+      expect(box!.top ?? box!.y, "target should be on screen").toBeGreaterThan(0);
+      // Two moves: the second is what produces a pointermove over the target.
+      await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+      await page.mouse.move(box!.x + box!.width / 2 + 1, box!.y + box!.height / 2);
+      await check();
+    }).toPass({ timeout: 20_000 });
+  }
+
+  async function openMenu(page: import("@playwright/test").Page) {
+    await page.goto("http://127.0.0.1:8080/docs/components/dropdown_menu", {
+      timeout: 20 * 60 * 1000,
+    });
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
+    await demo(page).locator('[data-slot="dropdown-menu-trigger"]').first().click();
+    const content = page.locator('[data-slot="dropdown-menu-content"]').first();
+    await expect(content).toBeVisible();
+    await expect
+      .poll(async () => content.evaluate((el) => el.getBoundingClientRect().top), {
+        timeout: 15_000,
+      })
+      .toBeGreaterThan(0);
+  }
+
+  test("hovering an item highlights it", async ({ page }) => {
+    await openMenu(page);
+    const item = demo(page).locator('[data-slot="dropdown-menu-item"]').first();
+    await hoverUntil(page, item, async () => {
+      await expect(item).toHaveAttribute("data-highlighted", "", { timeout: 1000 });
+    });
+  });
+
+  test("hovering the sub-trigger opens the submenu", async ({ page }) => {
+    await openMenu(page);
+    const subTrigger = demo(page).locator('[data-slot="dropdown-menu-sub-trigger"]').first();
+    const subContent = page.locator('[data-slot="dropdown-menu-sub-content"]').first();
+    // Upstream opens after a 100ms dwell rather than on entry.
+    await hoverUntil(page, subTrigger, async () => {
+      await expect(subContent).toBeVisible({ timeout: 2000 });
+    });
+  });
+
+  test("moving to another item closes the submenu", async ({ page }) => {
+    // This is what items focusing on pointer-move buys: focus leaves the
+    // submenu, its layer sees a focus-outside, and it closes. Without it a
+    // hover-opened submenu stayed open forever.
+    await openMenu(page);
+    const subTrigger = demo(page).locator('[data-slot="dropdown-menu-sub-trigger"]').first();
+    const subContent = page.locator('[data-slot="dropdown-menu-sub-content"]').first();
+    await hoverUntil(page, subTrigger, async () => {
+      await expect(subContent).toBeVisible({ timeout: 2000 });
+    });
+
+    const other = demo(page).locator('[data-slot="dropdown-menu-item"]').first();
+    await hoverUntil(page, other, async () => {
+      await expect(subContent).toHaveCount(0, { timeout: 2000 });
+    });
+  });
+
+  test("a diagonal move into the submenu does not close it", async ({ page }) => {
+    // The grace area: a polygon from the pointer to the submenu's edges, gated
+    // on the pointer travelling towards it. Crossing the item below the
+    // sub-trigger on the way must not close the submenu.
+    await openMenu(page);
+    const subTrigger = demo(page).locator('[data-slot="dropdown-menu-sub-trigger"]').first();
+    const subContent = page.locator('[data-slot="dropdown-menu-sub-content"]').first();
+
+    // The whole sweep retries, re-opening and re-measuring each time: the menu
+    // can still be settling into place when the first attempt starts, and a
+    // sweep aimed at stale coordinates proves nothing either way.
+    await expect(async () => {
+      await hoverUntil(page, subTrigger, async () => {
+        await expect(subContent).toBeVisible({ timeout: 2000 });
+      });
+      await expect
+        .poll(async () => subContent.evaluate((el) => el.getBoundingClientRect().top), {
+          timeout: 5000,
+        })
+        .toBeGreaterThan(0);
+
+      const trigger = (await subTrigger.boundingBox())!;
+      const sub = (await subContent.boundingBox())!;
+      const fromX = trigger.x + trigger.width / 2;
+      const fromY = trigger.y + trigger.height / 2;
+      const toX = sub.x + sub.width / 2;
+      const toY = sub.y + sub.height - 8;
+      for (let step = 1; step <= 8; step++) {
+        await page.mouse.move(
+          fromX + ((toX - fromX) * step) / 8,
+          fromY + ((toY - fromY) * step) / 8,
+        );
+        await page.waitForTimeout(20);
+      }
+
+      await expect(subContent).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 30_000 });
+  });
+});

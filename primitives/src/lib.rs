@@ -104,6 +104,30 @@ pub(crate) fn focus_mounted(data: &std::rc::Rc<MountedData>) {
     }
 }
 
+/// Move focus to the element with this id, synchronously.
+///
+/// Menus focus their content element when the pointer leaves an item, so that
+/// no item stays highlighted — upstream's `contentRef.current?.focus()` in
+/// `onItemLeave`. No-op off wasm.
+pub(crate) fn focus_element_by_id(id: &str) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+        if let Some(element) = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id(id))
+        {
+            if let Some(html) = element.dyn_ref::<web_sys::HtmlElement>() {
+                let _ = html.focus();
+            }
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = id;
+    }
+}
+
 /// Generate a runtime-unique id.
 ///
 /// The signal is created at `ScopeId::ROOT` so it can safely be stored in
