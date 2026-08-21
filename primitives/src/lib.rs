@@ -254,7 +254,10 @@ fn use_effect_with_cleanup<F: FnMut() -> C + 'static, C: FnOnce() + 'static>(mut
 #[derive(Clone)]
 struct EscapeListenerStack(Rc<RefCell<Vec<ScopeId>>>);
 
-fn use_global_escape_listener(mut on_escape: impl FnMut() + Clone + 'static) {
+fn use_global_escape_listener(
+    enabled: ReadSignal<bool>,
+    mut on_escape: impl FnMut() + Clone + 'static,
+) {
     let scope_id = current_scope_id();
     let stack = use_hook(move || {
         // Get or create the escape listener stack
@@ -272,7 +275,7 @@ fn use_global_escape_listener(mut on_escape: impl FnMut() + Clone + 'static) {
             stack.retain(|id| *id != scope_id);
         }
     });
-    use_global_keydown_listener("Escape", move || {
+    use_global_keydown_listener("Escape", enabled, true, move || {
         // Only call the listener if this component is on top of the stack
         let stack = stack.0.borrow();
         if stack.last() == Some(&scope_id) {
@@ -281,13 +284,37 @@ fn use_global_escape_listener(mut on_escape: impl FnMut() + Clone + 'static) {
     });
 }
 
-fn use_global_keydown_listener(key: &'static str, on_escape: impl FnMut() + Clone + 'static) {
+/// Listen for a key at the document level, for as long as `enabled` is true.
+///
+/// `prevent_default` decides whether the listener cancels the key's default
+/// action. It must be false unless the caller genuinely consumes the key,
+/// because the decision is made in JavaScript before the Rust callback runs —
+/// there is no way to take it back afterwards.
+///
+/// `enabled` matters for the same reason: while the listener is installed with
+/// `prevent_default`, it cancels *every* press of that key anywhere on the
+/// page. A component that only acts on the key while open must therefore pass
+/// its open state, or it will swallow the key for the whole document while
+/// closed — which is exactly what a closed menu used to do to Escape,
+/// including the Escape that closes a native `<dialog>`.
+fn use_global_keydown_listener(
+    key: &'static str,
+    enabled: ReadSignal<bool>,
+    prevent_default: bool,
+    on_key: impl FnMut() + Clone + 'static,
+) {
     use_effect_with_cleanup(move || {
-        let mut escape = document::eval(
-            "let targetKey = await dioxus.recv();
+        if !enabled() {
+            return Box::new(|| {}) as Box<dyn FnOnce()>;
+        }
+
+        let mut listener = document::eval(
+            "let [targetKey, preventDefault] = await dioxus.recv();
             function listener(event) {
                 if (event.key === targetKey) {
-                    event.preventDefault();
+                    if (preventDefault) {
+                        event.preventDefault();
+                    }
                     dioxus.send(true);
                 }
             }
@@ -295,14 +322,17 @@ fn use_global_keydown_listener(key: &'static str, on_escape: impl FnMut() + Clon
             await dioxus.recv();
             document.removeEventListener('keydown', listener);",
         );
-        let _ = escape.send(key);
-        let mut on_escape = on_escape.clone();
+        let _ = listener.send((key, prevent_default));
+        let mut on_key = on_key.clone();
+        // `Eval` is Copy: the spawned reader and the cleanup closure each keep
+        // their own handle to the same channel.
+        let close = listener;
         spawn(async move {
-            while let Ok(true) = escape.recv().await {
-                on_escape();
+            while let Ok(true) = listener.recv().await {
+                on_key();
             }
         });
-        move || _ = escape.send(true)
+        Box::new(move || _ = close.send(true)) as Box<dyn FnOnce()>
     });
 }
 

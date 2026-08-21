@@ -504,7 +504,9 @@ pub fn MenubarContent(props: MenubarContentProps) -> Element {
     use_refocus_on_close(ctx.open, ctx.trigger_id);
 
     // Document-level Escape listener
-    use_global_escape_listener(move || {
+    // Gated on `open`: while installed, the listener cancels Escape's default
+    // action for the whole document, so a closed menu must not install it.
+    use_global_escape_listener(ctx.open.into(), move || {
         if *ctx.open.peek() {
             bar_ctx.open_menu_id.set(None);
         }

@@ -339,7 +339,10 @@ pub fn ContextMenuContent(props: ContextMenuContentProps) -> Element {
     {
         let on_close = ctx.on_close;
         let open = ctx.open;
-        use_global_escape_listener(move || {
+        // Gated on `open`: while installed, the listener cancels Escape's
+        // default action for the whole document, so a closed menu must not
+        // install it.
+        use_global_escape_listener(open.into(), move || {
             if *open.peek() {
                 on_close.call(());
             }

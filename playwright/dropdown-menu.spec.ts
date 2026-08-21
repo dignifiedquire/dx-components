@@ -57,3 +57,52 @@ test("test", async ({ page }) => {
   await trigger.click();
   await expect(content).toHaveCount(0);
 });
+
+// ---------------------------------------------------------------------------
+// Global Escape hygiene
+// ---------------------------------------------------------------------------
+
+test("a closed menu does not cancel Escape for the rest of the page", async ({
+  page,
+}) => {
+  // The document-level Escape listener cancels the key's default action in
+  // JavaScript, before the Rust callback decides anything. It used to be
+  // installed whenever the content component was mounted — which is always,
+  // since the mount gate lives inside it — so any page containing a menu
+  // silently swallowed every Escape, including the one that closes a native
+  // `<dialog>`. The listener is now gated on the menu being open.
+  await page.goto("http://127.0.0.1:8080/docs/components/dropdown_menu", {
+    timeout: 20 * 60 * 1000,
+  });
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
+
+  const escapeWasCancelled = () =>
+    page.evaluate(async () => {
+      let prevented: boolean | null = null;
+      const handler = (event: KeyboardEvent) => {
+        if (event.key === "Escape") prevented = event.defaultPrevented;
+      };
+      document.addEventListener("keydown", handler, false);
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", cancelable: true, bubbles: true }),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      document.removeEventListener("keydown", handler, false);
+      return prevented;
+    });
+
+  expect(await escapeWasCancelled()).toBe(false);
+
+  const trigger = page.locator('[data-slot="dropdown-menu-trigger"]').first();
+  const content = page.locator('[data-slot="dropdown-menu-content"]').first();
+  await trigger.click();
+  await expect(content).toBeVisible();
+
+  // While open the menu does consume Escape — that part is intended.
+  expect(await escapeWasCancelled()).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(content).toHaveCount(0);
+
+  // ...and it stops consuming it again once closed.
+  expect(await escapeWasCancelled()).toBe(false);
+});

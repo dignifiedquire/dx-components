@@ -213,7 +213,11 @@ pub fn ToastProvider(props: ToastProviderProps) -> Element {
     });
 
     // Focus the first toast when the user presses f6
-    use_global_keydown_listener("F6", move || focus_region(()));
+    // The hotkey is live for as long as the provider is mounted, but it must
+    // not cancel F6's default action: upstream's toast hotkey listener only
+    // focuses the viewport and leaves the browser's own F6 handling alone.
+    let always = use_memo(|| true);
+    use_global_keydown_listener("F6", always.into(), false, move || focus_region(()));
 
     // Provide the context
     let ctx = use_context_provider(|| ToastCtx {
