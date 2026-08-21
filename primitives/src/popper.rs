@@ -375,6 +375,16 @@ pub struct PopperContentProps {
     #[props(default)]
     pub content_attributes: Vec<Attribute>,
 
+    /// Extra style declarations appended to the content div's own style.
+    ///
+    /// The content div's `style` is computed here (it suppresses animations
+    /// until floating-ui has placed the element), so a caller cannot simply
+    /// pass `style` through [`Self::content_attributes`] without clobbering it.
+    /// Overlays that drive the content div as a dismissable layer use this to
+    /// append the layer's `pointer-events` declaration.
+    #[props(default)]
+    pub content_style: Option<String>,
+
     /// Called when an animation ends on the inner content div.
     /// Used by consumers for presence animation tracking.
     #[props(default)]
@@ -894,10 +904,13 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
 
     // --- Inner content style (matching upstream line 277-282) ---
     // Suppresses animation until positioned so entry animations don't fire with wrong placement.
-    let content_style = if !is_positioned() {
-        "animation: none;"
-    } else {
-        ""
+    let content_style = {
+        // Upstream: `style={{ animation: !isPositioned ? 'none' : undefined }}`
+        let base = if !is_positioned() { "animation: none;" } else { "" };
+        match props.content_style.as_deref() {
+            Some(extra) if !extra.is_empty() => format!("{base} {extra}"),
+            _ => base.to_string(),
+        }
     };
 
     let ctx_side: ReadSignal<Side> = placed_side.into();
