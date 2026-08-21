@@ -474,6 +474,10 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
     // Wrapper ref — the floating element measured for positioning
     let mut wrapper_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
 
+    // Content ref — needed to lift the pre-placement animation suppression;
+    // see `use_clear_animation_suppression`.
+    let mut content_ref: Signal<Option<Rc<MountedData>>> = use_signal(|| None);
+
     // Unique ID for the wrapper so we can query it via web-sys for contentZIndex
     let wrapper_id = use_memo(|| {
         format!(
@@ -904,9 +908,19 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
 
     // --- Inner content style (matching upstream line 277-282) ---
     // Suppresses animation until positioned so entry animations don't fire with wrong placement.
+    // Upstream writes `animation: undefined` once placed and React removes the
+    // declaration. Dioxus cannot express removal through the style string — its
+    // interpreter re-applies inline properties a new value omits — so the
+    // suppression is cleared through the DOM instead, once, on placement.
+    use_clear_animation_suppression(content_ref.into(), is_positioned.into());
+
     let content_style = {
         // Upstream: `style={{ animation: !isPositioned ? 'none' : undefined }}`
-        let base = if !is_positioned() { "animation: none;" } else { "" };
+        let base = if !is_positioned() {
+            "animation: none;"
+        } else {
+            ""
+        };
         match props.content_style.as_deref() {
             Some(extra) if !extra.is_empty() => format!("{base} {extra}"),
             _ => base.to_string(),
@@ -973,7 +987,8 @@ pub fn PopperContent(props: PopperContentProps) -> Element {
                             h.call(e);
                         }
                     },
-                    onmounted: move |e| {
+                    onmounted: move |e: Event<MountedData>| {
+                        content_ref.set(Some(e.data()));
                         if let Some(ref h) = props.on_mounted {
                             h.call(e);
                         }
@@ -1082,5 +1097,51 @@ pub fn PopperArrow(props: PopperArrowProps) -> Element {
                 attributes: props.attributes,
             }
         }
+    }
+}
+
+/// Remove the pre-placement `animation: none` from a popper content element.
+///
+/// [`PopperContent`] suppresses animations until floating-ui has placed the
+/// element, so nothing animates in from the wrong position — upstream does the
+/// same with `style={{ animation: !isPositioned ? 'none' : undefined }}`.
+///
+/// React removes the declaration when the value becomes `undefined`. Dioxus
+/// cannot: `setAttributeInner`'s `style` branch snapshots the element's current
+/// inline declarations, applies the new attribute, then re-applies every
+/// snapshotted property the new value left out. An inline `animation` therefore
+/// survives every later render and outranks the class rules behind
+/// `data-[state=open]:animate-in` / `data-[state=closed]:animate-out`, leaving
+/// every popper-based overlay with no enter or exit animation at all.
+///
+/// Removing the property directly, once, hands control back to the stylesheet.
+/// Later renders emit a style string without `animation`, and since it is no
+/// longer present there is nothing for the interpreter to re-apply.
+fn use_clear_animation_suppression(
+    content_ref: ReadSignal<Option<Rc<MountedData>>>,
+    is_positioned: ReadSignal<bool>,
+) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+        use_effect(move || {
+            if !is_positioned() {
+                return;
+            }
+            let Some(data) = content_ref.cloned() else {
+                return;
+            };
+            if let Some(element) = data.downcast::<web_sys::Element>() {
+                if let Some(html) = element.dyn_ref::<web_sys::HtmlElement>() {
+                    let _ = html.style().remove_property("animation");
+                    let _ = html.style().remove_property("animation-name");
+                }
+            }
+        });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = (content_ref, is_positioned);
     }
 }
