@@ -145,7 +145,7 @@ fn content_no_aria_modal_when_not_modal() {
 }
 
 #[test]
-fn content_has_aria_modal_when_modal() {
+fn modal_content_uses_aria_hidden_instead_of_aria_modal() {
     fn App() -> Element {
         rsx! {
             PopoverRoot {
@@ -159,9 +159,19 @@ fn content_has_aria_modal_when_modal() {
     }
 
     let html = render(App);
+    // Upstream deliberately does not set `aria-modal` on a modal popover. It
+    // calls `hideOthers(content)` from the `aria-hidden` package instead,
+    // commenting that this is "the better supported equivalent to setting
+    // aria-modal" — assistive technology honours `aria-hidden` on the rest of
+    // the page more reliably than `aria-modal` on the overlay. Our
+    // `use_aria_hidden` does the same walk, so emitting `aria-modal` here would
+    // be a divergence, not an extra safety net.
+    //
+    // The hiding itself is a DOM side effect and cannot be observed in SSR
+    // output; `playwright/popover.spec.ts` asserts it in a real browser.
     assert!(
-        html.contains(r#"aria-modal="true""#),
-        "modal popover has aria-modal: {html}"
+        !html.contains("aria-modal"),
+        "modal popover should aria-hide the page rather than set aria-modal: {html}"
     );
 }
 

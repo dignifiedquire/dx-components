@@ -73,6 +73,17 @@ pub fn PopoverTrigger(props: PopoverTriggerProps) -> Element {
 
 #[derive(Props, Clone, PartialEq)]
 pub struct PopoverContentProps {
+    /// The id of the content element.
+    ///
+    /// Without this prop an `id` passed by a caller lands in `attributes` and
+    /// overwrites the primitive's generated one — and an `Option::None` there
+    /// *removes* the attribute entirely. The content id is load-bearing: it is
+    /// how `Presence` finds the element to watch for exit animations and how
+    /// the dismissable layer resolves its own element, so losing it silently
+    /// disables both. See `DatePickerPopoverContent`, which forwards an id.
+    #[props(default)]
+    pub id: ReadSignal<Option<String>>,
+
     #[props(default)]
     pub force_mount: bool,
 
@@ -104,6 +115,7 @@ pub fn PopoverContent(props: PopoverContentProps) -> Element {
 
     rsx! {
         primitives::PopoverContent {
+            id: props.id,
             force_mount: props.force_mount,
             side: props.side,
             side_offset: props.side_offset,

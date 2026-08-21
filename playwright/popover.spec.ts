@@ -27,13 +27,17 @@ test.describe("popover", () => {
     await expect(content).toHaveAttribute("data-side", "bottom");
     await expect(content).toHaveAttribute("data-align", "center");
 
-    // The positioning wrapper carries `popover="auto"` and is in the top layer.
+    // The positioning wrapper carries `popover="manual"` and is in the top
+    // layer. `manual` rather than `auto`: the browser's light-dismiss would
+    // race the trigger's own click handler (whichever ran first decided
+    // whether a click re-opened or closed), and it cannot be told to ignore
+    // the trigger. Dismissal is DismissableLayer's job, exactly as upstream.
     const inTopLayer = await content.evaluate((el) => {
       const wrapper = el.closest("[data-radix-popper-content-wrapper]");
       return (
         wrapper instanceof HTMLElement &&
         wrapper.matches(":popover-open") &&
-        wrapper.getAttribute("popover") === "auto"
+        wrapper.getAttribute("popover") === "manual"
       );
     });
     expect(inTopLayer).toBe(true);
@@ -220,4 +224,120 @@ test.describe("popover: top-layer divergence guarantees", () => {
     expect(visibility).toBe("visible");
     expect(await isHitTestable(content)).toBe(true);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Dismissal semantics
+//
+// These are the behaviours the DismissableLayer rework restores. Under
+// `popover="auto"` the browser owned dismissal: ESC could not be driven from
+// CDP at all, and a click on the trigger raced native light-dismiss against
+// the trigger's own handler. Now our own listeners own it, upstream-style, and
+// the behaviour is directly testable.
+// ---------------------------------------------------------------------------
+
+test.describe("popover: dismissal", () => {
+  async function open(page: import("@playwright/test").Page) {
+    await page.goto(URL, { timeout: 20 * 60 * 1000 });
+    await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
+    const trigger = page.locator('[data-slot="popover-trigger"]').first();
+    const content = page.locator('[data-slot="popover-content"]').first();
+    await trigger.click();
+    await expect(content).toBeVisible();
+    await expect
+      .poll(async () => content.evaluate((el) => el.getBoundingClientRect().top), {
+        timeout: 10_000,
+      })
+      .toBeGreaterThan(0);
+    return { trigger, content };
+  }
+
+  test("Escape closes the popover", async ({ page }) => {
+    // A real key press, not a `hidePopover()` stand-in: dismissal now runs
+    // through `use_escape_keydown` inside the dismissable layer stack.
+    const { content } = await open(page);
+    await page.keyboard.press("Escape");
+    await expect(content).toHaveCount(0);
+  });
+
+  test("clicking outside closes the popover", async ({ page }) => {
+    const { content } = await open(page);
+    // Click far from both the trigger and the content.
+    await page.mouse.click(5, 5);
+    await expect(content).toHaveCount(0);
+  });
+
+  test("clicking the popover's own padding does NOT close it", async ({ page }) => {
+    // The regression guard for making the layer a hook. If DismissableLayer
+    // rendered its own div inside PopperContent's styled box, a pointer-down on
+    // the box's `p-4` padding would never reach the layer's handler, the
+    // "pointer is inside the tree" flag would stay false, and the document
+    // listener would dismiss on the popover's own padding.
+    const { content } = await open(page);
+    const box = await content.boundingBox();
+    expect(box).not.toBeNull();
+    // Top-centre, 4px in: inside the content's own padding and clear of every
+    // child control. Not a corner — the box is `rounded-md`, so a corner pixel
+    // can fall outside the painted shape and hit-test straight through.
+    await page.mouse.click(box!.x + box!.width / 2, box!.y + 4);
+    await expect(content).toBeVisible();
+    await expect(content).toHaveAttribute("data-state", "open");
+  });
+
+  test("focus returns to the trigger after closing", async ({ page }) => {
+    // Upstream restores focus from FocusScope's unmount auto-focus, which is
+    // preventable via `on_close_auto_focus`.
+    const { trigger, content } = await open(page);
+    await page.keyboard.press("Escape");
+    await expect(content).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Exit animation
+// ---------------------------------------------------------------------------
+
+test("closing plays the exit animation before unmounting", async ({ page }) => {
+  // The shadcn content class carries `data-[state=closed]:animate-out
+  // fade-out-0 zoom-out-95`, but those never ran before this rework. Two
+  // separate causes: the top layer was driven by `open`, so `hidePopover()`
+  // set `display: none` in the same frame the state flipped; and Popper's
+  // pre-placement `animation: none` inline style could never be cleared,
+  // because Dioxus's interpreter re-applies inline properties that a new style
+  // string omits. Both are fixed, so the exit animation must now actually run.
+  await page.goto(URL, { timeout: 20 * 60 * 1000 });
+  await page.locator("body:not(.preload)").waitFor({ timeout: 60_000 });
+  const trigger = page.locator('[data-slot="popover-trigger"]').first();
+  const content = page.locator('[data-slot="popover-content"]').first();
+
+  await trigger.click();
+  await expect(content).toBeVisible();
+
+  // Record the exit animation as it starts rather than sampling after the
+  // fact: the window between the state flip and unmount is ~150ms and racing
+  // it makes the test flaky, while a missing animation still fails loudly
+  // because nothing gets recorded.
+  await content.evaluate((el) => {
+    (window as Window & { __exitAnim?: unknown }).__exitAnim = null;
+    el.addEventListener("animationstart", (event) => {
+      (window as Window & { __exitAnim?: unknown }).__exitAnim = {
+        name: (event as AnimationEvent).animationName,
+        state: el.getAttribute("data-state"),
+        display: getComputedStyle(el).display,
+      };
+    });
+  });
+
+  await page.keyboard.press("Escape");
+  await expect(content).toHaveCount(0);
+
+  const recorded = (await page.evaluate(
+    () => (window as Window & { __exitAnim?: unknown }).__exitAnim,
+  )) as { name: string; state: string; display: string } | null;
+
+  expect(recorded, "an exit animation should have started on close").not.toBeNull();
+  expect(recorded!.state).toBe("closed");
+  expect(recorded!.name).not.toBe("none");
+  expect(recorded!.display).not.toBe("none");
 });
