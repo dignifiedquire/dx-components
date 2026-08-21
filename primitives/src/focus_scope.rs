@@ -167,29 +167,47 @@ pub struct FocusScopeProps {
 // Component
 // ---------------------------------------------------------------------------
 
-/// A container that manages focus boundaries.
-///
-/// Matches Radix's `FocusScope` component.
-///
-/// ```rust,no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_primitives::focus_scope::FocusScope;
-/// rsx! {
-///     FocusScope { r#loop: true, trapped: true,
-///         button { "First" }
-///         button { "Second" }
-///         button { "Third" }
-///     }
-/// };
-/// ```
-#[component]
-pub fn FocusScope(props: FocusScopeProps) -> Element {
-    let trapped = props.trapped;
-    let looping = props.r#loop;
-    let on_mount_auto_focus = props.on_mount_auto_focus;
-    let on_unmount_auto_focus = props.on_unmount_auto_focus;
+/// Options for [`use_focus_scope`] — the prop set of [`FocusScope`] minus the
+/// rendering concerns.
+#[derive(Clone, Copy, Default)]
+pub struct FocusScopeOptions {
+    /// Tab from the last item focuses the first, Shift+Tab from the first
+    /// focuses the last. Upstream: `loop` (default `false`).
+    pub r#loop: bool,
+    /// Focus cannot leave the scope. Upstream: `trapped` (default `false`).
+    pub trapped: bool,
+    /// Called before the scope focuses its first tabbable child on mount.
+    pub on_mount_auto_focus: Callback<AutoFocusEvent>,
+    /// Called before the scope restores focus on unmount.
+    pub on_unmount_auto_focus: Callback<AutoFocusEvent>,
+}
 
-    let container_id = crate::use_unique_id();
+/// What [`use_focus_scope`] needs the caller to put on the scope element.
+#[derive(Clone, Copy)]
+pub struct FocusScopeHandle {
+    /// Attach to the scope element's `onkeydown` — this is the Tab handling.
+    pub on_keydown: Callback<KeyboardEvent>,
+}
+
+/// The behaviour of [`FocusScope`] without its `<div>`.
+///
+/// Upstream renders `FocusScope` with `asChild`, collapsing it onto the element
+/// it wraps. Menus depend on that: the scope container, the dismissable layer
+/// node, the roving-focus container and the element carrying `role="menu"` all
+/// have to be the *same* element, and the auto-focus target is that element
+/// too. A nested `<div>` splits them, which is how the port ended up rendering
+/// `role="menu"` twice with a focus-scope div in between.
+///
+/// So overlays that need the scope to *be* an element they already render call
+/// this hook and spread the handle onto it, exactly as with
+/// [`crate::dismissable_layer::use_dismissable_layer`]. `container_id` must be
+/// that element's `id`.
+pub fn use_focus_scope(container_id: Signal<String>, opts: FocusScopeOptions) -> FocusScopeHandle {
+    let trapped = opts.trapped;
+    let looping = opts.r#loop;
+    let on_mount_auto_focus = opts.on_mount_auto_focus;
+    let on_unmount_auto_focus = opts.on_unmount_auto_focus;
+
     let scope_state = use_hook(|| Rc::new(FocusScopeState::new()));
 
     // --- Focus trapping: document listeners + MutationObserver ---
@@ -283,12 +301,57 @@ pub fn FocusScope(props: FocusScopeProps) -> Element {
         }
     };
 
+    // Off wasm every use of the container id sits behind a `cfg`. Discarding it
+    // explicitly is the convention this crate already uses (`use_top_layer`),
+    // and keeps the parameter name meaningful in the public signature.
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = container_id;
+    }
+
+    FocusScopeHandle {
+        on_keydown: use_callback(handle_keydown),
+    }
+}
+
+/// A container that manages focus boundaries.
+///
+/// Matches Radix's `FocusScope` component.
+///
+/// ```rust,no_run
+/// # use dioxus::prelude::*;
+/// # use dioxus_primitives::focus_scope::FocusScope;
+/// rsx! {
+///     FocusScope { r#loop: true, trapped: true,
+///         button { "First" }
+///         button { "Second" }
+///         button { "Third" }
+///     }
+/// };
+/// ```
+///
+/// Renders a `<div>` wrapper; see [`use_focus_scope`] when the scope must
+/// be an element you already render.
+#[component]
+pub fn FocusScope(props: FocusScopeProps) -> Element {
+    let container_id = crate::use_unique_id();
+
+    let scope = use_focus_scope(
+        container_id,
+        FocusScopeOptions {
+            r#loop: props.r#loop,
+            trapped: props.trapped,
+            on_mount_auto_focus: props.on_mount_auto_focus,
+            on_unmount_auto_focus: props.on_unmount_auto_focus,
+        },
+    );
+
     rsx! {
         div {
             id: "{container_id}",
             tabindex: "-1",
             style: "outline: none;",
-            onkeydown: handle_keydown,
+            onkeydown: move |e: KeyboardEvent| scope.on_keydown.call(e),
             ..props.attributes,
             {props.children}
         }
