@@ -17,6 +17,7 @@ pub mod accessible_icon;
 pub mod accordion;
 pub mod alert_dialog;
 pub mod announce;
+pub(crate) mod aria_hidden;
 pub mod arrow;
 pub mod aspect_ratio;
 pub mod avatar;
@@ -80,6 +81,29 @@ pub mod use_layout_effect;
 pub mod use_rect;
 pub mod use_size;
 pub mod visually_hidden;
+
+/// Move focus to a mounted element, synchronously.
+///
+/// [`MountedData::set_focus`] is async, and awaiting it from an unmount
+/// cleanup does not work: the task belongs to the scope being torn down, so it
+/// is dropped before it runs. Focus restoration on close happens in exactly
+/// that position (upstream: `FocusScope`'s unmount auto-focus), so it needs a
+/// synchronous path. No-op off wasm.
+pub(crate) fn focus_mounted(data: &std::rc::Rc<MountedData>) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+        if let Some(element) = data.downcast::<web_sys::Element>() {
+            if let Some(html) = element.dyn_ref::<web_sys::HtmlElement>() {
+                let _ = html.focus();
+            }
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = data;
+    }
+}
 
 /// Generate a runtime-unique id.
 ///
